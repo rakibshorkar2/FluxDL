@@ -24,8 +24,16 @@ jobs:
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           xcodebuild -version
 
-      - name: Prepare Brew Dependencies
-        run: brew install boost
+      - name: Install Dependencies (boost, cmake, ninja)
+        run: brew install boost cmake ninja
+
+      - name: Clone libtorrent (nested submodule)
+        run: |
+          LIBTORRENT_COMMIT=$(git -C Submodules/LibTorrent-Swift/Thirdparty/libtorrent rev-parse HEAD 2>/dev/null || echo "")
+          if [ -z "$(ls -A Submodules/LibTorrent-Swift/Thirdparty/libtorrent)" ]; then
+            git clone --recurse-submodules https://github.com/arvidn/libtorrent.git \
+              Submodules/LibTorrent-Swift/Thirdparty/libtorrent
+          fi
 
       - name: Build LibTorrent Submodule
         run: |
