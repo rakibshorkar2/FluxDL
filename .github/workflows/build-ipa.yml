@@ -28,7 +28,9 @@ jobs:
         run: brew install boost
 
       - name: Build LibTorrent Submodule
-        run: ./Submodules/LibTorrent-Swift/make.sh
+        run: |
+          chmod +x ./Submodules/LibTorrent-Swift/make.sh
+          ./Submodules/LibTorrent-Swift/make.sh
 
       - name: Set Build Number
         run: xcrun agvtool new-version -all ${{ github.run_number }}
