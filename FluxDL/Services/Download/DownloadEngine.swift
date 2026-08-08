@@ -8,7 +8,7 @@
 import Combine
 import Foundation
 
-final class DownloadEngine: ObservableObject {
+final class DownloadEngine: NSObject {
     static let shared = DownloadEngine()
 
     static let sessionIdentifier = "com.fluxdl.downloads.session"
@@ -38,6 +38,8 @@ final class DownloadEngine: ObservableObject {
     private let fileManager = FileManager.default
 
     private init() {
+        super.init()
+
         let applicationSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         stateDirectoryURL = applicationSupport.appendingPathComponent("Downloads", isDirectory: true)
         stateFileURL = stateDirectoryURL.appendingPathComponent("downloads.json")

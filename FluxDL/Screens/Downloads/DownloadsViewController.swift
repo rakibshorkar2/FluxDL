@@ -92,7 +92,7 @@ private extension DownloadsViewController {
             }
         }
 
-        collection.contextMenuConfigurationForItemsAt = { [unowned self] indexPaths, _ in
+        collectionView.contextMenuConfigurationForItemsAt = { [unowned self] indexPaths, _ in
             guard let indexPath = indexPaths.first,
                   let cellViewModel = viewModel.sections[indexPath.section].items[indexPath.item] as? DownloadItemViewModel
             else { return nil }
