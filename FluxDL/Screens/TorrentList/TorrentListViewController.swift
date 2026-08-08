@@ -197,6 +197,13 @@ class TorrentListViewController<VM: TorrentListViewModel>: BaseViewController<VM
         smoothlyDeselectRows(in: collectionView)
     }
 
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if isEditing {
+            setEditing(false, animated: false)
+        }
+    }
+
     override func viewLayoutMarginsDidChange() {
         super.viewLayoutMarginsDidChange()
 
@@ -209,6 +216,13 @@ class TorrentListViewController<VM: TorrentListViewModel>: BaseViewController<VM
         collectionView.isEditing = editing
         toolbarItems = getToolBarItems
         navigationController?.setToolbarHidden(isToolbarItemsHidden, animated: true)
+
+        // On iOS 26 the tab bar floats above the content as a Liquid Glass layer,
+        // overlapping the navigation toolbar below it. Hide the tab bar while
+        // editing so the action toolbar is fully visible.
+        if #available(iOS 18.0, *) {
+            tabBarController?.setTabBarHidden(editing, animated: true)
+        }
     }
 
     override func viewDidLayoutSubviews() {
