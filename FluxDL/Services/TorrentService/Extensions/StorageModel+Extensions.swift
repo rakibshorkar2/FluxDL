@@ -8,7 +8,7 @@
 import LibTorrent
 
 extension StorageModel {
-    static var defaultName: String { "iTorrent Default" }
+    static var defaultName: String { "Torrent Default" }
 }
 
 extension Optional where Wrapped: StorageModel {

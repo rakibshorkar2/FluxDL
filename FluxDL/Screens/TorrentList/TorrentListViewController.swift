@@ -63,7 +63,7 @@ class TorrentListViewController<VM: TorrentListViewModel>: BaseViewController<VM
                 .flexibleSpace(),
                 deleteButton
             ].compactMap { $0 } :
-            [addButton, .init(systemItem: .flexibleSpace), preferencesButton]
+            []
     }
 
     override func viewDidLoad() {
@@ -121,8 +121,8 @@ class TorrentListViewController<VM: TorrentListViewModel>: BaseViewController<VM
 
         binding()
 
-        navigationItem.leadingItemGroups.append(.fixedGroup(items: [editButtonItem]))
-        navigationItem.trailingItemGroups.append(.fixedGroup(items: [sortButton]))
+        navigationItem.leadingItemGroups.append(.fixedGroup(items: [addButton, editButtonItem]))
+        navigationItem.trailingItemGroups.append(.fixedGroup(items: [sortButton, preferencesButton]))
         toolbarItems = getToolBarItems
 
         collectionView.contextMenuConfigurationForItemsAt = { [unowned self] indexPaths, _ in
@@ -208,6 +208,7 @@ class TorrentListViewController<VM: TorrentListViewModel>: BaseViewController<VM
         super.setEditing(editing, animated: animated)
         collectionView.isEditing = editing
         toolbarItems = getToolBarItems
+        navigationController?.setToolbarHidden(isToolbarItemsHidden, animated: true)
     }
 
     override func viewDidLayoutSubviews() {

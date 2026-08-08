@@ -150,15 +150,9 @@ private extension PreferencesViewModel {
 //            PRSwitchViewModel(with: .init(title: %"preferences.notifications.seed", value: preferences.$isSeedNotificationsEnabled.binding))
         })
 
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
-        let appBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
         let libtorrentVersion = TorrentService.version
-        let version = "iTorrent: v\(appVersion)-\(appBuild) | LibTorrent: v\(libtorrentVersion)"
-        sections.append(.init(id: "version", header: %"preferences.version", footer: version, style: .insetGrouped) {
-            PRButtonViewModel(with: .init(title: %"preferences.version.github", value: Just(%"common.open").eraseToAnyPublisher(), selectAction: { [unowned self] in
-                UIApplication.shared.open(.init(string: "https://github.com/XITRIX/iTorrent")!)
-                dismissSelection.send()
-            }))
+        sections.append(.init(id: "version", style: .insetGrouped) {
+            PRButtonViewModel(with: .init(title: "LibTorrent: v\(libtorrentVersion)", selectAction: nil))
         })
     }
 

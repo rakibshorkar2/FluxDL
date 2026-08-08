@@ -881,52 +881,6 @@
         }
       }
     },
-    "common.open" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffnen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apri"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otwórz"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открыть"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "打开"
-          }
-        }
-      }
-    },
     "common.password" : {
       "localizations" : {
         "de" : {
@@ -2496,43 +2450,43 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent wird versuchen, den fehlenden Speicher zu finden"
+            "value" : "Torrent wird versuchen, den fehlenden Speicher zu finden"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent will try to find missing storage"
+            "value" : "Torrent will try to find missing storage"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent intentará encontrar el almacenamiento que falta"
+            "value" : "Torrent intentará encontrar el almacenamiento que falta"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent proverà a cercare l’archivio mancante"
+            "value" : "Torrent proverà a cercare l’archivio mancante"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent spróbuje znaleźć brakujące źródło pamięci"
+            "value" : "Torrent spróbuje znaleźć brakujące źródło pamięci"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent попробует найти утерянное хранилище"
+            "value" : "Torrent попробует найти утерянное хранилище"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent 将尝试寻找丢失的存储"
+            "value" : "Torrent 将尝试寻找丢失的存储"
           }
         }
       }
@@ -4017,43 +3971,43 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standardmäßig erlaubt iTorrent keine Nutzung Mobiler Daten, da die meisten Mobilfunk-Verträge keinen unbegrenzten Download und/oder Upload erlauben.  Du kannst diese Einstellung jederzeit in den den App-Einstellungen ändern."
+            "value" : "Standardmäßig erlaubt Torrent keine Nutzung Mobiler Daten, da die meisten Mobilfunk-Verträge keinen unbegrenzten Download und/oder Upload erlauben.  Du kannst diese Einstellung jederzeit in den den App-Einstellungen ändern."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "By default, iTorrent prefers not to allow cellular usage because most cellular plans do not support unlimited download and / or upload traffic.\n\nYou can always change this setting in application preferences."
+            "value" : "By default, Torrent prefers not to allow cellular usage because most cellular plans do not support unlimited download and / or upload traffic.\n\nYou can always change this setting in application preferences."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Por defecto iTorrent prefiere no permitir el uso del móvil debido a que la mayoría de los planes de telefonía móvil no soportan el tráfico ilimitado de descarga y/o subida. Siempre puede cambiar esta configuración en las preferencias de la aplicación."
+            "value" : "Por defecto Torrent prefiere no permitir el uso del móvil debido a que la mayoría de los planes de telefonía móvil no soportan el tráfico ilimitado de descarga y/o subida. Siempre puede cambiar esta configuración en las preferencias de la aplicación."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Di default, iTorrent preferisce non permettere l’uso su rete mobile, perché molti piani non supportano download illimitato e / o traffico di upload.\n\nPuoi sempre cambiare l’impostazione nelle preferenze dell’applicazione."
+            "value" : "Di default, Torrent preferisce non permettere l’uso su rete mobile, perché molti piani non supportano download illimitato e / o traffico di upload.\n\nPuoi sempre cambiare l’impostazione nelle preferenze dell’applicazione."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Domyślnie, iTorrent woli nie używać danych komórkowych ponieważ większość operatorów telefonii nie oferują planów bez limitów pobierania/wysyłania danych\n\nZawsze możesz tą opcje zmienić w ustawieniach."
+            "value" : "Domyślnie, Torrent woli nie używać danych komórkowych ponieważ większość operatorów telefonii nie oferują planów bez limitów pobierania/wysyłania danych\n\nZawsze możesz tą opcje zmienić w ustawieniach."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Стандартно, iTorrent предпочитает не разрешать использование сотовой сети, ввиду того, что большинство сотовых операторов не поддерживают безлимитный входящий и\\или исходящий трафик.\n\nВы можете поменять эту настройку в любое время."
+            "value" : "Стандартно, Torrent предпочитает не разрешать использование сотовой сети, ввиду того, что большинство сотовых операторов не поддерживают безлимитный входящий и\\или исходящий трафик.\n\nВы можете поменять эту настройку в любое время."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "By default iTorrent prefers not to allow cellular usage because of most cellular plans does not support unlimited download and / or upload trafic.\n\nYou can always change this setting in application preferences."
+            "value" : "By default Torrent prefers not to allow cellular usage because of most cellular plans does not support unlimited download and / or upload trafic.\n\nYou can always change this setting in application preferences."
           }
         }
       }
@@ -4100,52 +4054,6 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Allow Cellular Usage"
-          }
-        }
-      }
-    },
-    "iTorrent" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iTorrent"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iTorrent"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iTorrent"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iTorrent"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iTorrent"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iTorrent"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iTorrent"
           }
         }
       }
@@ -4569,43 +4477,43 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Tracker erfordert möglicherweise eine Anmeldung. Öffne den Link im Browser, lade die .torrent-Datei herunter und teile sie anschließend mit iTorrent."
+            "value" : "Dieser Tracker erfordert möglicherweise eine Anmeldung. Öffne den Link im Browser, lade die .torrent-Datei herunter und teile sie anschließend mit Torrent."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This tracker requires a signed-in browser session. Open the link in the browser, download the .torrent file, then share it with iTorrent."
+            "value" : "This tracker requires a signed-in browser session. Open the link in the browser, download the .torrent file, then share it with Torrent."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este tracker requiere una sesión iniciada en el navegador. Abre el enlace en el navegador, descarga el archivo .torrent y compártelo con iTorrent."
+            "value" : "Este tracker requiere una sesión iniciada en el navegador. Abre el enlace en el navegador, descarga el archivo .torrent y compártelo con Torrent."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questo tracker richiede l'accesso nel browser. Apri il link nel browser, scarica il file .torrent e condividilo con iTorrent."
+            "value" : "Questo tracker richiede l'accesso nel browser. Apri il link nel browser, scarica il file .torrent e condividilo con Torrent."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ten tracker wymaga zalogowanej sesji przeglądarki. Otwórz link w przeglądarce, pobierz plik .torrent, a następnie udostępnij go aplikacji iTorrent."
+            "value" : "Ten tracker wymaga zalogowanej sesji przeglądarki. Otwórz link w przeglądarce, pobierz plik .torrent, a następnie udostępnij go aplikacji Torrent."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Этот трекер требует входа через браузер. Откройте ссылку в браузере, скачайте файл .torrent, затем поделитесь им с iTorrent."
+            "value" : "Этот трекер требует входа через браузер. Откройте ссылку в браузере, скачайте файл .torrent, затем поделитесь им с Torrent."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此 Tracker 需要已登录的浏览器会话。请在浏览器中打开链接，下载 .torrent 文件，然后共享到 iTorrent。"
+            "value" : "此 Tracker 需要已登录的浏览器会话。请在浏览器中打开链接，下载 .torrent 文件，然后共享到 Torrent。"
           }
         }
       }
@@ -5029,31 +4937,31 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Willkommen zu iTorrent"
+            "value" : "Willkommen zu Torrent"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Welcome to iTorrent"
+            "value" : "Welcome to Torrent"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bienvenido a iTorrent"
+            "value" : "Bienvenido a Torrent"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Benvenuto su iTorrent"
+            "value" : "Benvenuto su Torrent"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "iTorrent wita"
+            "value" : "Torrent wita"
           }
         },
         "ru" : {
@@ -5065,7 +4973,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "欢迎使用iTorrent"
+            "value" : "欢迎使用Torrent"
           }
         }
       }
@@ -8716,43 +8624,43 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wenn Du den Speicher entfernst, werden alle Torrents die damit im Zusammenhang in der iTorrent App nicht länger verfügbar sein"
+            "value" : "Wenn Du den Speicher entfernst, werden alle Torrents die damit im Zusammenhang in der Torrent App nicht länger verfügbar sein"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "If you will remove storage, all torrents related to it will be unreachable from iTorrent app"
+            "value" : "If you will remove storage, all torrents related to it will be unreachable from Torrent app"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Si elimina el almacenamiento, todos los torrents relacionados con él serán inaccesibles desde la aplicación iTorrent"
+            "value" : "Si elimina el almacenamiento, todos los torrents relacionados con él serán inaccesibles desde la aplicación Torrent"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Se rimuovi lo spazio di archiviazione, tutti i torrent ad esso correlati saranno irraggiungibili dall'app iTorrent"
+            "value" : "Se rimuovi lo spazio di archiviazione, tutti i torrent ad esso correlati saranno irraggiungibili dall'app Torrent"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Jeśli usuniesz to źródło pamięci, to wszystkie tam zapisane torrenty będą niedostępnie w aplikacji iTorrent"
+            "value" : "Jeśli usuniesz to źródło pamięci, to wszystkie tam zapisane torrenty będą niedostępnie w aplikacji Torrent"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Если вы удалите хранилище, все торренты принадлежащие ему будут не доступны из приложения iTorrent  "
+            "value" : "Если вы удалите хранилище, все торренты принадлежащие ему будут не доступны из приложения Torrent  "
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果移除这个存储，则将无法通过iTorrent访问与之相关的所有Torrent"
+            "value" : "如果移除这个存储，则将无法通过Torrent访问与之相关的所有Torrent"
           }
         }
       }
@@ -8947,43 +8855,43 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Falls Du externe Festplatten benutzt, darfst Du diese erst entfernen, nachdem Du iTorrent geschlossen hast. Andernfalls kann iTorrent nicht mit Sicherheit garantieren, dass alle heruntergeladenen Dateien sicher gespeichert wurden. Dies könnte zu korrupten Zuständen der Torrents auf dem entfernten Gerät führen."
+            "value" : "Falls Du externe Festplatten benutzt, darfst Du diese erst entfernen, nachdem Du Torrent geschlossen hast. Andernfalls kann Torrent nicht mit Sicherheit garantieren, dass alle heruntergeladenen Dateien sicher gespeichert wurden. Dies könnte zu korrupten Zuständen der Torrents auf dem entfernten Gerät führen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In case of using external drives, you should eject it only after closing iTorrent app. Otherwise iTorrent cannot garantee safety storing of your downloaded files and could potentially corrups current states of torrents from ejected drive."
+            "value" : "In case of using external drives, you should eject it only after closing Torrent app. Otherwise Torrent cannot garantee safety storing of your downloaded files and could potentially corrups current states of torrents from ejected drive."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En caso de utilizar unidades externas, debe expulsarlas sólo después de cerrar la aplicación iTorrent. De lo contrario, iTorrent no puede garantizar el almacenamiento seguro de los archivos descargados y podría corromper los estados actuales de los torrents de la unidad expulsada"
+            "value" : "En caso de utilizar unidades externas, debe expulsarlas sólo después de cerrar la aplicación Torrent. De lo contrario, Torrent no puede garantizar el almacenamiento seguro de los archivos descargados y podría corromper los estados actuales de los torrents de la unidad expulsada"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "In caso di utilizzo di unità esterne, dovresti espellerle solo dopo aver chiuso l'app iTorrent. Altrimenti iTorrent non può garantire la conservazione sicura dei file scaricati e potrebbe potenzialmente corrompere gli stati correnti dei torrent dall'unità espulsa."
+            "value" : "In caso di utilizzo di unità esterne, dovresti espellerle solo dopo aver chiuso l'app Torrent. Altrimenti Torrent non può garantire la conservazione sicura dei file scaricati e potrebbe potenzialmente corrompere gli stati correnti dei torrent dall'unità espulsa."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "W przypadku używania zewnętrznych dysków, powinno się wysunąć dysk po zamknięciu aplikacji iTorrent. Inaczej iTorrent nie może gwarantować bezpieczeństwa Twoich plików przed uszkodzeniem."
+            "value" : "W przypadku używania zewnętrznych dysków, powinno się wysunąć dysk po zamknięciu aplikacji Torrent. Inaczej Torrent nie może gwarantować bezpieczeństwa Twoich plików przed uszkodzeniem."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "В случае использования внешних дисков извлекать их следует только после закрытия приложения iTorrent. В противном случае iTorrent не может гарантировать безопасное хранение загруженных вами файлов и потенциально может испортить текущее состояние торрентов с извлеченного диска."
+            "value" : "В случае использования внешних дисков извлекать их следует только после закрытия приложения Torrent. В противном случае Torrent не может гарантировать безопасное хранение загруженных вами файлов и потенциально может испортить текущее состояние торрентов с извлеченного диска."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果使用外部储存，请在关闭iTorrent后再将其弹出。否则，iTorrent将无法保证您下载的文件的安全，并且可能会破坏被弹出的储存中Torrent的状态。"
+            "value" : "如果使用外部储存，请在关闭Torrent后再将其弹出。否则，Torrent将无法保证您下载的文件的安全，并且可能会破坏被弹出的储存中Torrent的状态。"
           }
         }
       }
@@ -9536,98 +9444,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重命名源"
-          }
-        }
-      }
-    },
-    "preferences.version" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Version"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Version"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Versión"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Versione"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wersja"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Версия"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "版本"
-          }
-        }
-      }
-    },
-    "preferences.version.github" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "GitHub Seite"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "GitHub page"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Página de GitHub"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pagina GitHub"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Strona na GitHubie"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Страница GitHub"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "GitHub page"
           }
         }
       }
