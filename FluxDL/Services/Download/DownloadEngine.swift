@@ -38,12 +38,12 @@ final class DownloadEngine: NSObject {
     private let fileManager = FileManager.default
 
     private override init() {
-        super.init()
-
-        let applicationSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         stateDirectoryURL = applicationSupport.appendingPathComponent("Downloads", isDirectory: true)
         stateFileURL = stateDirectoryURL.appendingPathComponent("downloads.json")
         resumeDataFolderURL = stateDirectoryURL.appendingPathComponent("ResumeData", isDirectory: true)
+
+        super.init()
 
         try? fileManager.createDirectory(at: stateDirectoryURL, withIntermediateDirectories: true)
         try? fileManager.createDirectory(at: resumeDataFolderURL, withIntermediateDirectories: true)
