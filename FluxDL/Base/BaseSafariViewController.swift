@@ -1,0 +1,22 @@
+//
+//  BaseSafariViewController.swift
+//  iTorrent
+//
+//  Created by Даниил Виноградов on 31.05.2024.
+//
+
+#if canImport(SafariServices)
+import SafariServices
+
+class BaseSafariViewController: SFSafariViewController {
+    override init(url URL: URL, configuration: SFSafariViewController.Configuration = .init()) {
+        super.init(url: URL, configuration: configuration)
+        #if !os(visionOS)
+        preferredControlTintColor = PreferencesStorage.shared.tintColor
+        #endif
+    }
+}
+#else
+import UIKit
+class BaseSafariViewController: UIViewController {}
+#endif

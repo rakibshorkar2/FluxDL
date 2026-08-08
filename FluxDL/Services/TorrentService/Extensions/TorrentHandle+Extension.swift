@@ -1,0 +1,187 @@
+//
+//  TorrentHandle+Extension.swift
+//  iTorrent
+//
+//  Created by Daniil Vinogradov on 31/10/2023.
+//
+
+import Combine
+import LibTorrent
+import MvvmFoundation
+
+
+extension TorrentHandle {
+    private enum Keys {
+        nonisolated(unsafe) static var TorrentHandleUnthrottledUpdatePublisherKey: Void?
+        nonisolated(unsafe) static var TorrentHandleUpdatePublisherKey: Void?
+        nonisolated(unsafe) static var TorrentHandleRemovePublisherKey: Void?
+        nonisolated(unsafe) static var TorrentHandleDisposeBagKey: Void?
+    }
+    
+    var disposeBag: DisposeBag {
+        guard let obj = objc_getAssociatedObject(self, &Keys.TorrentHandleDisposeBagKey) as? DisposeBag
+        else {
+            objc_setAssociatedObject(self, &Keys.TorrentHandleDisposeBagKey, DisposeBag(), objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN)
+            return objc_getAssociatedObject(self, &Keys.TorrentHandleDisposeBagKey) as! DisposeBag
+        }
+        return obj
+    }
+
+    var __unthrottledUpdatePublisher: PassthroughSubject<Void, Never> {
+        guard let obj = objc_getAssociatedObject(self, &Keys.TorrentHandleUnthrottledUpdatePublisherKey) as? PassthroughSubject<Void, Never>
+        else {
+            objc_setAssociatedObject(self, &Keys.TorrentHandleUnthrottledUpdatePublisherKey, PassthroughSubject<Void, Never>(), objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN)
+            return objc_getAssociatedObject(self, &Keys.TorrentHandleUnthrottledUpdatePublisherKey) as! PassthroughSubject<Void, Never>
+        }
+        return obj
+    }
+
+    var __updatePublisher: PassthroughSubject<TorrentService.TorrentUpdateModel, Never> {
+        guard let obj = objc_getAssociatedObject(self, &Keys.TorrentHandleUpdatePublisherKey) as? PassthroughSubject<TorrentService.TorrentUpdateModel, Never>
+        else {
+            objc_setAssociatedObject(self, &Keys.TorrentHandleUpdatePublisherKey, PassthroughSubject<TorrentService.TorrentUpdateModel, Never>(), objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN)
+            return objc_getAssociatedObject(self, &Keys.TorrentHandleUpdatePublisherKey) as! PassthroughSubject<TorrentService.TorrentUpdateModel, Never>
+        }
+        return obj
+    }
+
+    /// Does not contain updated Snapshot yet, it creates before updatePublisher will be fired
+    ///
+    /// Better not use this one, prefer to use `updatePublisher`
+    var unthrottledUpdatePublisher: AnyPublisher<Void, Never> {
+        __unthrottledUpdatePublisher.eraseToAnyPublisher()
+    }
+
+    /// Contains old Snapshot in `TorrentUpdateModel` and updated Snapshot inside of `TorrentHandle` it self
+    var updatePublisher: AnyPublisher<TorrentService.TorrentUpdateModel, Never> {
+        __updatePublisher.eraseToAnyPublisher()
+    }
+
+    var removePublisher: PassthroughSubject<TorrentHandle, Never> {
+        guard let obj = objc_getAssociatedObject(self, &Keys.TorrentHandleRemovePublisherKey) as? PassthroughSubject<TorrentHandle, Never>
+        else {
+            objc_setAssociatedObject(self, &Keys.TorrentHandleRemovePublisherKey, PassthroughSubject<TorrentHandle, Never>(), objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN)
+            return objc_getAssociatedObject(self, &Keys.TorrentHandleRemovePublisherKey) as! PassthroughSubject<TorrentHandle, Never>
+        }
+        return obj
+    }
+}
+
+extension TorrentHandle.Snapshot {
+    var friendlyState: TorrentHandle.State {
+        if isStorageMissing {
+            return .storageError
+        }
+
+        switch state {
+        case .downloading:
+            if isPaused { return .paused }
+            else { return .downloading }
+        case .finished:
+            if isPaused { return .finished }
+            else { return .seeding }
+        case .seeding:
+            if isPaused { return .finished }
+            else { return .seeding }
+        default:
+            return state
+        }
+    }
+
+    var canResume: Bool {
+        isPaused && friendlyState != .storageError
+    }
+
+    var canPause: Bool {
+        !isPaused
+    }
+}
+
+extension TorrentHandle.State {
+    var name: String {
+        switch self {
+        case .checkingFiles:
+            return String(localized: "torrent.state.checkingFiles")
+        case .downloadingMetadata:
+            return String(localized: "torrent.state.fetchingMetadata")
+        case .downloading:
+            return String(localized: "torrent.state.downloading")
+        case .finished:
+            return String(localized: "torrent.state.done")
+        case .seeding:
+            return String(localized: "torrent.state.seeding")
+        case .checkingResumeData:
+            return String(localized: "torrent.state.resuming")
+        case .paused:
+            return String(localized: "torrent.state.paused")
+        case .storageError:
+            return String(localized: "torrent.state.storageError")
+        @unknown default:
+            assertionFailure("Unregistered \(Self.self) enum value is not allowed: \(self)")
+            return ""
+        }
+    }
+}
+
+// MARK: - Storage
+extension TorrentHandle {
+    var storage: StorageModel? {
+        guard let storageUUID else { return nil }
+        return TorrentService.shared.storages[storageUUID]
+    }
+}
+
+// MARK: - Metadata
+extension TorrentHandle {
+    struct Metadata: Codable {
+        var dateAdded: Date = .init()
+    }
+
+    var metadata: Metadata {
+        if let _metadata { return _metadata }
+
+        let hash = snapshot.infoHashes.best.hex
+        let url = TorrentService.metadataPath.appendingPathComponent("\(hash).tmeta", isDirectory: false)
+        if FileManager.default.fileExists(atPath: url.path()),
+           let data = try? Data(contentsOf: url),
+           let decodedMetadata = try? JSONDecoder().decode(Metadata.self, from: data)
+        {
+            let meta = TorrentMigration.recoverDateAdded(
+                in: decodedMetadata,
+                from: snapshot.addedDate,
+                at: url
+            )
+            _metadata = meta
+            return meta
+        }
+
+        let meta = Metadata(dateAdded: snapshot.addedDate ?? .init())
+        persistMetadata(meta, at: url)
+
+        _metadata = meta
+        return meta
+    }
+
+    func deleteMetadata() {
+        let hash = snapshot.infoHashes.best.hex
+        let url = TorrentService.metadataPath.appendingPathComponent("\(hash).tmeta", isDirectory: false)
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    private func persistMetadata(_ metadata: Metadata, at url: URL) {
+        guard let data = try? JSONEncoder().encode(metadata) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+}
+
+// MARK: - Metadata cache
+private extension TorrentHandle {
+    private enum MetaKeys {
+        nonisolated(unsafe) static var metadataKey: Void?
+    }
+
+    var _metadata: Metadata? {
+        get { objc_getAssociatedObject(self, &MetaKeys.metadataKey) as? Metadata }
+        set { objc_setAssociatedObject(self, &MetaKeys.metadataKey, newValue, .OBJC_ASSOCIATION_RETAIN) }
+    }
+}
