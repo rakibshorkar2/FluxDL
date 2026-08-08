@@ -33,6 +33,24 @@ class DownloadItemViewModel: BaseViewModelWith<DownloadItem>, MvvmSelectableProt
     var pauseAction: (() -> Void)?
     var resumeAction: (() -> Void)?
     var deleteAction: (() -> Void)?
+    var removeKeepFileAction: (() -> Void)?
+    var shareAction: (() -> Void)?
+
+    var trailingIconName: String {
+        switch item.status {
+        case .downloading: return "pause.circle.fill"
+        case .queued, .paused, .failed, .cancelled: return "play.circle.fill"
+        case .completed: return "square.and.arrow.up"
+        }
+    }
+
+    var trailingAction: (() -> Void)? {
+        switch item.status {
+        case .downloading: return pauseAction
+        case .queued, .paused, .failed, .cancelled: return resumeAction
+        case .completed: return shareAction
+        }
+    }
 
     override func prepare(with model: DownloadItem) {
         item = model
@@ -47,11 +65,14 @@ class DownloadItemViewModel: BaseViewModelWith<DownloadItem>, MvvmSelectableProt
         deleteAction = { [weak self] in
             self?.remove()
         }
+        removeKeepFileAction = { [weak self] in
+            self?.removeKeepingFile()
+        }
 
         disposeBag.bind {
             DownloadEngine.shared.$items
                 .compactMap { items in items.first { $0.id == model.id } }
-                .removeDuplicates { $0.id == $1.id && $0.status == $1.status && $0.bytesReceived == $1.bytesReceived && $0.totalBytes == $1.totalBytes && $0.speed == $1.speed }
+                .removeDuplicates { $0.id == $1.id && $0.status == $1.status && $0.bytesReceived == $1.bytesReceived && $0.totalBytes == $1.totalBytes && $0.speed == $1.speed && $0.filename == $1.filename && $0.errorMessage == $1.errorMessage }
                 .sink { [weak self] updated in
                     self?.item = updated
                     self?.updateUI()
@@ -72,7 +93,11 @@ class DownloadItemViewModel: BaseViewModelWith<DownloadItem>, MvvmSelectableProt
     }
 
     private func remove() {
-        DownloadEngine.shared.remove(item.id)
+        DownloadEngine.shared.remove(item.id, deleteFile: true)
+    }
+
+    private func removeKeepingFile() {
+        DownloadEngine.shared.remove(item.id, deleteFile: false)
     }
 }
 
@@ -87,7 +112,7 @@ private extension DownloadItemViewModel {
             statusText = %"downloads.state.queued"
             iconName = "clock"
         case .downloading:
-            detailText = "\(UInt64(item.bytesReceived).bitrateToHumanReadable) / \(UInt64(item.totalBytes).bitrateToHumanReadable) (\(String(format: "%.1f%%", item.progress * 100)))"
+            detailText = "\(UInt64(max(0, item.bytesReceived)).bitrateToHumanReadable) / \(UInt64(max(0, item.totalBytes)).bitrateToHumanReadable) (\(String(format: "%.1f%%", item.progress * 100)))"
             statusText = "\(UInt64(item.speed).bitrateToHumanReadable)/s"
             iconName = "arrow.down.circle.fill"
         case .paused:

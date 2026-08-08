@@ -24,6 +24,7 @@ class SceneDelegate: MvvmSceneDelegate {
         container.registerSingleton(factory: { PreferencesStorage.shared })
         container.registerSingleton(factory: { BackgroundService.shared })
         container.registerSingleton(factory: { DownloadEngine.shared })
+        container.registerSingleton(factory: { DownloadsPreferences.shared })
         container.registerSingleton(factory: NetworkMonitoringService.init)
         container.registerSingleton(factory: TrackersListService.init)
         container.registerDaemon(factory: TorrentMonitoringService.init)
@@ -60,6 +61,7 @@ class SceneDelegate: MvvmSceneDelegate {
         router.register(CellularToggleSetupViewController<CellularToggleSetupViewModel>.self)
 
         router.register(BasePreferencesViewController<PreferencesViewModel>.self)
+        router.register(BasePreferencesViewController<DownloadsSettingsViewModel>.self)
         router.register(BasePreferencesViewController<ProxyPreferencesViewModel>.self)
         router.register(TrackersListPreferencesViewController.self)
         router.register(TrackersListDetailsPreferencesViewController.self)
@@ -85,7 +87,16 @@ class SceneDelegate: MvvmSceneDelegate {
             selectedImage: UIImage(systemName: "square.and.arrow.down.fill")
         )
 
-        tabBarController.viewControllers = [nvc, downloadsNVC]
+        let settingsViewController = router.resolve(DownloadsSettingsViewModel())
+        let settingsNVC = UINavigationController.resolve()
+        settingsNVC.viewControllers = [settingsViewController]
+        settingsNVC.tabBarItem = UITabBarItem(
+            title: "Settings".localized,
+            image: UIImage(systemName: "gearshape"),
+            selectedImage: UIImage(systemName: "gearshape.fill")
+        )
+
+        tabBarController.viewControllers = [nvc, downloadsNVC, settingsNVC]
 
         return tabBarController
     }

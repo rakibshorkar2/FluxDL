@@ -38,9 +38,26 @@ struct DownloadItemView: MvvmSwiftUICellProtocol {
                     ProgressView(value: viewModel.progress)
                 }
             }
+
+            if viewModel.trailingAction != nil {
+                Button {
+                    viewModel.trailingAction?()
+                } label: {
+                    Image(systemName: viewModel.trailingIconName)
+                        .font(.body.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.borderless)
+            }
         }
         .padding(.vertical, 2)
         .swipeActions {
+            Button {
+                viewModel.removeKeepFileAction?()
+            } label: {
+                Image(systemName: "folder")
+            }
+
             Button(role: .destructive) {
                 viewModel.deleteAction?()
             } label: {

@@ -21,15 +21,21 @@ final class DownloadEngine: NSObject {
 
     @Published private(set) var items: [DownloadItem] = []
 
-    private lazy var session: URLSession = {
+    private lazy var sessionConfiguration: URLSessionConfiguration = {
         let configuration = URLSessionConfiguration.background(withIdentifier: Self.sessionIdentifier)
         configuration.sessionSendsLaunchEvents = true
         configuration.isDiscretionary = false
-        return URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+        configuration.allowsExpensiveNetworkAccess = DownloadsPreferences.shared.allowsCellular
+        return configuration
+    }()
+
+    private lazy var session: URLSession = {
+        URLSession(configuration: sessionConfiguration, delegate: self, delegateQueue: nil)
     }()
 
     private var tasks: [UUID: URLSessionDownloadTask] = [:]
     private var lastWriteTracker: [UUID: (time: TimeInterval, bytes: Int64)] = [:]
+    private var retryCounts: [UUID: Int] = [:]
     private var backgroundSessionCompletion: [String: () -> Void] = [:]
 
     private let stateDirectoryURL: URL
@@ -60,69 +66,75 @@ final class DownloadEngine: NSObject {
         guard let scheme = url.scheme?.lowercased(),
               ["http", "https"].contains(scheme)
         else { return nil }
+        guard !items.contains(where: { $0.url == url.absoluteString }) else { return nil }
 
-        var item = DownloadItem.make(url: url, filename: url.lastPathComponent.isEmpty ? "download" : url.lastPathComponent)
-        item.status = .downloading
-
-        let task = session.downloadTask(with: url)
-        task.taskDescription = item.id.uuidString
-        tasks[item.id] = task
-
+        var item = DownloadItem.make(url: url, filename: Self.fallbackFilename(for: url))
+        if let queryName = Self.queryFilename(from: url) {
+            item.filename = queryName
+        }
+        item.status = .queued
         items.insert(item, at: 0)
         saveItems()
-        task.resume()
 
-        return item
+        Task { [weak self] in
+            guard let self else { return }
+            let metadata = await self.probeMetadata(for: url)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let metadata,
+                   let index = self.items.firstIndex(where: { $0.id == item.id })
+                {
+                    self.items[index].filename = metadata.filename
+                    if metadata.totalBytes > 0 {
+                        self.items[index].totalBytes = metadata.totalBytes
+                    }
+                    self.saveItems()
+                }
+                self.startNextQueuedIfPossible()
+            }
+        }
+
+        startNextQueuedIfPossible()
+        return items.first { $0.id == item.id }
     }
 
     func pause(_ id: UUID) {
-        guard let index = items.firstIndex(where: { $0.id == id }),
-              let task = tasks[id],
-              items[index].status == .downloading
-        else { return }
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
 
-        task.cancel { [weak self] resumeData in
-            DispatchQueue.main.async {
-                guard let self,
-                      let index = self.items.firstIndex(where: { $0.id == id })
-                else { return }
+        if let task = tasks.removeValue(forKey: id) {
+            items[index].status = .paused
+            items[index].speed = 0
+            saveItems()
+            task.cancel { [weak self] resumeData in
+                DispatchQueue.main.async {
+                    guard let self,
+                          let index = self.items.firstIndex(where: { $0.id == id })
+                    else { return }
 
-                self.tasks[id] = nil
-                self.items[index].status = .paused
-                self.items[index].speed = 0
-
-                if let resumeData {
-                    if (try? resumeData.write(to: self.resumeDataURL(for: id))) != nil {
+                    self.items[index].speed = 0
+                    if let resumeData,
+                       (try? resumeData.write(to: self.resumeDataURL(for: id))) != nil
+                    {
                         self.items[index].hasResumeData = true
                     }
+                    self.saveItems()
                 }
-                self.saveItems()
             }
+        } else if items[index].status == .queued {
+            items[index].status = .paused
+            saveItems()
         }
     }
 
     func resume(_ id: UUID) {
         guard let index = items.firstIndex(where: { $0.id == id }),
-              items[index].status == .paused || items[index].status == .failed || items[index].status == .queued
+              [.paused, .failed, .queued].contains(items[index].status)
         else { return }
 
-        let resumeData = try? Data(contentsOf: resumeDataURL(for: id))
-        var task: URLSessionDownloadTask?
-
-        if let resumeData, !resumeData.isEmpty {
-            task = session.downloadTask(withResumeData: resumeData)
-        } else if let url = URL(string: items[index].url) {
-            task = session.downloadTask(with: url)
-        }
-
-        guard let task else { return }
-
-        task.taskDescription = id.uuidString
-        tasks[id] = task
-        items[index].status = .downloading
+        items[index].status = .queued
         items[index].errorMessage = nil
         saveItems()
-        task.resume()
+        startNextQueuedIfPossible()
     }
 
     func cancel(_ id: UUID) {
@@ -130,21 +142,289 @@ final class DownloadEngine: NSObject {
 
         tasks[id]?.cancel()
         tasks[id] = nil
+        lastWriteTracker[id] = nil
+        retryCounts.removeValue(forKey: id)
         items[index].status = .cancelled
         items[index].speed = 0
         deleteResumeData(for: id)
         saveItems()
     }
 
-    func remove(_ id: UUID) {
+    func remove(_ id: UUID, deleteFile: Bool = true) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
 
         tasks[id]?.cancel()
         tasks[id] = nil
+        lastWriteTracker[id] = nil
+        retryCounts.removeValue(forKey: id)
         deleteResumeData(for: id)
-        deleteDownloadedFile(for: id)
+
+        if deleteFile {
+            deleteDownloadedFile(for: id)
+        }
+
         items.remove(at: index)
         saveItems()
+    }
+
+    func refresh(_ id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }),
+              let url = URL(string: items[index].url)
+        else { return }
+
+        Task { [weak self] in
+            guard let self else { return }
+            let metadata = await self.probeMetadata(for: url)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let metadata,
+                   let index = self.items.firstIndex(where: { $0.id == id })
+                {
+                    self.items[index].filename = metadata.filename
+                    if metadata.totalBytes > 0 {
+                        self.items[index].totalBytes = metadata.totalBytes
+                    }
+                    self.saveItems()
+                }
+                self.resume(id)
+            }
+        }
+    }
+
+    func updateLink(_ id: UUID, to newURL: URL) -> Bool {
+        guard let scheme = newURL.scheme?.lowercased(),
+              ["http", "https"].contains(scheme)
+        else { return false }
+        guard let index = items.firstIndex(where: { $0.id == id }),
+              items[index].status != .completed
+        else { return false }
+
+        tasks[id]?.cancel()
+        tasks[id] = nil
+        lastWriteTracker[id] = nil
+        retryCounts.removeValue(forKey: id)
+        deleteResumeData(for: id)
+
+        var updated = items[index]
+        updated.url = newURL.absoluteString
+        updated.filename = Self.fallbackFilename(for: newURL)
+        if let queryName = Self.queryFilename(from: newURL) {
+            updated.filename = queryName
+        }
+        updated.status = .queued
+        updated.bytesReceived = 0
+        updated.totalBytes = 0
+        updated.speed = 0
+        updated.errorMessage = nil
+        updated.hasResumeData = false
+        updated.downloadedFilename = nil
+        items[index] = updated
+        saveItems()
+
+        Task { [weak self] in
+            guard let self else { return }
+            let metadata = await self.probeMetadata(for: newURL)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let metadata,
+                   let index = self.items.firstIndex(where: { $0.id == id })
+                {
+                    self.items[index].filename = metadata.filename
+                    if metadata.totalBytes > 0 {
+                        self.items[index].totalBytes = metadata.totalBytes
+                    }
+                    self.saveItems()
+                }
+                self.startNextQueuedIfPossible()
+            }
+        }
+
+        startNextQueuedIfPossible()
+        return true
+    }
+
+    func clearCompleted() {
+        let previousCount = items.count
+        items.removeAll { $0.status == .completed }
+        if items.count != previousCount {
+            saveItems()
+        }
+    }
+
+    func applyCellularPreference() {
+        sessionConfiguration.allowsExpensiveNetworkAccess = DownloadsPreferences.shared.allowsCellular
+    }
+
+    // MARK: - Queue
+
+    private var maxActiveDownloads: Int {
+        max(1, DownloadsPreferences.shared.maxActiveDownloads)
+    }
+
+    private func startNextQueuedIfPossible() {
+        guard !items.isEmpty else { return }
+
+        while tasks.count < maxActiveDownloads,
+              let index = items.firstIndex(where: { $0.status == .queued })
+        {
+            startDownload(at: index)
+        }
+    }
+
+    private func startDownload(at index: Int) {
+        let item = items[index]
+        guard let url = URL(string: item.url), tasks[item.id] == nil else { return }
+
+        let task: URLSessionDownloadTask
+        if item.hasResumeData, let resumeData = loadResumeData(for: item.id) {
+            task = session.downloadTask(withResumeData: resumeData)
+        } else {
+            task = session.downloadTask(with: url)
+        }
+        task.taskDescription = item.id.uuidString
+        tasks[item.id] = task
+        items[index].status = .downloading
+        items[index].errorMessage = nil
+        saveItems()
+        task.resume()
+    }
+
+    // MARK: - Metadata probing
+
+    private struct FileMetadata {
+        let filename: String
+        let totalBytes: Int64
+    }
+
+    private lazy var probeSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 60
+        configuration.waitsForConnectivity = false
+        return URLSession(configuration: configuration)
+    }()
+
+    private func probeMetadata(for url: URL) async -> FileMetadata? {
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+
+        if let (_, response) = try? await probeSession.data(for: request),
+           let http = response as? HTTPURLResponse
+        {
+            return FileMetadata(
+                filename: Self.filename(from: http) ?? Self.fallbackFilename(for: url),
+                totalBytes: http.expectedContentLength > 0 ? http.expectedContentLength : 0
+            )
+        }
+
+        // Some servers reject HEAD - fall back to a ranged GET of a single byte
+        var rangeRequest = URLRequest(url: url)
+        rangeRequest.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        if let (_, response) = try? await probeSession.data(for: rangeRequest),
+           let http = response as? HTTPURLResponse
+        {
+            return FileMetadata(
+                filename: Self.filename(from: http) ?? Self.fallbackFilename(for: url),
+                totalBytes: http.expectedContentLength > 0 ? http.expectedContentLength : 0
+            )
+        }
+        return nil
+    }
+
+    private static func filename(from http: HTTPURLResponse) -> String? {
+        guard let disposition = http.value(forHTTPHeaderField: "Content-Disposition")
+        else { return nil }
+
+        return filename(fromDisposition: disposition)
+    }
+
+    private static func filename(fromDisposition disposition: String) -> String? {
+        // RFC 5987: filename*=UTF-8''encoded-name
+        if let range = disposition.range(of: "filename\\*=[^;]+", options: .regularExpression) {
+            let raw = String(disposition[range]).replacingOccurrences(of: "filename*=", with: "")
+            let value = raw.split(separator: "'", maxSplits: 2).last.map(String.init) ?? raw
+            return value.removingPercentEncoding ?? value
+        }
+        // filename="name with spaces.ext"
+        if let range = disposition.range(of: "filename=\"[^\"]*\"", options: .regularExpression) {
+            let raw = String(disposition[range])
+            let value = raw.replacingOccurrences(of: "filename=\"", with: "")
+                .replacingOccurrences(of: "\"", with: "")
+            return value
+        }
+        // filename=plain.ext
+        if let range = disposition.range(of: "filename=[^;]+", options: .regularExpression) {
+            return String(disposition[range]).replacingOccurrences(of: "filename=", with: "")
+        }
+        return nil
+    }
+
+    private static func queryFilename(from url: URL) -> String? {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let queryItems = components.queryItems
+        else { return nil }
+
+        for item in queryItems {
+            let name = item.name.lowercased()
+            if name == "filename",
+               let value = item.value?.removingPercentEncoding,
+               !value.isEmpty
+            {
+                return value
+            }
+            // R2 Cloudflare: response-content-disposition=attachment; filename="file.ext"
+            if name == "response-content-disposition",
+               let value = item.value?.removingPercentEncoding,
+               let parsed = filename(fromDisposition: value)
+            {
+                return parsed
+            }
+            if name == "content-disposition",
+               let value = item.value?.removingPercentEncoding,
+               let parsed = filename(fromDisposition: value)
+            {
+                return parsed
+            }
+        }
+        return nil
+    }
+
+    private static func fallbackFilename(for url: URL) -> String {
+        let last = url.lastPathComponent.removingPercentEncoding ?? url.lastPathComponent
+        if !last.isEmpty, last != "/", last.lowercased() != "download" {
+            return last
+        }
+        return "download"
+    }
+
+    // MARK: - Auto retry
+
+    private static let maxRetryAttempts = 3
+
+    private func handleRetry(for id: UUID) {
+        guard DownloadsPreferences.shared.autoRetryFailed else { return }
+        guard let index = items.firstIndex(where: { $0.id == id }),
+              items[index].status == .failed
+        else { return }
+
+        let attempt = (retryCounts[id] ?? 0) + 1
+        guard attempt <= Self.maxRetryAttempts else {
+            retryCounts.removeValue(forKey: id)
+            return
+        }
+
+        retryCounts[id] = attempt
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self else { return }
+            guard let index = self.items.firstIndex(where: { $0.id == id }),
+                  [.failed, .paused, .queued].contains(self.items[index].status)
+            else { return }
+
+            self.items[index].status = .queued
+            self.items[index].errorMessage = nil
+            self.saveItems()
+            self.startNextQueuedIfPossible()
+        }
     }
 
     // MARK: - Background events
@@ -177,6 +457,10 @@ final class DownloadEngine: NSObject {
         if let index = items.firstIndex(where: { $0.id == id }) {
             items[index].hasResumeData = false
         }
+    }
+
+    private func loadResumeData(for id: UUID) -> Data? {
+        try? Data(contentsOf: resumeDataURL(for: id))
     }
 
     private func deleteDownloadedFile(for id: UUID) {
@@ -250,6 +534,10 @@ extension DownloadEngine: URLSessionDownloadDelegate {
         DispatchQueue.main.async {
             guard let index = self.items.firstIndex(where: { $0.id == id }) else { return }
 
+            self.tasks[id] = nil
+            self.lastWriteTracker[id] = nil
+            self.retryCounts.removeValue(forKey: id)
+
             let filename = suggestedFilename.isEmpty ? self.items[index].filename : suggestedFilename
             let destination = self.destinationURL(for: filename)
 
@@ -258,14 +546,19 @@ extension DownloadEngine: URLSessionDownloadDelegate {
                 self.items[index].downloadedFilename = destination.lastPathComponent
                 self.items[index].status = .completed
                 self.items[index].errorMessage = nil
+                if self.items[index].totalBytes > 0 {
+                    self.items[index].bytesReceived = self.items[index].totalBytes
+                }
+                self.deleteResumeData(for: id)
             } catch {
                 self.items[index].status = .failed
                 self.items[index].errorMessage = error.localizedDescription
+                self.handleRetry(for: id)
             }
 
             self.items[index].speed = 0
-            self.tasks[id] = nil
             self.saveItems()
+            self.startNextQueuedIfPossible()
         }
     }
 
@@ -291,7 +584,9 @@ extension DownloadEngine: URLSessionDownloadDelegate {
             else { return }
 
             self.items[index].bytesReceived = totalBytesWritten
-            self.items[index].totalBytes = totalBytesExpectedToWrite
+            if totalBytesExpectedToWrite > 0 {
+                self.items[index].totalBytes = totalBytesExpectedToWrite
+            }
             self.items[index].speed = speed
 
             if self.items[index].filename == "download",
@@ -312,8 +607,19 @@ extension DownloadEngine: URLSessionDownloadDelegate {
             guard let index = self.items.firstIndex(where: { $0.id == id }) else { return }
 
             self.tasks[id] = nil
+            self.lastWriteTracker[id] = nil
 
-            guard let error = error as NSError? else { return }
+            guard let error = error as NSError? else {
+                // Finished without a file (some servers) - treat as failure
+                if ![.completed, .failed].contains(self.items[index].status) {
+                    self.items[index].status = .failed
+                    self.items[index].errorMessage = "Download failed"
+                    self.handleRetry(for: id)
+                }
+                self.saveItems()
+                self.startNextQueuedIfPossible()
+                return
+            }
 
             if error.code == NSURLErrorCancelled {
                 if self.items[index].status == .downloading {
@@ -325,10 +631,11 @@ extension DownloadEngine: URLSessionDownloadDelegate {
             }
 
             if let resumeData = error.userInfo[NSURLSessionDownloadTaskResumeData] as? Data,
-               let _ = try? resumeData.write(to: self.resumeDataURL(for: id))
+               (try? resumeData.write(to: self.resumeDataURL(for: id))) != nil
             {
                 self.items[index].hasResumeData = true
                 self.items[index].status = .paused
+                self.items[index].errorMessage = nil
             } else {
                 self.items[index].status = .failed
                 self.items[index].errorMessage = error.localizedDescription
@@ -336,6 +643,11 @@ extension DownloadEngine: URLSessionDownloadDelegate {
 
             self.items[index].speed = 0
             self.saveItems()
+
+            if self.items[index].status == .failed {
+                self.handleRetry(for: id)
+            }
+            self.startNextQueuedIfPossible()
         }
     }
 

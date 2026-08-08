@@ -3503,6 +3503,226 @@
         }
       }
     },
+    "downloads.action.refresh" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Refresh"
+          }
+        }
+      }
+    },
+    "downloads.action.remove_keep" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove from List"
+          }
+        }
+      }
+    },
+    "downloads.action.update_link" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Update Link"
+          }
+        }
+      }
+    },
+    "downloads.batch.pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pause All"
+          }
+        }
+      }
+    },
+    "downloads.batch.resume" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Resume All"
+          }
+        }
+      }
+    },
+    "downloads.delete.batch.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delete %d downloads and their files?"
+          }
+        }
+      }
+    },
+    "downloads.delete.batch.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delete Downloads?"
+          }
+        }
+      }
+    },
+    "downloads.delete.confirm.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This removes the download from the list and deletes the downloaded file."
+          }
+        }
+      }
+    },
+    "downloads.delete.confirm.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Delete Download?"
+          }
+        }
+      }
+    },
+    "downloads.settings.autoretry" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Auto-retry failed downloads"
+          }
+        }
+      }
+    },
+    "downloads.settings.cellular" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Allow cellular data"
+          }
+        }
+      }
+    },
+    "downloads.settings.clear_completed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clear completed downloads"
+          }
+        }
+      }
+    },
+    "downloads.settings.clear_completed.confirm_message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Remove all completed downloads from the list. Downloaded files stay in the Downloads folder."
+          }
+        }
+      }
+    },
+    "downloads.settings.clear_completed.confirm_title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Clear completed downloads?"
+          }
+        }
+      }
+    },
+    "downloads.settings.concurrent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Concurrent downloads"
+          }
+        }
+      }
+    },
+    "downloads.settings.concurrent.action" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Maximum simultaneous downloads"
+          }
+        }
+      }
+    },
+    "downloads.settings.general" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "General"
+          }
+        }
+      }
+    },
+    "downloads.settings.storage" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Storage"
+          }
+        }
+      }
+    },
+    "downloads.settings.storage.path" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloads folder"
+          }
+        }
+      }
+    },
+    "downloads.settings.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloads Settings"
+          }
+        }
+      }
+    },
+    "downloads.update_link.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enter a new URL for this download"
+          }
+        }
+      }
+    },
+    "downloads.update_link.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Update Link"
+          }
+        }
+      }
+    },
     "encryptionPolicy.disabled" : {
       "localizations" : {
         "de" : {
@@ -9904,6 +10124,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "SOCKS5"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Settings"
           }
         }
       }
