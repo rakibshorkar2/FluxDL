@@ -23,6 +23,7 @@ class SceneDelegate: MvvmSceneDelegate {
         container.registerSingleton(factory: { TorrentService.shared })
         container.registerSingleton(factory: { PreferencesStorage.shared })
         container.registerSingleton(factory: { BackgroundService.shared })
+        container.registerSingleton(factory: { DownloadEngine.shared })
         container.registerSingleton(factory: NetworkMonitoringService.init)
         container.registerSingleton(factory: TrackersListService.init)
         container.registerDaemon(factory: TorrentMonitoringService.init)
@@ -49,6 +50,8 @@ class SceneDelegate: MvvmSceneDelegate {
         router.register(BaseHostingViewController<StoragePreferencesView>.self)
 
         router.register(TorrentListViewController<TorrentListViewModel>.self)
+        router.register(DownloadsViewController<DownloadsViewModel>.self)
+        router.register(DownloadItemView.self)
         router.register(TorrentDetailsViewController<TorrentDetailsViewModel>.self)
         router.register(TorrentFilesViewController<TorrentFilesViewModel>.self)
         router.register(TorrentAddViewController<TorrentAddViewModel>.self)
@@ -72,7 +75,17 @@ class SceneDelegate: MvvmSceneDelegate {
         nvc.tabBarItem = UITabBarItem(title: "Torrents".localized, image: UIImage(systemName: "arrow.down.circle"), selectedImage: UIImage(systemName: "arrow.down.circle.fill"))
 
         let tabBarController = BaseTabBarController()
-        tabBarController.viewControllers = [nvc]
+
+        let downloadsViewController = router.resolve(DownloadsViewModel())
+        let downloadsNVC = UINavigationController.resolve()
+        downloadsNVC.viewControllers = [downloadsViewController]
+        downloadsNVC.tabBarItem = UITabBarItem(
+            title: "Downloads".localized,
+            image: UIImage(systemName: "square.and.arrow.down"),
+            selectedImage: UIImage(systemName: "square.and.arrow.down.fill")
+        )
+
+        tabBarController.viewControllers = [nvc, downloadsNVC]
 
         return tabBarController
     }

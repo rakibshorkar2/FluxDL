@@ -11977,6 +11977,146 @@
           }
         }
       }
+    },
+    "Downloads" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloads"
+          }
+        }
+      }
+    },
+    "downloads.add" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add Download"
+          }
+        }
+      }
+    },
+    "downloads.add.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "New Download"
+          }
+        }
+      }
+    },
+    "downloads.add.message" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enter the URL of the file you want to download"
+          }
+        }
+      }
+    },
+    "downloads.add.placeholder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "https://example.com/file.zip"
+          }
+        }
+      }
+    },
+    "downloads.add.error" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enter a valid http(s) URL"
+          }
+        }
+      }
+    },
+    "downloads.empty.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No Downloads"
+          }
+        }
+      }
+    },
+    "downloads.empty.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloads you add will appear here"
+          }
+        }
+      }
+    },
+    "downloads.state.queued" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Queued"
+          }
+        }
+      }
+    },
+    "downloads.state.downloading" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Downloading"
+          }
+        }
+      }
+    },
+    "downloads.state.paused" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Paused"
+          }
+        }
+      }
+    },
+    "downloads.state.completed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Completed"
+          }
+        }
+      }
+    },
+    "downloads.state.failed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Failed"
+          }
+        }
+      }
+    },
+    "downloads.state.cancelled" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cancelled"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

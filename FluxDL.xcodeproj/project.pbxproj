@@ -117,6 +117,12 @@
 		D1A226F22AEF019400669D6D /* TorrentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A226F12AEF019400669D6D /* TorrentService.swift */; };
 		D1A226F42AEF01B700669D6D /* LibTorrent.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1A226F32AEF01B700669D6D /* LibTorrent.framework */; };
 		D1A226F52AEF01B700669D6D /* LibTorrent.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D1A226F32AEF01B700669D6D /* LibTorrent.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		8C0000000000000000000101 /* DownloadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000001 /* DownloadItem.swift */; };
+		8C0000000000000000000102 /* DownloadEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000002 /* DownloadEngine.swift */; };
+		8C0000000000000000000103 /* DownloadsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000003 /* DownloadsViewModel.swift */; };
+		8C0000000000000000000104 /* DownloadsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000004 /* DownloadsViewController.swift */; };
+		8C0000000000000000000105 /* DownloadItemViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000005 /* DownloadItemViewModel.swift */; };
+		8C0000000000000000000106 /* DownloadItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000006 /* DownloadItemView.swift */; };
 		D1A226F92AEF04E200669D6D /* TorrentListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A226F72AEF04E200669D6D /* TorrentListViewController.swift */; };
 		D1A226FA2AEF04E200669D6D /* TorrentListViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1A226F82AEF04E200669D6D /* TorrentListViewController.xib */; };
 		D1A226FD2AEF04F900669D6D /* BaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A226FC2AEF04F900669D6D /* BaseViewController.swift */; };
@@ -288,6 +294,12 @@
 		D1A226D42AEEF73600669D6D /* MvvmFoundation.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = MvvmFoundation.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1A226F12AEF019400669D6D /* TorrentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentService.swift; sourceTree = "<group>"; };
 		D1A226F32AEF01B700669D6D /* LibTorrent.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = LibTorrent.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		8C0000000000000000000001 /* DownloadItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItem.swift; sourceTree = "<group>"; };
+		8C0000000000000000000002 /* DownloadEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadEngine.swift; sourceTree = "<group>"; };
+		8C0000000000000000000003 /* DownloadsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsViewModel.swift; sourceTree = "<group>"; };
+		8C0000000000000000000004 /* DownloadsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsViewController.swift; sourceTree = "<group>"; };
+		8C0000000000000000000005 /* DownloadItemViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItemViewModel.swift; sourceTree = "<group>"; };
+		8C0000000000000000000006 /* DownloadItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItemView.swift; sourceTree = "<group>"; };
 		D1A226F72AEF04E200669D6D /* TorrentListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentListViewController.swift; sourceTree = "<group>"; };
 		D1A226F82AEF04E200669D6D /* TorrentListViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = TorrentListViewController.xib; sourceTree = "<group>"; };
 		D1A226FC2AEF04F900669D6D /* BaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseViewController.swift; sourceTree = "<group>"; };
@@ -900,6 +912,7 @@
 		D1A226EF2AEF017000669D6D /* Screens */ = {
 			isa = PBXGroup;
 			children = (
+				8C0000000000000000000011 /* Downloads */,
 				D1B1BEC62AFE258F0030C2A4 /* TorrentTrackers */,
 				D111384C2AF9663F008907F7 /* Preferences */,
 				D1A226F62AEF04C900669D6D /* TorrentList */,
@@ -910,9 +923,38 @@
 			path = Screens;
 			sourceTree = "<group>";
 		};
+		8C0000000000000000000011 /* Downloads */ = {
+			isa = PBXGroup;
+			children = (
+				8C0000000000000000000012 /* Cells */,
+				8C0000000000000000000003 /* DownloadsViewModel.swift */,
+				8C0000000000000000000004 /* DownloadsViewController.swift */,
+			);
+			path = Downloads;
+			sourceTree = "<group>";
+		};
+		8C0000000000000000000012 /* Cells */ = {
+			isa = PBXGroup;
+			children = (
+				8C0000000000000000000005 /* DownloadItemViewModel.swift */,
+				8C0000000000000000000006 /* DownloadItemView.swift */,
+			);
+			path = Cells;
+			sourceTree = "<group>";
+		};
+		8C0000000000000000000013 /* Download */ = {
+			isa = PBXGroup;
+			children = (
+				8C0000000000000000000001 /* DownloadItem.swift */,
+				8C0000000000000000000002 /* DownloadEngine.swift */,
+			);
+			path = Download;
+			sourceTree = "<group>";
+		};
 		D1A226F02AEF018500669D6D /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				8C0000000000000000000013 /* Download */,
 				D1BB07392C98522D00981D5F /* TrackersListService */,
 				D173D9E42BC0330600E4F9EB /* BackgroundService */,
 				D11333B32AF19C3400FA017E /* TorrentService */,
@@ -1298,6 +1340,12 @@
 				D1BB073B2C98524B00981D5F /* TrackersListService.swift in Sources */,
 				D173D9E12BC0286800E4F9EB /* UIMenu+Priority.swift in Sources */,
 				D1AA00CE2AFA8B1000B74629 /* PreferencesStorage.swift in Sources */,
+				8C0000000000000000000101 /* DownloadItem.swift in Sources */,
+				8C0000000000000000000102 /* DownloadEngine.swift in Sources */,
+				8C0000000000000000000103 /* DownloadsViewModel.swift in Sources */,
+				8C0000000000000000000104 /* DownloadsViewController.swift in Sources */,
+				8C0000000000000000000105 /* DownloadItemViewModel.swift in Sources */,
+				8C0000000000000000000106 /* DownloadItemView.swift in Sources */,
 				D1A226F92AEF04E200669D6D /* TorrentListViewController.swift in Sources */,
 				D1352D3F2BBD81C000104E7B /* AppDelegate+Notifications.swift in Sources */,
 				D1A226A02AEEEFCC00669D6D /* SceneDelegate.swift in Sources */,
