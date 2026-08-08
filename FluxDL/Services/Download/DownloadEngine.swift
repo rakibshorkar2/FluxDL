@@ -37,7 +37,7 @@ final class DownloadEngine: NSObject {
     private let resumeDataFolderURL: URL
     private let fileManager = FileManager.default
 
-    private init() {
+    private override init() {
         super.init()
 
         let applicationSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
