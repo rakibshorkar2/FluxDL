@@ -80,7 +80,6 @@ final class DownloadEngine: NSObject {
             guard let self else { return }
             let metadata = await self.probeMetadata(for: url)
             DispatchQueue.main.async {
-                guard let self else { return }
                 if let metadata,
                    let index = self.items.firstIndex(where: { $0.id == item.id })
                 {
@@ -176,7 +175,6 @@ final class DownloadEngine: NSObject {
             guard let self else { return }
             let metadata = await self.probeMetadata(for: url)
             DispatchQueue.main.async {
-                guard let self else { return }
                 if let metadata,
                    let index = self.items.firstIndex(where: { $0.id == id })
                 {
@@ -225,7 +223,6 @@ final class DownloadEngine: NSObject {
             guard let self else { return }
             let metadata = await self.probeMetadata(for: newURL)
             DispatchQueue.main.async {
-                guard let self else { return }
                 if let metadata,
                    let index = self.items.firstIndex(where: { $0.id == id })
                 {
