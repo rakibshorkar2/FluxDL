@@ -30,6 +30,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // MARK: Background URLSession
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
-        DownloadEngine.shared.handleBackgroundEvents(sessionIdentifier: identifier, completion: completionHandler)
+        Task { @MainActor in
+            (ServiceContainer.shared.downloadEngine as? DownloadEngine)?.backgroundCompletionHandler = completionHandler
+        }
     }
 }

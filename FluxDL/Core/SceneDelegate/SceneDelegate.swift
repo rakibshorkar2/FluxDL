@@ -7,6 +7,7 @@
 
 import LibTorrent
 import MvvmFoundation
+import SwiftUI
 import UIKit
 import AVKit
 
@@ -23,8 +24,6 @@ class SceneDelegate: MvvmSceneDelegate {
         container.registerSingleton(factory: { TorrentService.shared })
         container.registerSingleton(factory: { PreferencesStorage.shared })
         container.registerSingleton(factory: { BackgroundService.shared })
-        container.registerSingleton(factory: { DownloadEngine.shared })
-        container.registerSingleton(factory: { DownloadsPreferences.shared })
         container.registerSingleton(factory: NetworkMonitoringService.init)
         container.registerSingleton(factory: TrackersListService.init)
         container.registerDaemon(factory: TorrentMonitoringService.init)
@@ -51,8 +50,6 @@ class SceneDelegate: MvvmSceneDelegate {
         router.register(BaseHostingViewController<StoragePreferencesView>.self)
 
         router.register(TorrentListViewController<TorrentListViewModel>.self)
-        router.register(DownloadsViewController<DownloadsViewModel>.self)
-        router.register(DownloadItemView.self)
         router.register(TorrentDetailsViewController<TorrentDetailsViewModel>.self)
         router.register(TorrentFilesViewController<TorrentFilesViewModel>.self)
         router.register(TorrentAddViewController<TorrentAddViewModel>.self)
@@ -61,7 +58,6 @@ class SceneDelegate: MvvmSceneDelegate {
         router.register(CellularToggleSetupViewController<CellularToggleSetupViewModel>.self)
 
         router.register(BasePreferencesViewController<PreferencesViewModel>.self)
-        router.register(BasePreferencesViewController<DownloadsSettingsViewModel>.self)
         router.register(BasePreferencesViewController<ProxyPreferencesViewModel>.self)
         router.register(TrackersListPreferencesViewController.self)
         router.register(TrackersListDetailsPreferencesViewController.self)
@@ -78,25 +74,13 @@ class SceneDelegate: MvvmSceneDelegate {
 
         let tabBarController = BaseTabBarController()
 
-        let downloadsViewController = router.resolve(DownloadsViewModel())
-        let downloadsNVC = UINavigationController.resolve()
-        downloadsNVC.viewControllers = [downloadsViewController]
-        downloadsNVC.tabBarItem = UITabBarItem(
-            title: "Downloads".localized,
-            image: UIImage(systemName: "square.and.arrow.down"),
-            selectedImage: UIImage(systemName: "square.and.arrow.down.fill")
-        )
-
-        let settingsViewController = router.resolve(DownloadsSettingsViewModel())
-        let settingsNVC = UINavigationController.resolve()
-        settingsNVC.viewControllers = [settingsViewController]
-        settingsNVC.tabBarItem = UITabBarItem(
-            title: "Settings".localized,
-            image: UIImage(systemName: "gearshape"),
-            selectedImage: UIImage(systemName: "gearshape.fill")
-        )
-
-        tabBarController.viewControllers = [nvc, downloadsNVC, settingsNVC]
+        tabBarController.viewControllers = [
+            nvc,
+            makeSwiftUITab(DownloadsView(), title: "Downloads", icon: "arrow.down.circle.fill"),
+            makeSwiftUITab(BrowserView(), title: "Browser", icon: "globe"),
+            makeSwiftUITab(HistoryView(), title: "History", icon: "clock.fill"),
+            makeSwiftUITab(SettingsView(), title: "Settings", icon: "gearshape.fill"),
+        ]
 
         return tabBarController
     }
@@ -108,6 +92,7 @@ class SceneDelegate: MvvmSceneDelegate {
             let url = context.url
             processURL(url)
         }
+        startFluxDLServices()
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
@@ -120,11 +105,28 @@ class SceneDelegate: MvvmSceneDelegate {
     func sceneDidEnterBackground(_ scene: UIScene) {
         UIApplication.shared.applicationIconBadgeNumber = 0
         startBackgroundIfNeeded()
+
+        MainActor.assumeIsolated {
+            let container = ServiceContainer.shared
+            let tasks = container.downloadEngine.tasks
+            container.liveActivityManager.handleAppBackgrounding(tasks: tasks)
+            container.backgroundKeepAliveService.updateKeepAliveState(
+                hasActiveDownloads: tasks.contains { $0.status == .downloading },
+                isBrowserActive: false
+            )
+        }
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {
         UIApplication.shared.applicationIconBadgeNumber = 0
         stopBackground()
+
+        MainActor.assumeIsolated {
+            let container = ServiceContainer.shared
+            container.backgroundKeepAliveService.stopAllKeepAlive()
+            container.liveActivityManager.handleAppForegrounding()
+            container.clipboardService.checkClipboardOnAppActive()
+        }
     }
 
     override func binding() {
@@ -146,5 +148,47 @@ private extension SceneDelegate {
             guard let window else { return }
             await InitialSetupFlow.startIfNeeded(in: window)
         }
+    }
+
+    func startFluxDLServices() {
+        Task { @MainActor in
+            await ServiceContainer.shared.notificationService.requestAuthorization()
+            await ServiceContainer.shared.restorationService.restoreActiveTasks(
+                engine: ServiceContainer.shared.downloadEngine as! DownloadEngine
+            )
+        }
+        installClipboardBanner()
+    }
+
+    func installClipboardBanner() {
+        guard let window, let rootViewController = window.rootViewController else { return }
+
+        let hostingController = UIHostingController(rootView: ClipboardBannerView { [weak self] url in
+            MainActor.assumeIsolated {
+                _ = ServiceContainer.shared.downloadEngine.startDownload(url: url, filename: nil)
+                ServiceContainer.shared.clipboardService.dismissDetectedURL()
+                (self?.window?.rootViewController as? UITabBarController)?.selectedIndex = 1
+            }
+        })
+        hostingController.view.backgroundColor = .clear
+        rootViewController.addChild(hostingController)
+        rootViewController.view.addSubview(hostingController.view)
+        hostingController.view.frame = rootViewController.view.bounds
+        hostingController.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        hostingController.didMove(toParent: rootViewController)
+    }
+
+    func makeSwiftUITab<Content: View>(_ view: Content, title: String, icon: String) -> UIViewController {
+        let hostingController = UIHostingController(
+            rootView: MainActor.assumeIsolated {
+                view.preferredColorScheme(ServiceContainer.shared.themeService.colorScheme)
+            }
+        )
+        hostingController.tabBarItem = UITabBarItem(
+            title: title,
+            image: UIImage(systemName: icon),
+            selectedImage: UIImage(systemName: icon)
+        )
+        return hostingController
     }
 }

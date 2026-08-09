@@ -40,6 +40,12 @@
 	<false/>
 	<key>NSLocationDefaultAccuracyReduced</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FluxDL uses location in the background to keep downloads alive when the app is minimized.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>FluxDL uses location in the background to keep downloads alive when the app is minimized.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -60,6 +66,8 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>fetch</string>
+		<string>location</string>
 	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>

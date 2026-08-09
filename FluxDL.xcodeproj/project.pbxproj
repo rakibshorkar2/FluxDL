@@ -117,14 +117,6 @@
 		D1A226F22AEF019400669D6D /* TorrentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A226F12AEF019400669D6D /* TorrentService.swift */; };
 		D1A226F42AEF01B700669D6D /* LibTorrent.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1A226F32AEF01B700669D6D /* LibTorrent.framework */; };
 		D1A226F52AEF01B700669D6D /* LibTorrent.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = D1A226F32AEF01B700669D6D /* LibTorrent.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		8C0000000000000000000101 /* DownloadItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000001 /* DownloadItem.swift */; };
-		8C0000000000000000000102 /* DownloadEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000002 /* DownloadEngine.swift */; };
-		8C0000000000000000000103 /* DownloadsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000003 /* DownloadsViewModel.swift */; };
-		8C0000000000000000000104 /* DownloadsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000004 /* DownloadsViewController.swift */; };
-		8C0000000000000000000105 /* DownloadItemViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000005 /* DownloadItemViewModel.swift */; };
-		8C0000000000000000000106 /* DownloadItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000006 /* DownloadItemView.swift */; };
-		8C0000000000000000000107 /* DownloadsPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000007 /* DownloadsPreferences.swift */; };
-		8C0000000000000000000108 /* DownloadsSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C0000000000000000000008 /* DownloadsSettingsViewModel.swift */; };
 		D1A226F92AEF04E200669D6D /* TorrentListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A226F72AEF04E200669D6D /* TorrentListViewController.swift */; };
 		D1A226FA2AEF04E200669D6D /* TorrentListViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = D1A226F82AEF04E200669D6D /* TorrentListViewController.xib */; };
 		D1A226FD2AEF04F900669D6D /* BaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A226FC2AEF04F900669D6D /* BaseViewController.swift */; };
@@ -163,6 +155,68 @@
 		D1F8BC852AFC405A00A6258C /* MvvmViewModel+Alert.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1F8BC842AFC405A00A6258C /* MvvmViewModel+Alert.swift */; };
 		D1FFC9652C38136600233C2F /* URL+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FFC9642C38135F00233C2F /* URL+Extensions.swift */; };
 		D1FFC96C2C382FC900233C2F /* StorageModel+Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FFC96B2C382FBE00233C2F /* StorageModel+Extensions.swift */; };
+		FD00000000000000000101 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000001 /* MainTabView.swift */; };
+		FD00000000000000000102 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000002 /* BrowserView.swift */; };
+		FD00000000000000000103 /* BrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000003 /* BrowserViewModel.swift */; };
+		FD00000000000000000104 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000004 /* WebViewContainer.swift */; };
+		FD00000000000000000105 /* BrowserAddressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000005 /* BrowserAddressBar.swift */; };
+		FD00000000000000000106 /* BrowserBookmarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000006 /* BrowserBookmarksView.swift */; };
+		FD00000000000000000107 /* BrowserHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000007 /* BrowserHistoryView.swift */; };
+		FD00000000000000000108 /* BrowserSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000008 /* BrowserSettingsSheet.swift */; };
+		FD00000000000000000109 /* BrowserTabGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000009 /* BrowserTabGridView.swift */; };
+		FD0000000000000000010A /* FindInPageBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000000A /* FindInPageBar.swift */; };
+		FD0000000000000000010B /* BookmarkModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000000B /* BookmarkModel.swift */; };
+		FD0000000000000000010C /* BrowserHistoryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000000C /* BrowserHistoryItem.swift */; };
+		FD0000000000000000010D /* BrowserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000000D /* BrowserSettings.swift */; };
+		FD0000000000000000010E /* BrowserTabModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000000E /* BrowserTabModel.swift */; };
+		FD0000000000000000010F /* AdBlockEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000000F /* AdBlockEngine.swift */; };
+		FD00000000000000000110 /* BookmarkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000010 /* BookmarkManager.swift */; };
+		FD00000000000000000111 /* BrowserHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000011 /* BrowserHistoryManager.swift */; };
+		FD00000000000000000112 /* BrowserTabManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000012 /* BrowserTabManager.swift */; };
+		FD00000000000000000113 /* FindInPageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000013 /* FindInPageManager.swift */; };
+		FD00000000000000000114 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000014 /* DownloadsView.swift */; };
+		FD00000000000000000115 /* DownloadsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000015 /* DownloadsViewModel.swift */; };
+		FD00000000000000000116 /* AddDownloadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000016 /* AddDownloadSheet.swift */; };
+		FD00000000000000000117 /* DownloadDiagnosticsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000017 /* DownloadDiagnosticsSheet.swift */; };
+		FD00000000000000000118 /* DownloadInfoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000018 /* DownloadInfoSheet.swift */; };
+		FD00000000000000000119 /* DownloadItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000019 /* DownloadItemCard.swift */; };
+		FD0000000000000000011A /* DuplicateResolutionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000001A /* DuplicateResolutionSheet.swift */; };
+		FD0000000000000000011B /* MirrorPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000001B /* MirrorPickerSheet.swift */; };
+		FD0000000000000000011C /* QueueSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000001C /* QueueSettingsSheet.swift */; };
+		FD0000000000000000011D /* StorageHeaderCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000001D /* StorageHeaderCard.swift */; };
+		FD0000000000000000011E /* UpdateURLSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000001E /* UpdateURLSheet.swift */; };
+		FD0000000000000000011F /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000001F /* HistoryView.swift */; };
+		FD00000000000000000120 /* HistoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000020 /* HistoryViewModel.swift */; };
+		FD00000000000000000121 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000021 /* SettingsView.swift */; };
+		FD00000000000000000122 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000022 /* SettingsViewModel.swift */; };
+		FD00000000000000000123 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000023 /* GlassCard.swift */; };
+		FD00000000000000000124 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000024 /* StatusBadge.swift */; };
+		FD00000000000000000125 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000025 /* AppTheme.swift */; };
+		FD00000000000000000126 /* DownloadTaskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000026 /* DownloadTaskModel.swift */; };
+		FD00000000000000000127 /* ServiceContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000027 /* ServiceContainer.swift */; };
+		FD00000000000000000128 /* BackgroundKeepAliveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000028 /* BackgroundKeepAliveService.swift */; };
+		FD00000000000000000129 /* ChecksumVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000029 /* ChecksumVerifier.swift */; };
+		FD0000000000000000012A /* ClipboardService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000002A /* ClipboardService.swift */; };
+		FD0000000000000000012B /* DownloadBatchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000002B /* DownloadBatchManager.swift */; };
+		FD0000000000000000012C /* DownloadDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000002C /* DownloadDiagnostics.swift */; };
+		FD0000000000000000012D /* DownloadEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000002D /* DownloadEngine.swift */; };
+		FD0000000000000000012E /* DownloadFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000002E /* DownloadFilters.swift */; };
+		FD0000000000000000012F /* DownloadMetadataCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000002F /* DownloadMetadataCapture.swift */; };
+		FD00000000000000000130 /* DownloadMirrorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000030 /* DownloadMirrorManager.swift */; };
+		FD00000000000000000131 /* DownloadRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000031 /* DownloadRepository.swift */; };
+		FD00000000000000000132 /* DownloadRestorationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000032 /* DownloadRestorationService.swift */; };
+		FD00000000000000000133 /* DownloadVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000033 /* DownloadVerification.swift */; };
+		FD00000000000000000134 /* FileManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000034 /* FileManagementService.swift */; };
+		FD00000000000000000135 /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000035 /* HapticService.swift */; };
+		FD00000000000000000136 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000036 /* LiveActivityManager.swift */; };
+		FD00000000000000000137 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000037 /* NotificationService.swift */; };
+		FD00000000000000000138 /* PowerNetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000038 /* PowerNetworkMonitor.swift */; };
+		FD00000000000000000139 /* QueueManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD00000000000000000039 /* QueueManager.swift */; };
+		FD0000000000000000013A /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000003A /* SettingsService.swift */; };
+		FD0000000000000000013B /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000003B /* StorageManager.swift */; };
+		FD0000000000000000013C /* ThemeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000003C /* ThemeService.swift */; };
+		FD0000000000000000013D /* URLFilenameExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000003D /* URLFilenameExtractor.swift */; };
+		FD0000000000000000013E /* ClipboardBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD0000000000000000003E /* ClipboardBannerView.swift */; };
 /* End PBXBuildFile section */
 
 
@@ -296,14 +350,6 @@
 		D1A226D42AEEF73600669D6D /* MvvmFoundation.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = MvvmFoundation.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1A226F12AEF019400669D6D /* TorrentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentService.swift; sourceTree = "<group>"; };
 		D1A226F32AEF01B700669D6D /* LibTorrent.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = LibTorrent.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		8C0000000000000000000001 /* DownloadItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItem.swift; sourceTree = "<group>"; };
-		8C0000000000000000000002 /* DownloadEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadEngine.swift; sourceTree = "<group>"; };
-		8C0000000000000000000003 /* DownloadsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsViewModel.swift; sourceTree = "<group>"; };
-		8C0000000000000000000004 /* DownloadsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsViewController.swift; sourceTree = "<group>"; };
-		8C0000000000000000000005 /* DownloadItemViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItemViewModel.swift; sourceTree = "<group>"; };
-		8C0000000000000000000006 /* DownloadItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItemView.swift; sourceTree = "<group>"; };
-		8C0000000000000000000007 /* DownloadsPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsPreferences.swift; sourceTree = "<group>"; };
-		8C0000000000000000000008 /* DownloadsSettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsSettingsViewModel.swift; sourceTree = "<group>"; };
 		D1A226F72AEF04E200669D6D /* TorrentListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentListViewController.swift; sourceTree = "<group>"; };
 		D1A226F82AEF04E200669D6D /* TorrentListViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = TorrentListViewController.xib; sourceTree = "<group>"; };
 		D1A226FC2AEF04F900669D6D /* BaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseViewController.swift; sourceTree = "<group>"; };
@@ -342,6 +388,68 @@
 		D1F8BC842AFC405A00A6258C /* MvvmViewModel+Alert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MvvmViewModel+Alert.swift"; sourceTree = "<group>"; };
 		D1FFC9642C38135F00233C2F /* URL+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "URL+Extensions.swift"; sourceTree = "<group>"; };
 		D1FFC96B2C382FBE00233C2F /* StorageModel+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageModel+Extensions.swift"; sourceTree = "<group>"; };
+		FD00000000000000000001 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		FD00000000000000000002 /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
+		FD00000000000000000003 /* BrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserViewModel.swift; sourceTree = "<group>"; };
+		FD00000000000000000004 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
+		FD00000000000000000005 /* BrowserAddressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserAddressBar.swift; sourceTree = "<group>"; };
+		FD00000000000000000006 /* BrowserBookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserBookmarksView.swift; sourceTree = "<group>"; };
+		FD00000000000000000007 /* BrowserHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserHistoryView.swift; sourceTree = "<group>"; };
+		FD00000000000000000008 /* BrowserSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserSettingsSheet.swift; sourceTree = "<group>"; };
+		FD00000000000000000009 /* BrowserTabGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTabGridView.swift; sourceTree = "<group>"; };
+		FD0000000000000000000A /* FindInPageBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindInPageBar.swift; sourceTree = "<group>"; };
+		FD0000000000000000000B /* BookmarkModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkModel.swift; sourceTree = "<group>"; };
+		FD0000000000000000000C /* BrowserHistoryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserHistoryItem.swift; sourceTree = "<group>"; };
+		FD0000000000000000000D /* BrowserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserSettings.swift; sourceTree = "<group>"; };
+		FD0000000000000000000E /* BrowserTabModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTabModel.swift; sourceTree = "<group>"; };
+		FD0000000000000000000F /* AdBlockEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdBlockEngine.swift; sourceTree = "<group>"; };
+		FD00000000000000000010 /* BookmarkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarkManager.swift; sourceTree = "<group>"; };
+		FD00000000000000000011 /* BrowserHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserHistoryManager.swift; sourceTree = "<group>"; };
+		FD00000000000000000012 /* BrowserTabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTabManager.swift; sourceTree = "<group>"; };
+		FD00000000000000000013 /* FindInPageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FindInPageManager.swift; sourceTree = "<group>"; };
+		FD00000000000000000014 /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
+		FD00000000000000000015 /* DownloadsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsViewModel.swift; sourceTree = "<group>"; };
+		FD00000000000000000016 /* AddDownloadSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddDownloadSheet.swift; sourceTree = "<group>"; };
+		FD00000000000000000017 /* DownloadDiagnosticsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadDiagnosticsSheet.swift; sourceTree = "<group>"; };
+		FD00000000000000000018 /* DownloadInfoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadInfoSheet.swift; sourceTree = "<group>"; };
+		FD00000000000000000019 /* DownloadItemCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItemCard.swift; sourceTree = "<group>"; };
+		FD0000000000000000001A /* DuplicateResolutionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateResolutionSheet.swift; sourceTree = "<group>"; };
+		FD0000000000000000001B /* MirrorPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorPickerSheet.swift; sourceTree = "<group>"; };
+		FD0000000000000000001C /* QueueSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueSettingsSheet.swift; sourceTree = "<group>"; };
+		FD0000000000000000001D /* StorageHeaderCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageHeaderCard.swift; sourceTree = "<group>"; };
+		FD0000000000000000001E /* UpdateURLSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateURLSheet.swift; sourceTree = "<group>"; };
+		FD0000000000000000001F /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		FD00000000000000000020 /* HistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryViewModel.swift; sourceTree = "<group>"; };
+		FD00000000000000000021 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		FD00000000000000000022 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		FD00000000000000000023 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
+		FD00000000000000000024 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		FD00000000000000000025 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		FD00000000000000000026 /* DownloadTaskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadTaskModel.swift; sourceTree = "<group>"; };
+		FD00000000000000000027 /* ServiceContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceContainer.swift; sourceTree = "<group>"; };
+		FD00000000000000000028 /* BackgroundKeepAliveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundKeepAliveService.swift; sourceTree = "<group>"; };
+		FD00000000000000000029 /* ChecksumVerifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecksumVerifier.swift; sourceTree = "<group>"; };
+		FD0000000000000000002A /* ClipboardService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardService.swift; sourceTree = "<group>"; };
+		FD0000000000000000002B /* DownloadBatchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadBatchManager.swift; sourceTree = "<group>"; };
+		FD0000000000000000002C /* DownloadDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadDiagnostics.swift; sourceTree = "<group>"; };
+		FD0000000000000000002D /* DownloadEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadEngine.swift; sourceTree = "<group>"; };
+		FD0000000000000000002E /* DownloadFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadFilters.swift; sourceTree = "<group>"; };
+		FD0000000000000000002F /* DownloadMetadataCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadMetadataCapture.swift; sourceTree = "<group>"; };
+		FD00000000000000000030 /* DownloadMirrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadMirrorManager.swift; sourceTree = "<group>"; };
+		FD00000000000000000031 /* DownloadRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRepository.swift; sourceTree = "<group>"; };
+		FD00000000000000000032 /* DownloadRestorationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRestorationService.swift; sourceTree = "<group>"; };
+		FD00000000000000000033 /* DownloadVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadVerification.swift; sourceTree = "<group>"; };
+		FD00000000000000000034 /* FileManagementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagementService.swift; sourceTree = "<group>"; };
+		FD00000000000000000035 /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
+		FD00000000000000000036 /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		FD00000000000000000037 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		FD00000000000000000038 /* PowerNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerNetworkMonitor.swift; sourceTree = "<group>"; };
+		FD00000000000000000039 /* QueueManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueManager.swift; sourceTree = "<group>"; };
+		FD0000000000000000003A /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
+		FD0000000000000000003B /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageManager.swift; sourceTree = "<group>"; };
+		FD0000000000000000003C /* ThemeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeService.swift; sourceTree = "<group>"; };
+		FD0000000000000000003D /* URLFilenameExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLFilenameExtractor.swift; sourceTree = "<group>"; };
+		FD0000000000000000003E /* ClipboardBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardBannerView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 
@@ -887,6 +995,8 @@
 				D1A226EE2AEF00FB00669D6D /* Core */,
 				D1A226EF2AEF017000669D6D /* Screens */,
 				D19E001C2AEFF9F9000A17A2 /* Components */,
+				FD00000000000000000501 /* Views */,
+				FD0000000000000000050A /* DesignSystem */,
 			);
 			path = FluxDL;
 			sourceTree = "<group>";
@@ -909,6 +1019,8 @@
 				7CC411562BD2DCC000CA8B13 /* Assets */,
 				7C5FBE322BC0A1480069E5A0 /* SceneDelegate */,
 				D1352D3D2BBD81AB00104E7B /* AppDelegate */,
+				FD0000000000000000050D /* Models */,
+				FD0000000000000000050E /* Architecture */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -916,7 +1028,6 @@
 		D1A226EF2AEF017000669D6D /* Screens */ = {
 			isa = PBXGroup;
 			children = (
-				8C0000000000000000000011 /* Downloads */,
 				D1B1BEC62AFE258F0030C2A4 /* TorrentTrackers */,
 				D111384C2AF9663F008907F7 /* Preferences */,
 				D1A226F62AEF04C900669D6D /* TorrentList */,
@@ -927,48 +1038,9 @@
 			path = Screens;
 			sourceTree = "<group>";
 		};
-		8C0000000000000000000011 /* Downloads */ = {
-			isa = PBXGroup;
-			children = (
-				8C0000000000000000000012 /* Cells */,
-				8C0000000000000000000014 /* Settings */,
-				8C0000000000000000000003 /* DownloadsViewModel.swift */,
-				8C0000000000000000000004 /* DownloadsViewController.swift */,
-			);
-			path = Downloads;
-			sourceTree = "<group>";
-		};
-		8C0000000000000000000012 /* Cells */ = {
-			isa = PBXGroup;
-			children = (
-				8C0000000000000000000005 /* DownloadItemViewModel.swift */,
-				8C0000000000000000000006 /* DownloadItemView.swift */,
-			);
-			path = Cells;
-			sourceTree = "<group>";
-		};
-		8C0000000000000000000014 /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				8C0000000000000000000008 /* DownloadsSettingsViewModel.swift */,
-			);
-			path = Settings;
-			sourceTree = "<group>";
-		};
-		8C0000000000000000000013 /* Download */ = {
-			isa = PBXGroup;
-			children = (
-				8C0000000000000000000001 /* DownloadItem.swift */,
-				8C0000000000000000000002 /* DownloadEngine.swift */,
-				8C0000000000000000000007 /* DownloadsPreferences.swift */,
-			);
-			path = Download;
-			sourceTree = "<group>";
-		};
 		D1A226F02AEF018500669D6D /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				8C0000000000000000000013 /* Download */,
 				D1BB07392C98522D00981D5F /* TrackersListService */,
 				D173D9E42BC0330600E4F9EB /* BackgroundService */,
 				D11333B32AF19C3400FA017E /* TorrentService */,
@@ -976,6 +1048,28 @@
 				7C5FBE182BBC91E70069E5A0 /* NetworkMonitoringService.swift */,
 				D1352D2B2BBD6E0E00104E7B /* MemorySpaceManager.swift */,
 				D1352D3B2BBD7F8800104E7B /* TorrentMonitoringService.swift */,
+				FD00000000000000000028 /* BackgroundKeepAliveService.swift */,
+				FD00000000000000000029 /* ChecksumVerifier.swift */,
+				FD0000000000000000002A /* ClipboardService.swift */,
+				FD0000000000000000002B /* DownloadBatchManager.swift */,
+				FD0000000000000000002C /* DownloadDiagnostics.swift */,
+				FD0000000000000000002D /* DownloadEngine.swift */,
+				FD0000000000000000002E /* DownloadFilters.swift */,
+				FD0000000000000000002F /* DownloadMetadataCapture.swift */,
+				FD00000000000000000030 /* DownloadMirrorManager.swift */,
+				FD00000000000000000031 /* DownloadRepository.swift */,
+				FD00000000000000000032 /* DownloadRestorationService.swift */,
+				FD00000000000000000033 /* DownloadVerification.swift */,
+				FD00000000000000000034 /* FileManagementService.swift */,
+				FD00000000000000000035 /* HapticService.swift */,
+				FD00000000000000000036 /* LiveActivityManager.swift */,
+				FD00000000000000000037 /* NotificationService.swift */,
+				FD00000000000000000038 /* PowerNetworkMonitor.swift */,
+				FD00000000000000000039 /* QueueManager.swift */,
+				FD0000000000000000003A /* SettingsService.swift */,
+				FD0000000000000000003B /* StorageManager.swift */,
+				FD0000000000000000003C /* ThemeService.swift */,
+				FD0000000000000000003D /* URLFilenameExtractor.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1134,6 +1228,154 @@
 				D1FFC96B2C382FBE00233C2F /* StorageModel+Extensions.swift */,
 			);
 			path = Extensions;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000501 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000502 /* Browser */,
+				FD00000000000000000506 /* Downloads */,
+				FD00000000000000000508 /* History */,
+				FD00000000000000000509 /* Settings */,
+				FD00000000000000000001 /* MainTabView.swift */,
+				FD0000000000000000003E /* ClipboardBannerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000502 /* Browser */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000503 /* Components */,
+				FD00000000000000000504 /* Models */,
+				FD00000000000000000505 /* Services */,
+				FD00000000000000000002 /* BrowserView.swift */,
+				FD00000000000000000003 /* BrowserViewModel.swift */,
+				FD00000000000000000004 /* WebViewContainer.swift */,
+			);
+			path = Browser;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000503 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000005 /* BrowserAddressBar.swift */,
+				FD00000000000000000006 /* BrowserBookmarksView.swift */,
+				FD00000000000000000007 /* BrowserHistoryView.swift */,
+				FD00000000000000000008 /* BrowserSettingsSheet.swift */,
+				FD00000000000000000009 /* BrowserTabGridView.swift */,
+				FD0000000000000000000A /* FindInPageBar.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000504 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				FD0000000000000000000B /* BookmarkModel.swift */,
+				FD0000000000000000000C /* BrowserHistoryItem.swift */,
+				FD0000000000000000000D /* BrowserSettings.swift */,
+				FD0000000000000000000E /* BrowserTabModel.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000505 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				FD0000000000000000000F /* AdBlockEngine.swift */,
+				FD00000000000000000010 /* BookmarkManager.swift */,
+				FD00000000000000000011 /* BrowserHistoryManager.swift */,
+				FD00000000000000000012 /* BrowserTabManager.swift */,
+				FD00000000000000000013 /* FindInPageManager.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000506 /* Downloads */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000507 /* Components */,
+				FD00000000000000000014 /* DownloadsView.swift */,
+				FD00000000000000000015 /* DownloadsViewModel.swift */,
+			);
+			path = Downloads;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000507 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000016 /* AddDownloadSheet.swift */,
+				FD00000000000000000017 /* DownloadDiagnosticsSheet.swift */,
+				FD00000000000000000018 /* DownloadInfoSheet.swift */,
+				FD00000000000000000019 /* DownloadItemCard.swift */,
+				FD0000000000000000001A /* DuplicateResolutionSheet.swift */,
+				FD0000000000000000001B /* MirrorPickerSheet.swift */,
+				FD0000000000000000001C /* QueueSettingsSheet.swift */,
+				FD0000000000000000001D /* StorageHeaderCard.swift */,
+				FD0000000000000000001E /* UpdateURLSheet.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000508 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				FD0000000000000000001F /* HistoryView.swift */,
+				FD00000000000000000020 /* HistoryViewModel.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		FD00000000000000000509 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000021 /* SettingsView.swift */,
+				FD00000000000000000022 /* SettingsViewModel.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		FD0000000000000000050A /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				FD0000000000000000050B /* Components */,
+				FD0000000000000000050C /* Theme */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		FD0000000000000000050B /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000023 /* GlassCard.swift */,
+				FD00000000000000000024 /* StatusBadge.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		FD0000000000000000050C /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000025 /* AppTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		FD0000000000000000050D /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000026 /* DownloadTaskModel.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		FD0000000000000000050E /* Architecture */ = {
+			isa = PBXGroup;
+			children = (
+				FD00000000000000000027 /* ServiceContainer.swift */,
+			);
+			path = Architecture;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1354,14 +1596,6 @@
 				D1BB073B2C98524B00981D5F /* TrackersListService.swift in Sources */,
 				D173D9E12BC0286800E4F9EB /* UIMenu+Priority.swift in Sources */,
 				D1AA00CE2AFA8B1000B74629 /* PreferencesStorage.swift in Sources */,
-				8C0000000000000000000101 /* DownloadItem.swift in Sources */,
-				8C0000000000000000000102 /* DownloadEngine.swift in Sources */,
-				8C0000000000000000000103 /* DownloadsViewModel.swift in Sources */,
-				8C0000000000000000000104 /* DownloadsViewController.swift in Sources */,
-				8C0000000000000000000105 /* DownloadItemViewModel.swift in Sources */,
-				8C0000000000000000000106 /* DownloadItemView.swift in Sources */,
-				8C0000000000000000000107 /* DownloadsPreferences.swift in Sources */,
-				8C0000000000000000000108 /* DownloadsSettingsViewModel.swift in Sources */,
 				D1A226F92AEF04E200669D6D /* TorrentListViewController.swift in Sources */,
 				D1352D3F2BBD81C000104E7B /* AppDelegate+Notifications.swift in Sources */,
 				D1A226A02AEEEFCC00669D6D /* SceneDelegate.swift in Sources */,
@@ -1375,6 +1609,68 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+				FD00000000000000000101 /* MainTabView.swift in Sources */,
+				FD00000000000000000102 /* BrowserView.swift in Sources */,
+				FD00000000000000000103 /* BrowserViewModel.swift in Sources */,
+				FD00000000000000000104 /* WebViewContainer.swift in Sources */,
+				FD00000000000000000105 /* BrowserAddressBar.swift in Sources */,
+				FD00000000000000000106 /* BrowserBookmarksView.swift in Sources */,
+				FD00000000000000000107 /* BrowserHistoryView.swift in Sources */,
+				FD00000000000000000108 /* BrowserSettingsSheet.swift in Sources */,
+				FD00000000000000000109 /* BrowserTabGridView.swift in Sources */,
+				FD0000000000000000010A /* FindInPageBar.swift in Sources */,
+				FD0000000000000000010B /* BookmarkModel.swift in Sources */,
+				FD0000000000000000010C /* BrowserHistoryItem.swift in Sources */,
+				FD0000000000000000010D /* BrowserSettings.swift in Sources */,
+				FD0000000000000000010E /* BrowserTabModel.swift in Sources */,
+				FD0000000000000000010F /* AdBlockEngine.swift in Sources */,
+				FD00000000000000000110 /* BookmarkManager.swift in Sources */,
+				FD00000000000000000111 /* BrowserHistoryManager.swift in Sources */,
+				FD00000000000000000112 /* BrowserTabManager.swift in Sources */,
+				FD00000000000000000113 /* FindInPageManager.swift in Sources */,
+				FD00000000000000000114 /* DownloadsView.swift in Sources */,
+				FD00000000000000000115 /* DownloadsViewModel.swift in Sources */,
+				FD00000000000000000116 /* AddDownloadSheet.swift in Sources */,
+				FD00000000000000000117 /* DownloadDiagnosticsSheet.swift in Sources */,
+				FD00000000000000000118 /* DownloadInfoSheet.swift in Sources */,
+				FD00000000000000000119 /* DownloadItemCard.swift in Sources */,
+				FD0000000000000000011A /* DuplicateResolutionSheet.swift in Sources */,
+				FD0000000000000000011B /* MirrorPickerSheet.swift in Sources */,
+				FD0000000000000000011C /* QueueSettingsSheet.swift in Sources */,
+				FD0000000000000000011D /* StorageHeaderCard.swift in Sources */,
+				FD0000000000000000011E /* UpdateURLSheet.swift in Sources */,
+				FD0000000000000000011F /* HistoryView.swift in Sources */,
+				FD00000000000000000120 /* HistoryViewModel.swift in Sources */,
+				FD00000000000000000121 /* SettingsView.swift in Sources */,
+				FD00000000000000000122 /* SettingsViewModel.swift in Sources */,
+				FD00000000000000000123 /* GlassCard.swift in Sources */,
+				FD00000000000000000124 /* StatusBadge.swift in Sources */,
+				FD00000000000000000125 /* AppTheme.swift in Sources */,
+				FD00000000000000000126 /* DownloadTaskModel.swift in Sources */,
+				FD00000000000000000127 /* ServiceContainer.swift in Sources */,
+				FD00000000000000000128 /* BackgroundKeepAliveService.swift in Sources */,
+				FD00000000000000000129 /* ChecksumVerifier.swift in Sources */,
+				FD0000000000000000012A /* ClipboardService.swift in Sources */,
+				FD0000000000000000012B /* DownloadBatchManager.swift in Sources */,
+				FD0000000000000000012C /* DownloadDiagnostics.swift in Sources */,
+				FD0000000000000000012D /* DownloadEngine.swift in Sources */,
+				FD0000000000000000012E /* DownloadFilters.swift in Sources */,
+				FD0000000000000000012F /* DownloadMetadataCapture.swift in Sources */,
+				FD00000000000000000130 /* DownloadMirrorManager.swift in Sources */,
+				FD00000000000000000131 /* DownloadRepository.swift in Sources */,
+				FD00000000000000000132 /* DownloadRestorationService.swift in Sources */,
+				FD00000000000000000133 /* DownloadVerification.swift in Sources */,
+				FD00000000000000000134 /* FileManagementService.swift in Sources */,
+				FD00000000000000000135 /* HapticService.swift in Sources */,
+				FD00000000000000000136 /* LiveActivityManager.swift in Sources */,
+				FD00000000000000000137 /* NotificationService.swift in Sources */,
+				FD00000000000000000138 /* PowerNetworkMonitor.swift in Sources */,
+				FD00000000000000000139 /* QueueManager.swift in Sources */,
+				FD0000000000000000013A /* SettingsService.swift in Sources */,
+				FD0000000000000000013B /* StorageManager.swift in Sources */,
+				FD0000000000000000013C /* ThemeService.swift in Sources */,
+				FD0000000000000000013D /* URLFilenameExtractor.swift in Sources */,
+				FD0000000000000000013E /* ClipboardBannerView.swift in Sources */,
 /* End PBXSourcesBuildPhase section */
 
 
@@ -1444,7 +1740,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 2.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -1488,7 +1784,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportsDocumentBrowser = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1558,7 +1854,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 2.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -1605,7 +1901,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportsDocumentBrowser = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1682,7 +1978,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 2.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -1726,7 +2022,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportsDocumentBrowser = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
