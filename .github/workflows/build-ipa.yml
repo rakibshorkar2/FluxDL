@@ -1,0 +1,98 @@
+name: Build Unsigned IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Unsigned IPA for iOS 18
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Runner macOS and Xcode Versions
+        run: |
+          echo "Runner image: ${{ runner.os }}"
+          sw_vers
+          echo "--- Installed Xcode versions ---"
+          ls /Applications | grep -i xcode || echo "No Xcode found in /Applications"
+          echo "--- Installed Xcode list (system) ---"
+          xcode-select -p
+          xcodebuild -version
+          echo "--- Latest available runner images ---"
+          curl -s https://raw.githubusercontent.com/actions/runner-images/main/images/macos/macos-14-Readme.md | grep -E "Xcode|OS|macOS" | head -20 || echo "Unable to fetch latest runner info"
+          echo "--- Available labels ---"
+          curl -s https://api.github.com/repos/actions/runner-images/branches/main | grep -o '"name"' | head -1
+
+      - name: Find Latest GitHub Runner macOS and Xcode Versions
+        run: |
+          echo "=== Available macOS runner images ==="
+          IMAGES=$(curl -s "https://api.github.com/repos/actions/runner-images/contents/images/macos" \
+            | grep -o '"name": "macos-[0-9]*-Readme.md"' | grep -o 'macos-[0-9]*-Readme.md' | sort -V)
+          echo "$IMAGES"
+          LATEST_IMAGE=$(echo "$IMAGES" | tail -1)
+          echo ""
+          echo "=== Latest image: $LATEST_IMAGE ==="
+          README="https://raw.githubusercontent.com/actions/runner-images/main/images/macos/$LATEST_IMAGE"
+          curl -s "$README" | grep -E "OS Version|Image Version" | head -3
+          echo ""
+          echo "--- Latest Xcode versions on this image ---"
+          curl -s "$README" | sed -n '/^### Xcode/,/^### /p' | grep -E '^\|' | head -8
+          echo ""
+          echo "--- Latest Xcode (public preview) ---"
+          curl -s "https://raw.githubusercontent.com/actions/runner-images/main/images/macos/xcode-27-Readme.md" | grep -E "Xcode|OS Version" | head -5 || echo "No Xcode 27 preview info"
+
+      - name: Select Xcode Version
+        run: |
+          if [ -d "/Applications/Xcode_26.6.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.6.app
+          elif [ -d "/Applications/Xcode_26.5.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.5.app
+          elif [ -d "/Applications/Xcode_26.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.4.app
+          elif [ -d "/Applications/Xcode_16.0.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.0.app
+          elif [ -d "/Applications/Xcode_16.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.app
+          elif [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app
+          fi
+          xcodebuild -version
+
+      - name: Build FluxDL iOS App
+        run: |
+          xcodebuild -project FluxDL.xcodeproj \
+                     -scheme FluxDL \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -derivedDataPath ./build/DerivedData \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     clean build
+
+      - name: Create Unsigned IPA Package
+        run: |
+          mkdir -p Payload
+          APP_PATH=$(find ./build/DerivedData -name "FluxDL.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: FluxDL.app not found in build directory!"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          cp -R "$APP_PATH" Payload/
+          zip -r FluxDL-v1.0.0.ipa Payload
+          echo "Successfully created FluxDL-v1.0.0.ipa"
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FluxDL-Unsigned-IPA
+          path: FluxDL-v1.0.0.ipa
+          retention-days: 30
