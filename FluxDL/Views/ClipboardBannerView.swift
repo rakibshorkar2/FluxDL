@@ -9,8 +9,9 @@ struct ClipboardBannerView: View {
     let onDownload: (URL) -> Void
 
     var body: some View {
-        VStack {
-            Spacer(minLength: 0)
+        ZStack {
+            Color.clear
+                .allowsHitTesting(false)
 
             if let detectedURL = clipboardService.detectedURL {
                 GlassCard(padding: 12) {
@@ -51,6 +52,5 @@ struct ClipboardBannerView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.spring(), value: clipboardService.detectedURL)
-        .allowsHitTesting(clipboardService.detectedURL != nil)
     }
 }
