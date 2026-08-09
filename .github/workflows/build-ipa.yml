@@ -83,6 +83,13 @@ jobs:
           fi
           echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" Payload/
+          OPENSSL_FW=$(find ./build/DerivedData/Build/Products -name "OpenSSL.framework" -type d | head -n 1)
+          if [ -n "$OPENSSL_FW" ]; then
+            cp -R "$OPENSSL_FW" "Payload/FluxDL.app/Frameworks/"
+            echo "Embedded OpenSSL.framework into app Frameworks"
+          else
+            echo "Warning: OpenSSL.framework not found in build products"
+          fi
           zip -r "FluxDL-v1.0.0.${BUILD_NUMBER}.ipa" Payload
           echo "Successfully created FluxDL-v1.0.0.${BUILD_NUMBER}.ipa"
 
