@@ -51,7 +51,7 @@ jobs:
       - name: Build libtorrent Static Library (LibTorrent-Swift dependency)
         run: |
           cd Submodules/LibTorrent-Swift
-          ./make.sh
+          bash make.sh
           ls -la libtorrent-build/libtorrent.xcodeproj
 
       - name: Build FluxDL iOS App
