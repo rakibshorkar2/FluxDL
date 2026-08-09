@@ -48,6 +48,9 @@ jobs:
           fi
           xcodebuild -version
 
+      - name: Install Boost (libtorrent dependency)
+        run: brew install boost
+
       - name: Build libtorrent Static Library (LibTorrent-Swift dependency)
         run: |
           cd Submodules/LibTorrent-Swift
