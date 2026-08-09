@@ -1,6 +1,15 @@
-import Foundation
+﻿import Foundation
 import Combine
 import LibTorrent
+
+/// Error surfaced by the torrent service. Carries a user-facing message.
+public struct TorrentServiceError: LocalizedError {
+    public let message: String
+    public init(_ message: String) {
+        self.message = message
+    }
+    public var errorDescription: String? { message }
+}
 
 /// Torrent engine wrapper around the LibTorrent framework.
 /// Self-contained: it is created and owned exclusively by the Torrent tab.
@@ -48,7 +57,7 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         settings.portBindRetries = 5
 
         let session = Session(
-            downloadPath: downloads,
+            downloads,
             torrentsPath: torrentsDir,
             fastResumePath: fastResumeDir,
             settings: settings,
@@ -68,24 +77,24 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
 
     // MARK: - Adding Torrents
 
-    public func addMagnet(_ string: String) -> Result<Void, String> {
-        guard let session = session else { return .failure("Torrent session is not ready.") }
+    public func addMagnet(_ string: String) -> Result<Void, TorrentServiceError> {
+        guard let session = session else { return .failure(TorrentServiceError("Torrent session is not ready.")) }
 
         let cleaned = string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: cleaned), url.scheme?.lowercased() == "magnet" else {
-            return .failure("Please enter a valid magnet link.")
+            return .failure(TorrentServiceError("Please enter a valid magnet link."))
         }
         guard let magnet = MagnetURI(with: url) else {
-            return .failure("Could not parse the magnet link.")
+            return .failure(TorrentServiceError("Could not parse the magnet link."))
         }
         guard session.addTorrent(magnet) != nil else {
-            return .failure("Failed to add the magnet link to the session.")
+            return .failure(TorrentServiceError("Failed to add the magnet link to the session."))
         }
         return .success(())
     }
 
-    public func addTorrentFile(at url: URL) -> Result<Void, String> {
-        guard let session = session else { return .failure("Torrent session is not ready.") }
+    public func addTorrentFile(at url: URL) -> Result<Void, TorrentServiceError> {
+        guard let session = session else { return .failure(TorrentServiceError("Torrent session is not ready.")) }
 
         let isScoped = url.startAccessingSecurityScopedResource()
         defer {
@@ -93,22 +102,22 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         }
 
         guard let torrentFile = TorrentFile(with: url) else {
-            return .failure("Invalid or unsupported .torrent file.")
+            return .failure(TorrentServiceError("Invalid or unsupported .torrent file."))
         }
         return addTorrent(torrentFile)
     }
 
-    public func addTorrentFile(data: Data) -> Result<Void, String> {
+    public func addTorrentFile(data: Data) -> Result<Void, TorrentServiceError> {
         guard let torrentFile = TorrentFile(with: data) else {
-            return .failure("Invalid or unsupported .torrent file.")
+            return .failure(TorrentServiceError("Invalid or unsupported .torrent file."))
         }
         return addTorrent(torrentFile)
     }
 
-    public func addTorrent(_ torrentFile: TorrentFile) -> Result<Void, String> {
-        guard let session = session else { return .failure("Torrent session is not ready.") }
+    public func addTorrent(_ torrentFile: TorrentFile) -> Result<Void, TorrentServiceError> {
+        guard let session = session else { return .failure(TorrentServiceError("Torrent session is not ready.")) }
         guard session.addTorrent(torrentFile) != nil else {
-            return .failure("Failed to add the torrent file to the session.")
+            return .failure(TorrentServiceError("Failed to add the torrent file to the session."))
         }
         return .success(())
     }
@@ -231,7 +240,7 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
             totalPeers: Int(snapshot.numberOfTotalPeers),
             files: snapshot.files.map { file in
                 TorrentFileItem(
-                    index: file.index,
+                    index: Int(file.index),
                     name: file.name,
                     size: Int64(file.size),
                     downloaded: Int64(file.downloaded),

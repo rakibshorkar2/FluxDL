@@ -61,14 +61,14 @@ public final class TorrentViewModel: ObservableObject {
     public func addMagnet(_ string: String) -> Bool {
         switch service.addMagnet(string) {
         case .success: return true
-        case .failure(let message): presentError(message); return false
+        case .failure(let error): presentError(error.localizedDescription); return false
         }
     }
 
     public func addTorrentFile(at url: URL) -> Bool {
         switch service.addTorrentFile(at: url) {
         case .success: return true
-        case .failure(let message): presentError(message); return false
+        case .failure(let error): presentError(error.localizedDescription); return false
         }
     }
 
@@ -78,7 +78,7 @@ public final class TorrentViewModel: ObservableObject {
                 let torrentFile = try await TorrentFile.download(from: url)
                 switch service.addTorrent(torrentFile) {
                 case .success: break
-                case .failure(let message): presentError(message)
+                case .failure(let error): presentError(error.localizedDescription)
                 }
             } catch {
                 presentError(error.localizedDescription)
