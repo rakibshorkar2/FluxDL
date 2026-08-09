@@ -263,6 +263,18 @@ static std::vector<lt::download_priority_t> piecePrioritiesForFiles(
     }];
 }
 
+- (void)setStopWhenReady:(BOOL)enabled {
+    [self performOperation:@"setStopWhenReady" action:^(lt::torrent_handle const &handle) {
+        if (enabled) {
+            handle.set_flags(lt::torrent_flags::stop_when_ready);
+        } else {
+            handle.unset_flags(lt::torrent_flags::stop_when_ready);
+        }
+        handle.save_resume_data();
+        handle.post_status();
+    }];
+}
+
 - (void)applyPriorityConfiguration {
     [self performOperation:@"applyPriorityConfiguration" action:^(lt::torrent_handle const &handle) {
         auto filePriorities = handle.get_file_priorities();

@@ -123,6 +123,10 @@ public final class TorrentViewModel: ObservableObject {
         service.addTracker(id, url: cleaned)
     }
 
+    public func setStopSeeding(_ id: String, enabled: Bool) {
+        service.setStopSeeding(id, enabled: enabled)
+    }
+
     public func forceReannounce(_ id: String) {
         service.forceReannounce(id)
     }

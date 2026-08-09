@@ -37,6 +37,7 @@ public struct TorrentTaskModel: Identifiable, Equatable {
     public var isPaused: Bool
     public var isSeed: Bool
     public var isFinished: Bool
+    public var stopSeeding: Bool
 }
 
 // MARK: - TorrentTrackerItem

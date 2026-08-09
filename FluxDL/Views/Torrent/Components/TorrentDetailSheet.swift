@@ -26,6 +26,7 @@ public struct TorrentDetailSheet: View {
                     List {
                         headerSection(torrent)
                         statsSection(torrent)
+                        seedingSection(torrent)
 
                         if !torrent.files.isEmpty {
                             filesSection(torrent)
@@ -106,6 +107,17 @@ public struct TorrentDetailSheet: View {
             LabeledContent("Downloaded", value: TorrentByteFormatter.string(torrent.totalDone))
             LabeledContent("Seeds", value: "\(torrent.seeds) (\(torrent.totalSeeds) total)")
             LabeledContent("Peers", value: "\(torrent.peers) (\(torrent.totalPeers) total)")
+        }
+    }
+
+    private func seedingSection(_ torrent: TorrentTaskModel) -> some View {
+        Section {
+            Toggle("Stop seeding when download completes", isOn: Binding(
+                get: { torrent.stopSeeding },
+                set: { enabled in viewModel.setStopSeeding(torrentID, enabled: enabled) }
+            ))
+        } footer: {
+            Text("Automatically pauses the torrent once it has finished downloading.")
         }
     }
 

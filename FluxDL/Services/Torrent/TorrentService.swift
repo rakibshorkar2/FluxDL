@@ -26,7 +26,10 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     public private(set) var session: Session?
 
     private var handlesByHash: [String: TorrentHandle] = [:]
+    private var stopSeedingByHash: Set<String> = []
     private var updateTimer: Timer?
+    private var refreshInFlight = false
+    private let snapshotQueue = DispatchQueue(label: "FluxDL.TorrentService.snapshot", qos: .userInteractive)
 
     // MARK: - Session Lifecycle
 
@@ -68,10 +71,10 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         session.add(self)
         self.session = session
         isSessionActive = true
-        publishCurrentTorrents()
+        requestRefresh()
 
         let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.publishCurrentTorrents()
+            self?.requestRefresh()
         }
         RunLoop.main.add(timer, forMode: .common)
         updateTimer = timer
@@ -138,7 +141,8 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         guard let session = session, let torrent = handle(id) else { return }
         session.removeTorrent(torrent, deleteFiles: deleteFiles)
         handlesByHash.removeValue(forKey: id)
-        publishCurrentTorrents()
+        stopSeedingByHash.remove(id)
+        requestRefresh()
     }
 
     public func setFilePriority(_ id: String, index: Int, priority: FileEntry.Priority) {
@@ -157,6 +161,16 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         handle(id)?.forceReannounce()
     }
 
+    public func setStopSeeding(_ id: String, enabled: Bool) {
+        guard let handle = handle(id) else { return }
+        if enabled {
+            stopSeedingByHash.insert(id)
+        } else {
+            stopSeedingByHash.remove(id)
+        }
+        handle.setStopWhenReady(enabled)
+    }
+
     public func pauseAll() {
         handlesByHash.values.forEach { $0.pause() }
     }
@@ -170,21 +184,21 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     public func torrentManager(_ manager: Session, didAddTorrent torrent: TorrentHandle) {
         DispatchQueue.main.async { [weak self] in
             self?.handlesByHash[torrent.infoHashes.best.hex] = torrent
-            self?.publishCurrentTorrents()
+            self?.requestRefresh()
         }
     }
 
     public func torrentManager(_ manager: Session, didRemoveTorrentWithHash hashesData: TorrentHashes) {
         DispatchQueue.main.async { [weak self] in
             self?.handlesByHash.removeValue(forKey: hashesData.best.hex)
-            self?.publishCurrentTorrents()
+            self?.requestRefresh()
         }
     }
 
     public func torrentManager(_ manager: Session, didReceiveUpdateForTorrent torrent: TorrentHandle) {
         DispatchQueue.main.async { [weak self] in
             self?.handlesByHash[torrent.infoHashes.best.hex] = torrent
-            self?.publishCurrentTorrents()
+            self?.requestRefresh()
         }
     }
 
@@ -196,12 +210,13 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
 
     // MARK: - Snapshot Publishing
 
-    private func publishCurrentTorrents() {
-        guard let session = session else { return }
+    /// Coalesced refresh: snapshot collection runs on a background queue,
+    /// only the final model array is published on the main thread.
+    private func requestRefresh() {
+        guard let session = session, !refreshInFlight else { return }
+        refreshInFlight = true
 
         var currentHashes: Set<String> = []
-        var models: [TorrentTaskModel] = []
-
         for handle in session.torrents {
             let hash = handle.infoHashes.best.hex
             currentHashes.insert(hash)
@@ -209,26 +224,37 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
                 handlesByHash[hash] = handle
             }
         }
-
         if handlesByHash.keys.count != currentHashes.count {
             handlesByHash = handlesByHash.filter { currentHashes.contains($0.key) }
         }
 
-        for handle in handlesByHash.values {
-            handle.updateSnapshot()
-            let snapshot = handle.snapshot
-            guard snapshot.isValid else { continue }
-            models.append(makeModel(for: handle, snapshot: snapshot))
-        }
+        let handles = Array(handlesByHash.values)
+        let stopSeeding = stopSeedingByHash
+        snapshotQueue.async { [weak self] in
+            guard let self = self else { return }
 
-        torrents = models.sorted {
-            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            var models: [TorrentTaskModel] = []
+            for handle in handles {
+                handle.updateSnapshot()
+                let snapshot = handle.snapshot
+                guard snapshot.isValid else { continue }
+                models.append(self.makeModel(for: handle, snapshot: snapshot, stopSeeding: stopSeeding))
+            }
+            let sorted = models.sorted {
+                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+
+            DispatchQueue.main.async {
+                self.torrents = sorted
+                self.refreshInFlight = false
+            }
         }
     }
 
-    private func makeModel(for handle: TorrentHandle, snapshot: TorrentHandle.Snapshot) -> TorrentTaskModel {
-        TorrentTaskModel(
-            id: handle.infoHashes.best.hex,
+    private func makeModel(for handle: TorrentHandle, snapshot: TorrentHandle.Snapshot, stopSeeding: Set<String>) -> TorrentTaskModel {
+        let id = handle.infoHashes.best.hex
+        return TorrentTaskModel(
+            id: id,
             name: snapshot.name.isEmpty ? "Unknown Torrent" : snapshot.name,
             state: snapshot.state,
             progress: snapshot.progress,
@@ -265,7 +291,8 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
             creationDate: snapshot.creationDate,
             isPaused: snapshot.isPaused,
             isSeed: snapshot.isSeed,
-            isFinished: snapshot.isFinished
+            isFinished: snapshot.isFinished,
+            stopSeeding: stopSeeding.contains(id)
         )
     }
 
