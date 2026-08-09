@@ -67,7 +67,7 @@ public struct TorrentSettingsSheet: View {
                     }
                 }
 
-                Section("Torrent Queue") {
+                Section(header: Text("Torrent Queue"), footer: Text("Controls how many torrents run at the same time. Extra torrents wait paused in the queue.")) {
                     Stepper(value: Binding(
                         get: { service.maxActiveTorrents },
                         set: { applyQueue(maxActive: $0) }
@@ -88,17 +88,13 @@ public struct TorrentSettingsSheet: View {
                     ), in: 0...50) {
                         LabeledContent("Max Uploading (Seeding)", value: "\(service.maxUploadingTorrents)")
                     }
-                } footer: {
-                    Text("Controls how many torrents run at the same time. Extra torrents wait paused in the queue.")
                 }
 
-                Section("Notifications") {
+                Section(header: Text("Notifications"), footer: Text("Sends a notification when a torrent finishes downloading.")) {
                     Toggle("Download Complete Notifications", isOn: Binding(
                         get: { service.notificationsEnabled },
                         set: { viewModel.setNotificationsEnabled($0) }
                     ))
-                } footer: {
-                    Text("Sends a notification when a torrent finishes downloading.")
                 }
             }
             .navigationTitle("Torrent Settings")

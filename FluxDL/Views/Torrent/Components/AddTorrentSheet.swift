@@ -111,8 +111,6 @@ public struct AddTorrentSheet: View {
                             Text(preset.title).tag(preset)
                         }
                     }
-                } footer: {
-                    Text("Options apply to torrents added from this screen. You can change them later from the torrent details.")
                 }
 
                 if let error = validationError {
