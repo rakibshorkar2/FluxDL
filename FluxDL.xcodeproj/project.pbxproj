@@ -931,9 +931,9 @@
 			isa = PBXGroup;
 			children = (
 				8C0000000000000000000012 /* Cells */,
+				8C0000000000000000000014 /* Settings */,
 				8C0000000000000000000003 /* DownloadsViewModel.swift */,
 				8C0000000000000000000004 /* DownloadsViewController.swift */,
-				8C0000000000000000000008 /* DownloadsSettingsViewModel.swift */,
 			);
 			path = Downloads;
 			sourceTree = "<group>";
@@ -945,6 +945,14 @@
 				8C0000000000000000000006 /* DownloadItemView.swift */,
 			);
 			path = Cells;
+			sourceTree = "<group>";
+		};
+		8C0000000000000000000014 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				8C0000000000000000000008 /* DownloadsSettingsViewModel.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		8C0000000000000000000013 /* Download */ = {
