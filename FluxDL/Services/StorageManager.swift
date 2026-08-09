@@ -23,7 +23,7 @@ public final class StorageManager: StorageManagerProtocol {
     private var lastCacheTime: Date = .distantPast
     private let cacheTTL: TimeInterval = 10.0 // Cache disk stat results for 10 seconds
     
-    public init(fileManagementService: FileManagementServiceProtocol = ServiceContainer.shared.fileManagementService) {
+    public init(fileManagementService: FileManagementServiceProtocol) {
         self.fileManagementService = fileManagementService
     }
     
