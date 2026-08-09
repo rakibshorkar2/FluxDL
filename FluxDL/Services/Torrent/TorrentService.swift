@@ -63,7 +63,7 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
             settings: settings,
             storages: [:]
         )
-        session.addDelegate(self)
+        session.add(self)
         self.session = session
         isSessionActive = true
         publishCurrentTorrents()
