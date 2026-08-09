@@ -55,6 +55,8 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         settings.encryptionPolicy = .enabled
         settings.port = 6881
         settings.portBindRetries = 5
+        settings.listenInterfaces = "0.0.0.0:6881"
+        settings.outgoingInterfaces = ""
 
         let session = Session(
             downloads,
