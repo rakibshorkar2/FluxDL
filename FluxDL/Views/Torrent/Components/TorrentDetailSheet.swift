@@ -112,7 +112,7 @@ public struct TorrentDetailSheet: View {
     }
 
     private func downloadOptionsSection(_ torrent: TorrentTaskModel) -> some View {
-        Section("Download Options") {
+        Section(header: Text("Download Options"), footer: Text("Sequential download reads pieces in order, best for video playback. First/last pieces let playback start sooner.")) {
             Toggle("Stop seeding when download completes", isOn: Binding(
                 get: { torrent.stopSeeding },
                 set: { enabled in viewModel.setStopSeeding(torrentID, enabled: enabled) }
@@ -127,13 +127,11 @@ public struct TorrentDetailSheet: View {
                 get: { torrent.isFirstLastPiecePriority },
                 set: { enabled in viewModel.setFirstLastPriorityDownload(torrentID, enabled: enabled) }
             ))
-        } footer: {
-            Text("Sequential download reads pieces in order, best for video playback. First/last pieces let playback start sooner.")
         }
     }
 
     private func speedLimitsSection(_ torrent: TorrentTaskModel) -> some View {
-        Section("Speed Limits") {
+        Section(header: Text("Speed Limits"), footer: Text("Per-torrent limits never exceed the global limits from Torrent Settings.")) {
             Picker("Download Limit", selection: Binding(
                 get: { TorrentSpeedPreset(rawValue: Int(torrent.downloadLimit)) ?? .unlimited },
                 set: { preset in viewModel.setDownloadLimit(torrentID, bytesPerSecond: Int64(preset.rawValue)) }
@@ -151,8 +149,6 @@ public struct TorrentDetailSheet: View {
                     Text(preset.title).tag(preset)
                 }
             }
-        } footer: {
-            Text("Per-torrent limits never exceed the global limits from Torrent Settings.")
         }
     }
 

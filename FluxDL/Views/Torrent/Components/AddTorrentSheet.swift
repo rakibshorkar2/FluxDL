@@ -93,7 +93,7 @@ public struct AddTorrentSheet: View {
                     .disabled(remoteURLInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isRemoteImporting)
                 }
 
-                Section("Download Options") {
+                Section(header: Text("Download Options"), footer: Text("Options apply to torrents added from this screen. You can change them later from the torrent details.")) {
                     Toggle("Stop seeding when finished", isOn: $stopSeeding)
 
                     Toggle("Sequential download", isOn: $sequentialDownload)

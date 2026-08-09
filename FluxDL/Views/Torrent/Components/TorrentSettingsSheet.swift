@@ -47,7 +47,7 @@ public struct TorrentSettingsSheet: View {
     public var body: some View {
         NavigationStack {
             Form {
-                Section("Global Speed Limits") {
+                Section(header: Text("Global Speed Limits"), footer: Text("Limits apply to the whole session and are also capped by any per-torrent limit.")) {
                     Picker("Download Limit", selection: Binding(
                         get: { TorrentSpeedPreset(rawValue: Int(service.globalDownloadSpeed)) ?? .unlimited },
                         set: { viewModel.setGlobalDownloadSpeed(Int64($0.rawValue)) }
@@ -65,8 +65,6 @@ public struct TorrentSettingsSheet: View {
                             Text(preset.title).tag(preset)
                         }
                     }
-                } footer: {
-                    Text("Limits apply to the whole session and are also capped by any per-torrent limit.")
                 }
 
                 Section("Torrent Queue") {
