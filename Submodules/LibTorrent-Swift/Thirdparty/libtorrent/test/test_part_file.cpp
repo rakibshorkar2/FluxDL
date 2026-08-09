@@ -1,0 +1,315 @@
+/*
+
+Copyright (c) 2014-2022, Arvid Norberg
+Copyright (c) 2018, 2021, Alden Torres
+All rights reserved.
+
+You may use, distribute and modify this code under the terms of the BSD license,
+see LICENSE file.
+*/
+
+#include <cstring>
+#include <array>
+
+#include "test.hpp"
+#include "test_utils.hpp"
+#include "libtorrent/aux_/part_file.hpp"
+#include "libtorrent/aux_/posix_part_file.hpp"
+#include "libtorrent/aux_/path.hpp"
+#include "libtorrent/error_code.hpp"
+#include "libtorrent/file_storage.hpp"
+#include "libtorrent/truncate.hpp"
+
+using namespace lt;
+
+namespace {
+
+	int part_file_header_size(int const num_pieces)
+	{
+		return ((2 + num_pieces) * 4 + 1023) & ~0x3ff;
+	}
+
+	void truncate_part_file(std::string const& filename, std::int64_t const size)
+	{
+		file_storage fs;
+		fs.add_file(libtorrent::filename(filename), size);
+		storage_error se;
+		truncate_files(fs, parent_path(filename), se);
+		TEST_CHECK(!se);
+
+		file_status st;
+		error_code ec;
+		stat_file(filename, &st, ec);
+		TEST_CHECK(!ec);
+		TEST_EQUAL(st.file_size, size);
+	}
+
+	template <typename PartFile>
+	void test_short_read(std::string const& test_dir)
+	{
+		error_code ec;
+		std::string const cwd = complete(".");
+		std::string const path = combine_path(cwd, test_dir);
+		std::string const part_file_path = combine_path(path, "partfile.parts");
+		int const piece_size = 16 * 0x4000;
+		int const num_pieces = 100;
+
+		remove_all(path, ec);
+		if (ec == boost::system::errc::no_such_file_or_directory) ec.clear();
+		TEST_CHECK(!ec);
+		create_directory(path, ec);
+		TEST_CHECK(!ec);
+
+		std::array<char, 1024> buf;
+		for (int i = 0; i < int(buf.size()); ++i)
+			buf[std::size_t(i)] = static_cast<char>(i);
+
+		PartFile pf(path, "partfile.parts", num_pieces, piece_size);
+		TEST_EQUAL(pf.write(buf, 10_piece, 0, ec), int(buf.size()));
+		TEST_CHECK(!ec);
+		pf.flush_metadata(ec);
+		TEST_CHECK(!ec);
+
+		truncate_part_file(part_file_path, part_file_header_size(num_pieces) + 512);
+
+		std::array<char, 1024> read_buf;
+		read_buf.fill(0);
+		TEST_EQUAL(pf.read(read_buf, 10_piece, 0, ec), -1);
+		TEST_EQUAL(ec, errors::file_too_short);
+
+		ec.clear();
+		hasher ph;
+		TEST_EQUAL(pf.hash(ph, int(buf.size()), 10_piece, 0, ec), -1);
+		TEST_EQUAL(ec, errors::file_too_short);
+
+		ec.clear();
+		bool exported = false;
+		pf.export_file([&exported](std::int64_t, span<char>) { exported = true; },
+			10 * piece_size,
+			int(buf.size()),
+			ec);
+		TEST_EQUAL(ec, errors::file_too_short);
+		TEST_CHECK(!exported);
+
+		remove_all(path, ec);
+		TEST_CHECK(!ec);
+	}
+
+} // anonymous namespace
+
+TORRENT_TEST(part_file)
+{
+	error_code ec;
+	std::string cwd = complete(".");
+
+	remove_all(combine_path(cwd, "partfile_test_dir"), ec);
+	if (ec) std::printf("remove_all: %s\n", ec.message().c_str());
+	remove_all(combine_path(cwd, "partfile_test_dir2"), ec);
+	if (ec) std::printf("remove_all: %s\n", ec.message().c_str());
+
+	int piece_size = 16 * 0x4000;
+	std::array<char, 1024> buf;
+
+	{
+		create_directory(combine_path(cwd, "partfile_test_dir"), ec);
+		if (ec) std::printf("create_directory: %s\n", ec.message().c_str());
+		create_directory(combine_path(cwd, "partfile_test_dir2"), ec);
+		if (ec) std::printf("create_directory: %s\n", ec.message().c_str());
+
+		aux::part_file pf(combine_path(cwd, "partfile_test_dir"), "partfile.parts", 100, piece_size);
+		pf.flush_metadata(ec);
+		if (ec) std::printf("flush_metadata: %s\n", ec.message().c_str());
+
+		// since we don't have anything in the part file, it will have
+		// not have been created yet
+
+		TEST_CHECK(!exists(combine_path(combine_path(cwd, "partfile_test_dir"), "partfile.parts")));
+
+		// write something to the metadata file
+		for (int i = 0; i < 1024; ++i) buf[std::size_t(i)] = char(i & 0xff);
+
+		pf.write(buf, 10_piece, 0, ec);
+		if (ec) std::printf("part_file::write: %s\n", ec.message().c_str());
+
+		pf.flush_metadata(ec);
+		if (ec) std::printf("flush_metadata: %s\n", ec.message().c_str());
+
+		// now wwe should have created the partfile
+		TEST_CHECK(exists(combine_path(combine_path(cwd, "partfile_test_dir"), "partfile.parts")));
+
+		pf.move_partfile(combine_path(cwd, "partfile_test_dir2"), ec);
+		TEST_CHECK(!ec);
+		if (ec) std::printf("move_partfile: %s\n", ec.message().c_str());
+
+		TEST_CHECK(!exists(combine_path(combine_path(cwd, "partfile_test_dir"), "partfile.parts")));
+		TEST_CHECK(exists(combine_path(combine_path(cwd, "partfile_test_dir2"), "partfile.parts")));
+
+		buf.fill(0);
+
+		pf.read(buf, 10_piece, 0, ec);
+		if (ec) std::printf("part_file::read: %s\n", ec.message().c_str());
+
+		for (int i = 0; i < int(buf.size()); ++i)
+			TEST_CHECK(buf[std::size_t(i)] == char(i));
+
+		sha1_hash const cmp_hash = hasher(buf).final();
+
+		hasher ph;
+		pf.hash(ph, sizeof(buf), 10_piece, 0, ec);
+		if (ec) std::printf("part_file::hash: %s\n", ec.message().c_str());
+
+		TEST_CHECK(ph.final() == cmp_hash);
+	}
+
+	{
+		// load the part file back in
+		aux::part_file pf(combine_path(cwd, "partfile_test_dir2"), "partfile.parts", 100, piece_size);
+
+		buf.fill(0);
+
+		pf.read(buf, 10_piece, 0, ec);
+		if (ec) std::printf("part_file::read: %s\n", ec.message().c_str());
+
+		for (int i = 0; i < 1024; ++i)
+			TEST_CHECK(buf[std::size_t(i)] == static_cast<char>(i));
+
+		// test exporting the piece to a file
+
+		std::string output_filename = combine_path(combine_path(cwd, "partfile_test_dir")
+			, "part_file_test_export");
+
+		pf.export_file([](std::int64_t file_offset, span<char> buf_data)
+		{
+			for (char i : buf_data)
+			{
+				// make sure we got the bytes we expected
+				TEST_CHECK(i == static_cast<char>(file_offset));
+				++file_offset;
+			}
+		}, 10 * piece_size, 1024, ec);
+		if (ec) std::printf("export_file: %s\n", ec.message().c_str());
+
+		pf.free_piece(10_piece);
+
+		pf.flush_metadata(ec);
+		if (ec) std::printf("flush_metadata: %s\n", ec.message().c_str());
+
+		// we just removed the last piece. The partfile does not
+		// contain anything anymore, it should have deleted itself
+		TEST_CHECK(!exists(combine_path(combine_path(cwd, "partfile_test_dir2"), "partfile.parts"), ec));
+		TEST_CHECK(!ec);
+		if (ec) std::printf("exists: %s\n", ec.message().c_str());
+	}
+}
+
+TORRENT_TEST(part_file_short_read) { test_short_read<aux::part_file>("partfile_short_read_dir"); }
+
+TORRENT_TEST(posix_part_file)
+{
+	error_code ec;
+	std::string cwd = complete(".");
+
+	remove_all(combine_path(cwd, "partfile_test_dir"), ec);
+	if (ec) std::printf("remove_all: %s\n", ec.message().c_str());
+	remove_all(combine_path(cwd, "partfile_test_dir2"), ec);
+	if (ec) std::printf("remove_all: %s\n", ec.message().c_str());
+
+	int piece_size = 16 * 0x4000;
+	std::array<char, 1024> buf;
+
+	{
+		create_directory(combine_path(cwd, "partfile_test_dir"), ec);
+		if (ec) std::printf("create_directory: %s\n", ec.message().c_str());
+		create_directory(combine_path(cwd, "partfile_test_dir2"), ec);
+		if (ec) std::printf("create_directory: %s\n", ec.message().c_str());
+
+		aux::posix_part_file pf(combine_path(cwd, "partfile_test_dir"), "partfile.parts", 100, piece_size);
+		pf.flush_metadata(ec);
+		if (ec) std::printf("flush_metadata: %s\n", ec.message().c_str());
+
+		// since we don't have anything in the part file, it will have
+		// not have been created yet
+
+		TEST_CHECK(!exists(combine_path(combine_path(cwd, "partfile_test_dir"), "partfile.parts")));
+
+		// write something to the metadata file
+		for (int i = 0; i < 1024; ++i) buf[std::size_t(i)] = char(i & 0xff);
+
+		pf.write(buf, 10_piece, 0, ec);
+		if (ec) std::printf("posix_part_file::write: %s\n", ec.message().c_str());
+
+		pf.flush_metadata(ec);
+		if (ec) std::printf("flush_metadata: %s\n", ec.message().c_str());
+
+		// now wwe should have created the partfile
+		TEST_CHECK(exists(combine_path(combine_path(cwd, "partfile_test_dir"), "partfile.parts")));
+
+		pf.move_partfile(combine_path(cwd, "partfile_test_dir2"), ec);
+		TEST_CHECK(!ec);
+		if (ec) std::printf("move_partfile: %s\n", ec.message().c_str());
+
+		TEST_CHECK(!exists(combine_path(combine_path(cwd, "partfile_test_dir"), "partfile.parts")));
+		TEST_CHECK(exists(combine_path(combine_path(cwd, "partfile_test_dir2"), "partfile.parts")));
+
+		buf.fill(0);
+
+		pf.read(buf, 10_piece, 0, ec);
+		if (ec) std::printf("posix_part_file::read: %s\n", ec.message().c_str());
+
+		for (int i = 0; i < int(buf.size()); ++i)
+			TEST_CHECK(buf[std::size_t(i)] == char(i));
+
+		sha1_hash const cmp_hash = hasher(buf).final();
+
+		hasher ph;
+		pf.hash(ph, sizeof(buf), 10_piece, 0, ec);
+		if (ec) std::printf("posix_part_file::hash: %s\n", ec.message().c_str());
+
+		TEST_CHECK(ph.final() == cmp_hash);
+	}
+
+	{
+		// load the part file back in
+		aux::posix_part_file pf(combine_path(cwd, "partfile_test_dir2"), "partfile.parts", 100, piece_size);
+
+		buf.fill(0);
+
+		pf.read(buf, 10_piece, 0, ec);
+		if (ec) std::printf("posix_part_file::read: %s\n", ec.message().c_str());
+
+		for (int i = 0; i < 1024; ++i)
+			TEST_CHECK(buf[std::size_t(i)] == static_cast<char>(i));
+
+		// test exporting the piece to a file
+
+		std::string output_filename = combine_path(combine_path(cwd, "partfile_test_dir")
+			, "part_file_test_export");
+
+		pf.export_file([](std::int64_t file_offset, span<char> buf_data)
+		{
+			for (char i : buf_data)
+			{
+				// make sure we got the bytes we expected
+				TEST_CHECK(i == static_cast<char>(file_offset));
+				++file_offset;
+			}
+		}, 10 * piece_size, 1024, ec);
+		if (ec) std::printf("export_file: %s\n", ec.message().c_str());
+
+		pf.free_piece(10_piece);
+
+		pf.flush_metadata(ec);
+		if (ec) std::printf("flush_metadata: %s\n", ec.message().c_str());
+
+		// we just removed the last piece. The partfile does not
+		// contain anything anymore, it should have deleted itself
+		TEST_CHECK(!exists(combine_path(combine_path(cwd, "partfile_test_dir2"), "partfile.parts"), ec));
+		TEST_CHECK(!ec);
+		if (ec) std::printf("exists: %s\n", ec.message().c_str());
+	}
+}
+
+TORRENT_TEST(posix_part_file_short_read)
+{
+	test_short_read<aux::posix_part_file>("posix_partfile_short_read_dir");
+}

@@ -1,4 +1,4 @@
-name: Build Unsigned IPA
+name: Build IPA & Release
 
 on:
   push:
@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -25,28 +28,8 @@ jobs:
           echo "--- Installed Xcode list (system) ---"
           xcode-select -p
           xcodebuild -version
-          echo "--- Latest available runner images ---"
-          curl -s https://raw.githubusercontent.com/actions/runner-images/main/images/macos/macos-14-Readme.md | grep -E "Xcode|OS|macOS" | head -20 || echo "Unable to fetch latest runner info"
           echo "--- Available labels ---"
           curl -s https://api.github.com/repos/actions/runner-images/branches/main | grep -o '"name"' | head -1
-
-      - name: Find Latest GitHub Runner macOS and Xcode Versions
-        run: |
-          echo "=== Available macOS runner images ==="
-          IMAGES=$(curl -s "https://api.github.com/repos/actions/runner-images/contents/images/macos" \
-            | grep -o '"name": "macos-[0-9]*-Readme.md"' | grep -o 'macos-[0-9]*-Readme.md' | sort -V)
-          echo "$IMAGES"
-          LATEST_IMAGE=$(echo "$IMAGES" | tail -1)
-          echo ""
-          echo "=== Latest image: $LATEST_IMAGE ==="
-          README="https://raw.githubusercontent.com/actions/runner-images/main/images/macos/$LATEST_IMAGE"
-          curl -s "$README" | grep -E "OS Version|Image Version" | head -3
-          echo ""
-          echo "--- Latest Xcode versions on this image ---"
-          curl -s "$README" | sed -n '/^### Xcode/,/^### /p' | grep -E '^\|' | head -8
-          echo ""
-          echo "--- Latest Xcode (public preview) ---"
-          curl -s "https://raw.githubusercontent.com/actions/runner-images/main/images/macos/xcode-27-Readme.md" | grep -E "Xcode|OS Version" | head -5 || echo "No Xcode 27 preview info"
 
       - name: Select Xcode Version
         run: |
@@ -65,13 +48,22 @@ jobs:
           fi
           xcodebuild -version
 
+      - name: Build libtorrent Static Library (LibTorrent-Swift dependency)
+        run: |
+          cd Submodules/LibTorrent-Swift
+          ./make.sh
+          ls -la libtorrent-build/libtorrent.xcodeproj
+
       - name: Build FluxDL iOS App
         run: |
+          BUILD_NUMBER=${{ github.run_number }}
+          xcodebuild -resolvePackageDependencies -project FluxDL.xcodeproj -scheme FluxDL
           xcodebuild -project FluxDL.xcodeproj \
                      -scheme FluxDL \
                      -sdk iphoneos \
                      -configuration Release \
                      -derivedDataPath ./build/DerivedData \
+                     CURRENT_PROJECT_VERSION="${BUILD_NUMBER}" \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
@@ -79,6 +71,7 @@ jobs:
 
       - name: Create Unsigned IPA Package
         run: |
+          BUILD_NUMBER=${{ github.run_number }}
           mkdir -p Payload
           APP_PATH=$(find ./build/DerivedData -name "FluxDL.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
@@ -87,12 +80,31 @@ jobs:
           fi
           echo "Found app at: $APP_PATH"
           cp -R "$APP_PATH" Payload/
-          zip -r FluxDL-v1.0.0.ipa Payload
-          echo "Successfully created FluxDL-v1.0.0.ipa"
+          zip -r "FluxDL-v1.0.0.${BUILD_NUMBER}.ipa" Payload
+          echo "Successfully created FluxDL-v1.0.0.${BUILD_NUMBER}.ipa"
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: FluxDL-Unsigned-IPA
-          path: FluxDL-v1.0.0.ipa
+          path: "FluxDL-v1.0.0.${{ github.run_number }}.ipa"
           retention-days: 30
+
+      - name: Create GitHub Release with New Build Number
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BUILD_NUMBER=${{ github.run_number }}
+          TAG="v1.0.0.${BUILD_NUMBER}"
+          IPA="FluxDL-v1.0.0.${BUILD_NUMBER}.ipa"
+          echo "Creating release ${TAG} with asset ${IPA}"
+          if gh release view "${TAG}" --json tagName --jq .tagName >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists — uploading asset to it"
+            gh release upload "${TAG}" "${IPA}" --clobber
+          else
+            gh release create "${TAG}" "${IPA}" \
+              --title "FluxDL v1.0.0 build ${BUILD_NUMBER}" \
+              --notes "Automatic unsigned IPA release for build ${BUILD_NUMBER} (GitHub Actions run #${BUILD_NUMBER})." \
+              --generate-notes
+          fi

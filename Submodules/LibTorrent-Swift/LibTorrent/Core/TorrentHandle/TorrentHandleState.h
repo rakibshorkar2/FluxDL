@@ -1,0 +1,22 @@
+//
+//  STTorrentState.h
+//  TorrentKit
+//
+//  Created by Даниил Виноградов on 24.04.2022.
+//
+
+#import <Foundation/Foundation.h>
+
+typedef NS_ENUM(NSUInteger, TorrentHandleState) {
+    TorrentHandleStateCheckingFiles,
+    TorrentHandleStateDownloadingMetadata,
+    TorrentHandleStateDownloading,
+    TorrentHandleStateFinished,
+    TorrentHandleStateSeeding,
+//    TorrentHandleStateAllocating, // deprecated
+    TorrentHandleStateCheckingResumeData,
+    TorrentHandleStatePaused,
+
+    // Custom state for storage error
+    TorrentHandleStateStorageError
+} NS_SWIFT_NAME(TorrentHandle.State);

@@ -5,6 +5,7 @@ public enum AppTab: Int, CaseIterable, Identifiable {
     case browser = 1
     case history = 2
     case settings = 3
+    case torrent = 4
     
     public var id: Int { rawValue }
     
@@ -14,6 +15,7 @@ public enum AppTab: Int, CaseIterable, Identifiable {
         case .browser: return "Browser"
         case .history: return "History"
         case .settings: return "Settings"
+        case .torrent: return "Torrent"
         }
     }
     
@@ -23,6 +25,7 @@ public enum AppTab: Int, CaseIterable, Identifiable {
         case .browser: return "globe"
         case .history: return "clock.fill"
         case .settings: return "gearshape.fill"
+        case .torrent: return "network"
         }
     }
 }
@@ -70,6 +73,12 @@ public struct MainTabView: View {
                         Label(AppTab.settings.title, systemImage: AppTab.settings.iconName)
                     }
                     .tag(AppTab.settings)
+                
+                TorrentView()
+                    .tabItem {
+                        Label(AppTab.torrent.title, systemImage: AppTab.torrent.iconName)
+                    }
+                    .tag(AppTab.torrent)
             }
             
             // Smart Clipboard Overlay Banner (Phase 8)

@@ -1,0 +1,223 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+exclude: |
+    (?x)^(
+        # These files are vendored from elsewhere, don't process them
+        LICENSE|
+        docs/hunspell/.*|
+        src/ed25519/.*|
+        include/libtorrent/aux_/route\.h|
+        test/.*\.xml|
+        test/ssl/.*\.pem
+    )$
+default_language_version:
+    python: python3
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+    -   id: trailing-whitespace
+    #-   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-case-conflict
+    -   id: check-executables-have-shebangs
+    -   id: check-xml
+    -   id: debug-statements
+    -   id: check-symlinks
+    -   id: check-toml
+- repo: https://github.com/pappasam/toml-sort
+  rev: v0.24.4
+  hooks:
+  - id: toml-sort
+    args: [--all, --in-place]
+- repo: https://github.com/pre-commit/pygrep-hooks
+  rev: v1.10.0
+  hooks:
+  - id: rst-directive-colons
+  - id: rst-inline-touching-normal
+- repo: https://github.com/PyCQA/isort
+  rev: 8.0.1
+  hooks:
+    - id: isort
+      exclude: |
+          (?x)^(
+            # Enable these later, avoid bloating this PR
+            docs/gen_reference_doc.py|
+            examples/run_benchmarks.py|
+            fuzzers/tools/generate_initial_corpus.py|
+            fuzzers/tools/unify_corpus_names.py|
+            test/socks.py|
+            test/web_server.py|
+            test/websocket_server.py|
+            tools/clean.py|
+            tools/copyright.py|
+            tools/dht_flood.py|
+            tools/parse_dht_log.py|
+            tools/parse_dht_rtt.py|
+            tools/parse_dht_stats.py|
+            tools/parse_session_stats.py|
+            tools/parse_utp_log.py|
+            tools/run_benchmark.py|
+            tools/update_copyright.py
+          )$
+- repo: https://github.com/PyCQA/autoflake
+  rev: v2.3.3
+  hooks:
+    - id: autoflake
+      args: [--in-place, --remove-unused-variables, --remove-all-unused-imports, --remove-duplicate-keys]
+- repo: https://github.com/psf/black
+  rev: 26.3.1
+  hooks:
+    - id: black
+      # Avoiding PR bloat
+      exclude: |
+          (?x)^(
+               docs/gen_reference_doc.py|
+               docs/gen_stats_doc.py|
+               docs/gen_todo.py|
+               docs/join_rst.py|
+               examples/run_benchmarks.py|
+               fuzzers/tools/generate_initial_corpus.py|
+               fuzzers/tools/unify_corpus_names.py|
+               test/http_proxy.py|
+               test/socks.py|
+               test/web_server.py|
+               test/websocket_server.py|
+               tools/benchmark_checking.py|
+               tools/clean.py|
+               tools/copyright.py|
+               tools/dht_flood.py|
+               tools/gen_convenience_header.py|
+               tools/gen_fwd.py|
+               tools/parse_dht_log.py|
+               tools/parse_dht_rtt.py|
+               tools/parse_dht_stats.py|
+               tools/parse_lookup_log.py|
+               tools/parse_peer_log.py|
+               tools/parse_sample.py|
+               tools/parse_session_stats.py|
+               tools/parse_utp_log.py|
+               tools/run_benchmark.py|
+               tools/set_version.py|
+               tools/update_copyright.py
+          )$
+      # black doesn't run on *.pyi files by default, for reasons
+    - id: black
+      name: black (pyi)
+      types: [pyi]
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.20.2
+  hooks:
+    - id: mypy
+      # Avoiding PR bloat
+      exclude: |
+          (?x)^(
+              docs/gen_reference_doc.py|
+              docs/gen_stats_doc.py|
+              docs/gen_todo.py|
+              examples/run_benchmarks.py|
+              fuzzers/tools/generate_initial_corpus.py|
+              setup.py|
+              test/http_proxy.py|
+              test/socks.py|
+              test/web_server.py|
+              test/websocket_server.py|
+              tools/benchmark_checking.py|
+              tools/clean.py|
+              tools/copyright.py|
+              tools/dht_flood.py|
+              tools/gen_convenience_header.py|
+              tools/gen_fwd.py|
+              tools/parse_dht_log.py|
+              tools/parse_dht_stats.py|
+              tools/parse_lookup_log.py|
+              tools/parse_peer_log.py|
+              tools/parse_sample.py|
+              tools/parse_session_stats.py|
+              tools/parse_utp_log.py|
+              tools/run_benchmark.py|
+              tools/update_copyright.py
+          )$
+- repo: local
+  hooks:
+  - id: flake8-pyi-install
+    name: Install flake8-pyi
+    entry: pip install flake8-pyi
+    language: system
+    pass_filenames: false
+    always_run: true
+  - id: flake8-pyi-run
+    name: Run flake8-pyi
+    entry: flake8
+    # Ignore rationale: 1. Allow Black to do formatting;
+    #                   2. Detect archaic typing.
+    args: ["--ignore=E301,E302,E305,E501,E701,E704,Y015,Y021,Y053"]
+    language: system
+    types: [pyi]
+- repo: https://github.com/PyCQA/flake8
+  rev: 7.3.0
+  hooks:
+  - id: flake8
+    exclude: |
+        (?x)^(
+            # Enable these later, avoid bloating this PR
+            docs/gen_todo.py|
+            docs/gen_reference_doc.py|
+            docs/gen_stats_doc.py|
+            examples/run_benchmarks.py|
+            fuzzers/tools/generate_initial_corpus.py|
+            test/socks.py|
+            test/websocket_server.py|
+            test/web_server.py|
+            tools/benchmark_checking.py|
+            tools/dht_flood.py|
+            tools/gen_fwd.py|
+            tools/parse_dht_stats.py|
+            tools/parse_dht_log.py|
+            tools/parse_lookup_log.py|
+            tools/parse_peer_log.py|
+            tools/parse_session_stats.py|
+            tools/parse_utp_log.py|
+            tools/run_benchmark.py|
+            tools/update_copyright.py
+        )$
+- repo: local
+  hooks:
+  - id: gen_header
+    name: gen_header
+    language: system
+    entry: ./bindings/c/tools/gen_header.py
+    files: ^include/libtorrent/settings_pack.hpp$
+  - id: gen_alert_header
+    name: gen_alert_header
+    language: system
+    entry: ./bindings/c/tools/gen_alert_header.py
+    files: ^include/libtorrent/alert_types.hpp$
+  - id: gen_fwd
+    name: gen_fwd
+    language: system
+    entry: ./tools/gen_fwd.py
+    always_run: true
+  - id: gen_convenience_header
+    name: gen_convenience_header
+    language: system
+    entry: ./tools/gen_convenience_header.py
+    files: |
+      (?x)^(
+        include/libtorrent/[^/]*\.hpp|
+        include/libtorrent/kademlia/[^/]*\.hpp|
+        include/libtorrent/extensions/[^/]*\.hpp
+      )$
+    exclude: |
+      (?x)/(
+        libtorrent.hpp|
+        storage.hpp|
+        io_service.hpp
+      )$
+  - id: git-clang-format
+    name: git-clang-format
+    language: system
+    entry: git-clang-format-18 --binary clang-format-18 --force
+    pass_filenames: false
+    files: \.(cpp|hpp)$

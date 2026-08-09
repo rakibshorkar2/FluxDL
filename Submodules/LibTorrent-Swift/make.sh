@@ -1,0 +1,20 @@
+#!/bin/zsh
+cd $(dirname $0)
+
+cmake ./Thirdparty/libtorrent \
+    -B./libtorrent-build \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CXX_STANDARD=17 \
+    -G Xcode \
+    -DCMAKE_XCODE_ATTRIBUTE_SUPPORTS_MACCATALYST=YES \
+    -DCMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET=15.0 \
+    -DCMAKE_XCODE_ATTRIBUTE_TVOS_DEPLOYMENT_TARGET=15.0 \
+    -DCMAKE_XCODE_ATTRIBUTE_XROS_DEPLOYMENT_TARGET=1.0 \
+    -DCMAKE_XCODE_ATTRIBUTE_WATCHOS_DEPLOYMENT_TARGET=4.0 \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
+    -DCMAKE_CXX_FLAGS="-DTORRENT_HAVE_MMAP=0 -DNDEBUG" \
+    -Ddeprecated-functions=OFF \
+    -Dwebtorrent=OFF \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_XCODE_ATTRIBUTE_ARCHS="\$(ARCHS_STANDARD)" \
+    -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS="xrsimulator xros watchsimulator watchos macosx iphonesimulator iphoneos driverkit appletvsimulator appletvos"
