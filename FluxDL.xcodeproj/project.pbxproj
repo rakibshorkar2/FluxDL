@@ -1606,9 +1606,6 @@
 				D1352D382BBD73CD00104E7B /* ColoredProgressBarView.swift in Sources */,
 				7C5B41022EEC321A001D4C68 /* TorrentHandle+Extensions.swift in Sources */,
 				D1A226FD2AEF04F900669D6D /* BaseViewController.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 				FD00000000000000000101 /* MainTabView.swift in Sources */,
 				FD00000000000000000102 /* BrowserView.swift in Sources */,
 				FD00000000000000000103 /* BrowserViewModel.swift in Sources */,
@@ -1671,9 +1668,14 @@
 				FD0000000000000000013C /* ThemeService.swift in Sources */,
 				FD0000000000000000013D /* URLFilenameExtractor.swift in Sources */,
 				FD0000000000000000013E /* ClipboardBannerView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+
 /* End PBXSourcesBuildPhase section */
 
-
+/* Begin PBXVariantGroup section */
 		D1A226A82AEEEFDF00669D6D /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
