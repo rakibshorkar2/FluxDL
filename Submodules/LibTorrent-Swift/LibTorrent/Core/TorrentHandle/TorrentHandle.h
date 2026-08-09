@@ -45,6 +45,9 @@ NS_SWIFT_NAME(TorrentHashes)
 - (void)setFirstLastPriorityDownload:(BOOL)enabled;
 - (void)setStopWhenReady:(BOOL)enabled;
 
+- (void)setDownloadLimit:(NSInteger)bytesPerSecond;
+- (void)setUploadLimit:(NSInteger)bytesPerSecond;
+
 - (void)setFilePriority:(FilePriority)priority at:(NSInteger)fileIndex;
 - (void)setFilesPriority:(FilePriority)priority at:(NSArray<NSNumber *> *)fileIndexes;
 - (void)setAllFilesPriority:(FilePriority)priority;

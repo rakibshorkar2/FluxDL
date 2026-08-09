@@ -38,6 +38,8 @@ NS_SWIFT_NAME(TorrentHandle.Snapshot)
 @property (readonly) NSUInteger numberOfTotalLeechers;
 @property (readonly) uint64_t downloadRate;
 @property (readonly) uint64_t uploadRate;
+@property (readonly) int64_t downloadLimit;
+@property (readonly) int64_t uploadLimit;
 @property (readonly) BOOL hasMetadata;
 @property (readonly) uint64_t total;
 @property (readonly) uint64_t totalDone;

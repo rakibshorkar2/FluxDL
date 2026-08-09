@@ -76,6 +76,7 @@
 		AA10005F2C6000010000005F /* TorrentItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005F2C6000010000005F /* TorrentItemCard.swift */; };
 		AA1000602C60000100000060 /* AddTorrentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000602C60000100000060 /* AddTorrentSheet.swift */; };
 		AA1000612C60000100000061 /* TorrentDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000612C60000100000061 /* TorrentDetailSheet.swift */; };
+		AA1000652C60000100000065 /* TorrentSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000652C60000100000065 /* TorrentSettingsSheet.swift */; };
 		AA1000622C60000100000062 /* LibTorrent.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB1000632C60000100000063 /* LibTorrent.framework */; };
 		AA1000632C60000100000063 /* LibTorrent.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = BB1000632C60000100000063 /* LibTorrent.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		AA2000012C60000100000001 /* SettingsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000012C60000100000001 /* SettingsServiceTests.swift */; };
@@ -88,6 +89,7 @@
 		AA2000082C60000100000008 /* PowerNetworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000082C60000100000008 /* PowerNetworkTests.swift */; };
 		AA2000092C60000100000009 /* URLFilenameExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000092C60000100000009 /* URLFilenameExtractorTests.swift */; };
 		AA20000A2C6000010000000A /* BackgroundKeepAliveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000A2C6000010000000A /* BackgroundKeepAliveTests.swift */; };
+		AA1000642C60000100000064 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB1000642C60000100000064 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +111,7 @@
 
 /* Begin PBXFileReference section */
 		BB1000002C60000100000000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB1000642C60000100000064 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BB1000012C60000100000001 /* FluxDLApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxDLApp.swift; sourceTree = "<group>"; };
 		BB1000022C60000100000002 /* ServiceContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceContainer.swift; sourceTree = "<group>"; };
 		BB1000032C60000100000003 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
@@ -178,6 +181,7 @@
 		BB10005F2C6000010000005F /* TorrentItemCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentItemCard.swift; sourceTree = "<group>"; };
 		BB1000602C60000100000060 /* AddTorrentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTorrentSheet.swift; sourceTree = "<group>"; };
 		BB1000612C60000100000061 /* TorrentDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentDetailSheet.swift; sourceTree = "<group>"; };
+		BB1000652C60000100000065 /* TorrentSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentSettingsSheet.swift; sourceTree = "<group>"; };
 		BB1000622C60000100000062 /* LibTorrent.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = LibTorrent.xcodeproj; path = "Submodules/LibTorrent-Swift/LibTorrent.xcodeproj"; sourceTree = "<group>"; };
 		BB1000632C60000100000063 /* LibTorrent.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = LibTorrent.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB1000992C60000100000099 /* FluxDL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FluxDL.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -209,6 +213,7 @@
 			isa = PBXGroup;
 			children = (
 				BB1000002C60000100000000 /* Info.plist */,
+				BB1000642C60000100000064 /* Assets.xcassets */,
 				BB1000012C60000100000001 /* FluxDLApp.swift */,
 				GG1000022C60000100000002 /* Core */,
 				GG1000032C60000100000003 /* Services */,
@@ -337,6 +342,7 @@
 				BB10005F2C6000010000005F /* TorrentItemCard.swift */,
 				BB1000602C60000100000060 /* AddTorrentSheet.swift */,
 				BB1000612C60000100000061 /* TorrentDetailSheet.swift */,
+				BB1000652C60000100000065 /* TorrentSettingsSheet.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -551,6 +557,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA1000642C60000100000064 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -630,6 +637,7 @@
 				AA10005F2C6000010000005F /* TorrentItemCard.swift in Sources */,
 				AA1000602C60000100000060 /* AddTorrentSheet.swift in Sources */,
 				AA1000612C60000100000061 /* TorrentDetailSheet.swift in Sources */,
+				AA1000652C60000100000065 /* TorrentSettingsSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -26,7 +26,8 @@ public struct TorrentDetailSheet: View {
                     List {
                         headerSection(torrent)
                         statsSection(torrent)
-                        seedingSection(torrent)
+                        downloadOptionsSection(torrent)
+                        speedLimitsSection(torrent)
 
                         if !torrent.files.isEmpty {
                             filesSection(torrent)
@@ -110,14 +111,48 @@ public struct TorrentDetailSheet: View {
         }
     }
 
-    private func seedingSection(_ torrent: TorrentTaskModel) -> some View {
-        Section {
+    private func downloadOptionsSection(_ torrent: TorrentTaskModel) -> some View {
+        Section("Download Options") {
             Toggle("Stop seeding when download completes", isOn: Binding(
                 get: { torrent.stopSeeding },
                 set: { enabled in viewModel.setStopSeeding(torrentID, enabled: enabled) }
             ))
+
+            Toggle("Sequential download", isOn: Binding(
+                get: { torrent.isSequential },
+                set: { enabled in viewModel.setSequentialDownload(torrentID, enabled: enabled) }
+            ))
+
+            Toggle("Download first & last pieces first", isOn: Binding(
+                get: { torrent.isFirstLastPiecePriority },
+                set: { enabled in viewModel.setFirstLastPriorityDownload(torrentID, enabled: enabled) }
+            ))
         } footer: {
-            Text("Automatically pauses the torrent once it has finished downloading.")
+            Text("Sequential download reads pieces in order, best for video playback. First/last pieces let playback start sooner.")
+        }
+    }
+
+    private func speedLimitsSection(_ torrent: TorrentTaskModel) -> some View {
+        Section("Speed Limits") {
+            Picker("Download Limit", selection: Binding(
+                get: { TorrentSpeedPreset(rawValue: Int(torrent.downloadLimit)) ?? .unlimited },
+                set: { preset in viewModel.setDownloadLimit(torrentID, bytesPerSecond: Int64(preset.rawValue)) }
+            )) {
+                ForEach(TorrentSpeedPreset.allCases) { preset in
+                    Text(preset.title).tag(preset)
+                }
+            }
+
+            Picker("Upload Limit", selection: Binding(
+                get: { TorrentSpeedPreset(rawValue: Int(torrent.uploadLimit)) ?? .unlimited },
+                set: { preset in viewModel.setUploadLimit(torrentID, bytesPerSecond: Int64(preset.rawValue)) }
+            )) {
+                ForEach(TorrentSpeedPreset.allCases) { preset in
+                    Text(preset.title).tag(preset)
+                }
+            }
+        } footer: {
+            Text("Per-torrent limits never exceed the global limits from Torrent Settings.")
         }
     }
 
@@ -218,6 +253,20 @@ public struct TorrentDetailSheet: View {
                                 .foregroundStyle(.red)
                                 .lineLimit(1)
                         }
+                    }
+                }
+                .contextMenu {
+                    Button(role: .destructive) {
+                        viewModel.removeTracker(torrentID, url: tracker.url)
+                    } label: {
+                        Label("Remove Tracker", systemImage: "trash")
+                    }
+                }
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        viewModel.removeTracker(torrentID, url: tracker.url)
+                    } label: {
+                        Label("Remove", systemImage: "trash")
                     }
                 }
             }

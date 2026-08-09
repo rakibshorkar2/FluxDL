@@ -1,6 +1,20 @@
 import Foundation
 import LibTorrent
 
+// MARK: - AddTorrentOptions
+
+/// Per-torrent settings applied when a new torrent is added.
+public struct AddTorrentOptions: Equatable {
+    public var stopSeeding: Bool = false
+    public var sequentialDownload: Bool = false
+    public var firstLastPiecePriority: Bool = false
+    /// Bytes per second; -1 means unlimited, 0 means paused transfers.
+    public var downloadLimit: Int64 = -1
+    public var uploadLimit: Int64 = -1
+
+    public init() {}
+}
+
 // MARK: - TorrentFileItem
 
 public struct TorrentFileItem: Identifiable, Equatable {
@@ -22,6 +36,11 @@ public struct TorrentTaskModel: Identifiable, Equatable {
     public var progress: Double
     public var downloadRate: Int64
     public var uploadRate: Int64
+    /// Estimated seconds until the download finishes; nil when not downloading or rate is zero.
+    public var eta: TimeInterval?
+    /// Per-torrent speed limits in bytes/sec; -1 means unlimited.
+    public var downloadLimit: Int64
+    public var uploadLimit: Int64
     public var total: Int64
     public var totalDone: Int64
     public var seeds: Int
@@ -38,6 +57,8 @@ public struct TorrentTaskModel: Identifiable, Equatable {
     public var isSeed: Bool
     public var isFinished: Bool
     public var stopSeeding: Bool
+    public var isSequential: Bool
+    public var isFirstLastPiecePriority: Bool
 }
 
 // MARK: - TorrentTrackerItem

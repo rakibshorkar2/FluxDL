@@ -124,6 +124,31 @@ std::unordered_map<lt::sha1_hash, std::unordered_map<std::string, std::unordered
     _session->resume();
 }
 
+- (void)setDownloadSpeedLimit:(NSInteger)bytesPerSecond {
+    lt::settings_pack pack;
+    pack.set_int(lt::settings_pack::download_rate_limit, (int)bytesPerSecond);
+    _session->apply_settings(std::move(pack));
+    _settings.maxDownloadSpeed = (NSUInteger)bytesPerSecond;
+}
+
+- (void)setUploadSpeedLimit:(NSInteger)bytesPerSecond {
+    lt::settings_pack pack;
+    pack.set_int(lt::settings_pack::upload_rate_limit, (int)bytesPerSecond);
+    _session->apply_settings(std::move(pack));
+    _settings.maxUploadSpeed = (NSUInteger)bytesPerSecond;
+}
+
+- (void)setMaxActiveTorrents:(NSInteger)maxActive maxDownloading:(NSInteger)maxDownloading maxUploading:(NSInteger)maxUploading {
+    lt::settings_pack pack;
+    pack.set_int(lt::settings_pack::active_limit, (int)maxActive);
+    pack.set_int(lt::settings_pack::active_downloads, (int)maxDownloading);
+    pack.set_int(lt::settings_pack::active_seeds, (int)maxUploading);
+    _session->apply_settings(std::move(pack));
+    _settings.maxActiveTorrents = maxActive;
+    _settings.maxDownloadingTorrents = maxDownloading;
+    _settings.maxUploadingTorrents = maxUploading;
+}
+
 - (void)reannounceToAllTrackers {
     for (TorrentHandle* torrent in _torrentsMap.allValues) {
         @synchronized (torrent) {

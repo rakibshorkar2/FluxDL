@@ -3,6 +3,54 @@ import Combine
 import UIKit
 import LibTorrent
 
+// MARK: - Filtering / Sorting
+
+public enum TorrentFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case downloading = "Downloading"
+    case seeding = "Seeding"
+    case paused = "Paused"
+    case finished = "Finished"
+
+    public var id: String { rawValue }
+
+    public func matches(_ torrent: TorrentTaskModel) -> Bool {
+        switch self {
+        case .all: return true
+        case .downloading:
+            switch torrent.state {
+            case .downloading, .downloadingMetadata, .checkingFiles, .checkingResumeData: return true
+            default: return false
+            }
+        case .seeding: return torrent.state == .seeding
+        case .paused: return torrent.state == .paused
+        case .finished: return torrent.state == .finished
+        }
+    }
+}
+
+public enum TorrentSortOrder: String, CaseIterable, Identifiable {
+    case name = "Name"
+    case size = "Size"
+    case progress = "Progress"
+    case downloadRate = "Download Speed"
+    case uploadRate = "Upload Speed"
+    case eta = "Time Left"
+
+    public var id: String { rawValue }
+
+    fileprivate func compare(_ lhs: TorrentTaskModel, _ rhs: TorrentTaskModel) -> Bool {
+        switch self {
+        case .name: return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        case .size: return lhs.total > rhs.total
+        case .progress: return lhs.progress < rhs.progress
+        case .downloadRate: return lhs.downloadRate > rhs.downloadRate
+        case .uploadRate: return lhs.uploadRate > rhs.uploadRate
+        case .eta: return (lhs.eta ?? .infinity) < (rhs.eta ?? .infinity)
+        }
+    }
+}
+
 @MainActor
 public final class TorrentViewModel: ObservableObject {
 
@@ -14,6 +62,22 @@ public final class TorrentViewModel: ObservableObject {
     @Published public private(set) var isSessionActive = false
     @Published public private(set) var totalDownloadRate: Int64 = 0
     @Published public private(set) var totalUploadRate: Int64 = 0
+
+    // ── Search / filter / sort ────────────────────────────────────────────
+    @Published public var searchText = ""
+    @Published public var filter: TorrentFilter = .all
+    @Published public var sortOrder: TorrentSortOrder = .name
+
+    /// Torrents filtered by search text and state, sorted per `sortOrder`.
+    public var visibleTorrents: [TorrentTaskModel] {
+        var result = torrents
+        if !searchText.isEmpty {
+            result = result.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+        result = result.filter { filter.matches($0) }
+        result.sort(by: sortOrder.compare)
+        return result
+    }
 
     // ── Sheet presentation ────────────────────────────────────────────────
     @Published public var isAddSheetPresented = false
@@ -58,25 +122,25 @@ public final class TorrentViewModel: ObservableObject {
 
     // MARK: ── Add actions ─────────────────────────────────────────────────
 
-    public func addMagnet(_ string: String) -> Bool {
-        switch service.addMagnet(string) {
+    public func addMagnet(_ string: String, options: AddTorrentOptions = AddTorrentOptions()) -> Bool {
+        switch service.addMagnet(string, options: options) {
         case .success: return true
         case .failure(let error): presentError(error.localizedDescription); return false
         }
     }
 
-    public func addTorrentFile(at url: URL) -> Bool {
-        switch service.addTorrentFile(at: url) {
+    public func addTorrentFile(at url: URL, options: AddTorrentOptions = AddTorrentOptions()) -> Bool {
+        switch service.addTorrentFile(at: url, options: options) {
         case .success: return true
         case .failure(let error): presentError(error.localizedDescription); return false
         }
     }
 
-    public func addRemoteTorrent(_ url: URL) {
+    public func addRemoteTorrent(_ url: URL, options: AddTorrentOptions = AddTorrentOptions()) {
         Task {
             do {
                 let torrentFile = try await TorrentFile.download(from: url)
-                switch service.addTorrent(torrentFile) {
+                switch service.addTorrent(torrentFile, options: options) {
                 case .success: break
                 case .failure(let error): presentError(error.localizedDescription)
                 }
@@ -125,6 +189,42 @@ public final class TorrentViewModel: ObservableObject {
 
     public func setStopSeeding(_ id: String, enabled: Bool) {
         service.setStopSeeding(id, enabled: enabled)
+    }
+
+    public func setDownloadLimit(_ id: String, bytesPerSecond: Int64) {
+        service.setDownloadLimit(id, bytesPerSecond: bytesPerSecond)
+    }
+
+    public func setUploadLimit(_ id: String, bytesPerSecond: Int64) {
+        service.setUploadLimit(id, bytesPerSecond: bytesPerSecond)
+    }
+
+    public func setSequentialDownload(_ id: String, enabled: Bool) {
+        service.setSequentialDownload(id, enabled: enabled)
+    }
+
+    public func setFirstLastPriorityDownload(_ id: String, enabled: Bool) {
+        service.setFirstLastPriorityDownload(id, enabled: enabled)
+    }
+
+    public func removeTracker(_ id: String, url: String) {
+        service.removeTracker(id, url: url)
+    }
+
+    public func setGlobalDownloadSpeed(_ bytesPerSecond: Int64) {
+        service.setGlobalDownloadSpeed(bytesPerSecond)
+    }
+
+    public func setGlobalUploadSpeed(_ bytesPerSecond: Int64) {
+        service.setGlobalUploadSpeed(bytesPerSecond)
+    }
+
+    public func setQueueLimits(maxActive: Int, maxDownloading: Int, maxUploading: Int) {
+        service.setQueueLimits(maxActive: maxActive, maxDownloading: maxDownloading, maxUploading: maxUploading)
+    }
+
+    public func setNotificationsEnabled(_ enabled: Bool) {
+        service.setNotificationsEnabled(enabled)
     }
 
     public func forceReannounce(_ id: String) {

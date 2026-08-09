@@ -10,18 +10,35 @@ public struct AddTorrentSheet: View {
     @State private var isRemoteImporting = false
     @State private var validationError: String?
 
-    public let onAddMagnet: (String) -> Bool
-    public let onAddTorrentFile: (URL) -> Bool
-    public let onAddRemoteTorrent: (URL) -> Void
+    // ── Per-torrent options applied on add ────────────────────────────────
+    @State private var stopSeeding = false
+    @State private var sequentialDownload = false
+    @State private var firstLastPiecePriority = false
+    @State private var downloadLimit = TorrentSpeedPreset.unlimited
+    @State private var uploadLimit = TorrentSpeedPreset.unlimited
+
+    public let onAddMagnet: (String, AddTorrentOptions) -> Bool
+    public let onAddTorrentFile: (URL, AddTorrentOptions) -> Bool
+    public let onAddRemoteTorrent: (URL, AddTorrentOptions) -> Void
 
     public init(
-        onAddMagnet: @escaping (String) -> Bool,
-        onAddTorrentFile: @escaping (URL) -> Bool,
-        onAddRemoteTorrent: @escaping (URL) -> Void
+        onAddMagnet: @escaping (String, AddTorrentOptions) -> Bool,
+        onAddTorrentFile: @escaping (URL, AddTorrentOptions) -> Bool,
+        onAddRemoteTorrent: @escaping (URL, AddTorrentOptions) -> Void
     ) {
         self.onAddMagnet = onAddMagnet
         self.onAddTorrentFile = onAddTorrentFile
         self.onAddRemoteTorrent = onAddRemoteTorrent
+    }
+
+    private var options: AddTorrentOptions {
+        var options = AddTorrentOptions()
+        options.stopSeeding = stopSeeding
+        options.sequentialDownload = sequentialDownload
+        options.firstLastPiecePriority = firstLastPiecePriority
+        options.downloadLimit = Int64(downloadLimit.rawValue)
+        options.uploadLimit = Int64(uploadLimit.rawValue)
+        return options
     }
 
     public var body: some View {
@@ -76,6 +93,28 @@ public struct AddTorrentSheet: View {
                     .disabled(remoteURLInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isRemoteImporting)
                 }
 
+                Section("Download Options") {
+                    Toggle("Stop seeding when finished", isOn: $stopSeeding)
+
+                    Toggle("Sequential download", isOn: $sequentialDownload)
+
+                    Toggle("Download first & last pieces first", isOn: $firstLastPiecePriority)
+
+                    Picker("Download Limit", selection: $downloadLimit) {
+                        ForEach(TorrentSpeedPreset.allCases) { preset in
+                            Text(preset.title).tag(preset)
+                        }
+                    }
+
+                    Picker("Upload Limit", selection: $uploadLimit) {
+                        ForEach(TorrentSpeedPreset.allCases) { preset in
+                            Text(preset.title).tag(preset)
+                        }
+                    }
+                } footer: {
+                    Text("Options apply to torrents added from this screen. You can change them later from the torrent details.")
+                }
+
                 if let error = validationError {
                     Section {
                         Text(error)
@@ -99,7 +138,7 @@ public struct AddTorrentSheet: View {
                 switch result {
                 case .success(let urls):
                     guard let url = urls.first else { return }
-                    if onAddTorrentFile(url) { dismiss() }
+                    if onAddTorrentFile(url, options) { dismiss() }
                 case .failure(let error):
                     validationError = error.localizedDescription
                 }
@@ -108,7 +147,7 @@ public struct AddTorrentSheet: View {
     }
 
     private func handleMagnet() {
-        if onAddMagnet(magnetInput) { dismiss() }
+        if onAddMagnet(magnetInput, options) { dismiss() }
     }
 
     private func handleRemoteURL() {
@@ -122,7 +161,7 @@ public struct AddTorrentSheet: View {
         }
         isRemoteImporting = true
         validationError = nil
-        onAddRemoteTorrent(url)
+        onAddRemoteTorrent(url, options)
         dismiss()
     }
 }

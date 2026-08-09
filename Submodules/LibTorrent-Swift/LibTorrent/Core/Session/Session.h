@@ -74,6 +74,10 @@ typedef NS_ENUM(NSUInteger, ErrorCode) {
 - (void)pause;
 - (void)resume;
 
+- (void)setDownloadSpeedLimit:(NSInteger)bytesPerSecond;
+- (void)setUploadSpeedLimit:(NSInteger)bytesPerSecond;
+- (void)setMaxActiveTorrents:(NSInteger)maxActive maxDownloading:(NSInteger)maxDownloading maxUploading:(NSInteger)maxUploading;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -189,6 +189,14 @@ static lt::add_torrent_params magnetParams(lt::torrent_handle const &handle) {
     return _status.upload_rate;
 }
 
+- (int64_t)downloadLimit {
+    return _status.download_limit;
+}
+
+- (int64_t)uploadLimit {
+    return _status.upload_limit;
+}
+
 - (BOOL)hasMetadata {
     return _status.has_metadata;
 }

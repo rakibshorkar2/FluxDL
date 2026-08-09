@@ -275,6 +275,20 @@ static std::vector<lt::download_priority_t> piecePrioritiesForFiles(
     }];
 }
 
+- (void)setDownloadLimit:(NSInteger)bytesPerSecond {
+    [self performOperation:@"setDownloadLimit" action:^(lt::torrent_handle const &handle) {
+        handle.set_download_limit((int)bytesPerSecond);
+        handle.post_status();
+    }];
+}
+
+- (void)setUploadLimit:(NSInteger)bytesPerSecond {
+    [self performOperation:@"setUploadLimit" action:^(lt::torrent_handle const &handle) {
+        handle.set_upload_limit((int)bytesPerSecond);
+        handle.post_status();
+    }];
+}
+
 - (void)applyPriorityConfiguration {
     [self performOperation:@"applyPriorityConfiguration" action:^(lt::torrent_handle const &handle) {
         auto filePriorities = handle.get_file_priorities();

@@ -1,5 +1,6 @@
 ﻿import Foundation
 import Combine
+import UserNotifications
 import LibTorrent
 
 /// Error surfaced by the torrent service. Carries a user-facing message.
@@ -21,6 +22,15 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     @Published public private(set) var isSessionActive = false
     @Published public private(set) var lastErrorMessage: String?
 
+    /// Session-global speed limits in bytes per second; 0 means unlimited.
+    @Published public private(set) var globalDownloadSpeed: Int64
+    @Published public private(set) var globalUploadSpeed: Int64
+    /// Torrent queueing limits.
+    @Published public private(set) var maxActiveTorrents: Int
+    @Published public private(set) var maxDownloadingTorrents: Int
+    @Published public private(set) var maxUploadingTorrents: Int
+    @Published public var notificationsEnabled: Bool
+
     // MARK: - Session
 
     public private(set) var session: Session?
@@ -29,7 +39,32 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     private var stopSeedingByHash: Set<String> = []
     private var updateTimer: Timer?
     private var refreshInFlight = false
+    private var notifiedCompletedHashes: Set<String> = []
+    private var hasEstablishedCompletionBaseline = false
     private let snapshotQueue = DispatchQueue(label: "FluxDL.TorrentService.snapshot", qos: .userInteractive)
+
+    private enum SettingsKey {
+        static let downloadSpeed = "Torrent.GlobalDownloadSpeed"
+        static let uploadSpeed = "Torrent.GlobalUploadSpeed"
+        static let maxActive = "Torrent.MaxActiveTorrents"
+        static let maxDownloading = "Torrent.MaxDownloadingTorrents"
+        static let maxUploading = "Torrent.MaxUploadingTorrents"
+        static let notificationsEnabled = "Torrent.NotificationsEnabled"
+    }
+
+    private let defaults: UserDefaults
+
+    public override init() {
+        let defaults = UserDefaults.standard
+        self.defaults = defaults
+        self.globalDownloadSpeed = Int64(defaults.object(forKey: SettingsKey.downloadSpeed) as? Int ?? 0)
+        self.globalUploadSpeed = Int64(defaults.object(forKey: SettingsKey.uploadSpeed) as? Int ?? 0)
+        self.maxActiveTorrents = defaults.object(forKey: SettingsKey.maxActive) as? Int ?? 6
+        self.maxDownloadingTorrents = defaults.object(forKey: SettingsKey.maxDownloading) as? Int ?? 4
+        self.maxUploadingTorrents = defaults.object(forKey: SettingsKey.maxUploading) as? Int ?? 2
+        self.notificationsEnabled = defaults.object(forKey: SettingsKey.notificationsEnabled) as? Bool ?? true
+        super.init()
+    }
 
     // MARK: - Session Lifecycle
 
@@ -45,11 +80,11 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         let settings = Session.Settings()
         settings.agentName = "FluxDL/1.0"
         settings.peerFingerprint = "-FD1000-"
-        settings.maxDownloadSpeed = 0
-        settings.maxUploadSpeed = 0
-        settings.maxActiveTorrents = 6
-        settings.maxDownloadingTorrents = 4
-        settings.maxUploadingTorrents = 2
+        settings.maxDownloadSpeed = UInt(max(0, globalDownloadSpeed))
+        settings.maxUploadSpeed = UInt(max(0, globalUploadSpeed))
+        settings.maxActiveTorrents = maxActiveTorrents
+        settings.maxDownloadingTorrents = maxDownloadingTorrents
+        settings.maxUploadingTorrents = maxUploadingTorrents
         settings.isDhtEnabled = true
         settings.isLsdEnabled = true
         settings.isUtpEnabled = true
@@ -73,6 +108,10 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         isSessionActive = true
         requestRefresh()
 
+        if notificationsEnabled {
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        }
+
         let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.requestRefresh()
         }
@@ -82,7 +121,7 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
 
     // MARK: - Adding Torrents
 
-    public func addMagnet(_ string: String) -> Result<Void, TorrentServiceError> {
+    public func addMagnet(_ string: String, options: AddTorrentOptions = AddTorrentOptions()) -> Result<Void, TorrentServiceError> {
         guard let session = session else { return .failure(TorrentServiceError("Torrent session is not ready.")) }
 
         let cleaned = string.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -92,13 +131,14 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         guard let magnet = MagnetURI(with: url) else {
             return .failure(TorrentServiceError("Could not parse the magnet link."))
         }
-        guard session.addTorrent(magnet) != nil else {
+        guard let handle = session.addTorrent(magnet) else {
             return .failure(TorrentServiceError("Failed to add the magnet link to the session."))
         }
+        applyOptions(options, to: handle)
         return .success(())
     }
 
-    public func addTorrentFile(at url: URL) -> Result<Void, TorrentServiceError> {
+    public func addTorrentFile(at url: URL, options: AddTorrentOptions = AddTorrentOptions()) -> Result<Void, TorrentServiceError> {
         guard let session = session else { return .failure(TorrentServiceError("Torrent session is not ready.")) }
 
         let isScoped = url.startAccessingSecurityScopedResource()
@@ -109,22 +149,44 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         guard let torrentFile = TorrentFile(with: url) else {
             return .failure(TorrentServiceError("Invalid or unsupported .torrent file."))
         }
-        return addTorrent(torrentFile)
+        return addTorrent(torrentFile, options: options)
     }
 
-    public func addTorrentFile(data: Data) -> Result<Void, TorrentServiceError> {
+    public func addTorrentFile(data: Data, options: AddTorrentOptions = AddTorrentOptions()) -> Result<Void, TorrentServiceError> {
         guard let torrentFile = TorrentFile(with: data) else {
             return .failure(TorrentServiceError("Invalid or unsupported .torrent file."))
         }
-        return addTorrent(torrentFile)
+        return addTorrent(torrentFile, options: options)
     }
 
-    public func addTorrent(_ torrentFile: TorrentFile) -> Result<Void, TorrentServiceError> {
+    public func addTorrent(_ torrentFile: TorrentFile, options: AddTorrentOptions = AddTorrentOptions()) -> Result<Void, TorrentServiceError> {
         guard let session = session else { return .failure(TorrentServiceError("Torrent session is not ready.")) }
-        guard session.addTorrent(torrentFile) != nil else {
+        guard let handle = session.addTorrent(torrentFile) else {
             return .failure(TorrentServiceError("Failed to add the torrent file to the session."))
         }
+        applyOptions(options, to: handle)
         return .success(())
+    }
+
+    /// Applies per-torrent options right after a torrent is added to the session.
+    private func applyOptions(_ options: AddTorrentOptions, to handle: TorrentHandle) {
+        let id = handle.infoHashes.best.hex
+        if options.stopSeeding {
+            stopSeedingByHash.insert(id)
+            handle.setStopWhenReady(true)
+        }
+        if options.sequentialDownload {
+            handle.setSequentialDownload(true)
+        }
+        if options.firstLastPiecePriority {
+            handle.setFirstLastPriorityDownload(true)
+        }
+        if options.downloadLimit >= 0 {
+            handle.setDownloadLimit(Int(options.downloadLimit))
+        }
+        if options.uploadLimit >= 0 {
+            handle.setUploadLimit(Int(options.uploadLimit))
+        }
     }
 
     // MARK: - Torrent Actions
@@ -169,6 +231,66 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
             stopSeedingByHash.remove(id)
         }
         handle.setStopWhenReady(enabled)
+    }
+
+    /// Per-torrent speed limits. -1 means unlimited, 0 means no transfers.
+    public func setDownloadLimit(_ id: String, bytesPerSecond: Int64) {
+        handle(id)?.setDownloadLimit(Int(bytesPerSecond))
+    }
+
+    public func setUploadLimit(_ id: String, bytesPerSecond: Int64) {
+        handle(id)?.setUploadLimit(Int(bytesPerSecond))
+    }
+
+    public func setSequentialDownload(_ id: String, enabled: Bool) {
+        handle(id)?.setSequentialDownload(enabled)
+    }
+
+    public func setFirstLastPriorityDownload(_ id: String, enabled: Bool) {
+        handle(id)?.setFirstLastPriorityDownload(enabled)
+    }
+
+    public func removeTracker(_ id: String, url: String) {
+        handle(id)?.removeTrackers([url])
+    }
+
+    // MARK: - Global Settings
+
+    /// Session-global speed limit in bytes per second; 0 means unlimited.
+    public func setGlobalDownloadSpeed(_ bytesPerSecond: Int64) {
+        let clamped = max(0, bytesPerSecond)
+        globalDownloadSpeed = clamped
+        defaults.set(Int(clamped), forKey: SettingsKey.downloadSpeed)
+        session?.setDownloadSpeedLimit(Int(clamped))
+    }
+
+    public func setGlobalUploadSpeed(_ bytesPerSecond: Int64) {
+        let clamped = max(0, bytesPerSecond)
+        globalUploadSpeed = clamped
+        defaults.set(Int(clamped), forKey: SettingsKey.uploadSpeed)
+        session?.setUploadSpeedLimit(Int(clamped))
+    }
+
+    /// Applies and persists torrent queueing limits.
+    public func setQueueLimits(maxActive: Int, maxDownloading: Int, maxUploading: Int) {
+        let active = max(1, maxActive)
+        let downloading = max(0, maxDownloading)
+        let uploading = max(0, maxUploading)
+        maxActiveTorrents = active
+        maxDownloadingTorrents = downloading
+        maxUploadingTorrents = uploading
+        defaults.set(active, forKey: SettingsKey.maxActive)
+        defaults.set(downloading, forKey: SettingsKey.maxDownloading)
+        defaults.set(uploading, forKey: SettingsKey.maxUploading)
+        session?.setMaxActiveTorrents(active, maxDownloading: downloading, maxUploading: uploading)
+    }
+
+    public func setNotificationsEnabled(_ enabled: Bool) {
+        notificationsEnabled = enabled
+        defaults.set(enabled, forKey: SettingsKey.notificationsEnabled)
+        if enabled {
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        }
     }
 
     public func pauseAll() {
@@ -247,12 +369,19 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
             DispatchQueue.main.async {
                 self.torrents = sorted
                 self.refreshInFlight = false
+                self.checkForCompletions(sorted)
             }
         }
     }
 
     private func makeModel(for handle: TorrentHandle, snapshot: TorrentHandle.Snapshot, stopSeeding: Set<String>) -> TorrentTaskModel {
         let id = handle.infoHashes.best.hex
+        let remaining = snapshot.totalWantedDone < snapshot.totalWanted
+            ? snapshot.totalWanted - snapshot.totalWantedDone
+            : 0
+        let eta: TimeInterval? = remaining > 0 && snapshot.downloadRate > 0
+            ? TimeInterval(remaining) / TimeInterval(snapshot.downloadRate)
+            : nil
         return TorrentTaskModel(
             id: id,
             name: snapshot.name.isEmpty ? "Unknown Torrent" : snapshot.name,
@@ -260,6 +389,9 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
             progress: snapshot.progress,
             downloadRate: Int64(snapshot.downloadRate),
             uploadRate: Int64(snapshot.uploadRate),
+            eta: eta,
+            downloadLimit: Int64(snapshot.downloadLimit),
+            uploadLimit: Int64(snapshot.uploadLimit),
             total: Int64(snapshot.totalWanted),
             totalDone: Int64(snapshot.totalWantedDone),
             seeds: Int(snapshot.numberOfSeeds),
@@ -292,8 +424,42 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
             isPaused: snapshot.isPaused,
             isSeed: snapshot.isSeed,
             isFinished: snapshot.isFinished,
-            stopSeeding: stopSeeding.contains(id)
+            stopSeeding: stopSeeding.contains(id),
+            isSequential: snapshot.isSequential,
+            isFirstLastPiecePriority: snapshot.isFirstLastPiecePriority
         )
+    }
+
+    // MARK: - Completion Notifications
+
+    /// Notifies once per torrent when it transitions to a finished/seeding state.
+    private func checkForCompletions(_ models: [TorrentTaskModel]) {
+        guard notificationsEnabled else {
+            hasEstablishedCompletionBaseline = false
+            return
+        }
+        for model in models where model.isSeed || model.isFinished {
+            if !hasEstablishedCompletionBaseline {
+                notifiedCompletedHashes.insert(model.id)
+            } else if !notifiedCompletedHashes.contains(model.id) {
+                notifiedCompletedHashes.insert(model.id)
+                postCompletionNotification(for: model)
+            }
+        }
+        hasEstablishedCompletionBaseline = true
+    }
+
+    private func postCompletionNotification(for model: TorrentTaskModel) {
+        let content = UNMutableNotificationContent()
+        content.title = "Download Complete"
+        content.body = model.name
+        content.sound = .default
+        let request = UNNotificationRequest(
+            identifier: "FluxDL.complete.\(model.id)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 
     private func handle(_ id: String) -> TorrentHandle? {

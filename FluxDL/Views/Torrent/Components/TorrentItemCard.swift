@@ -52,6 +52,16 @@ public enum TorrentByteFormatter {
     public static func rate(_ bytesPerSecond: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytesPerSecond, countStyle: .binary) + "/s"
     }
+
+    public static func eta(_ interval: TimeInterval) -> String {
+        let total = Int(interval)
+        let hours = total / 3600
+        let minutes = (total % 3600) / 60
+        let seconds = total % 60
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        if minutes > 0 { return "\(minutes)m \(seconds)s" }
+        return "\(seconds)s"
+    }
 }
 
 // MARK: - TorrentItemCard
@@ -118,6 +128,11 @@ public struct TorrentItemCard: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.green)
                     }
+                    if let eta = torrent.eta, torrent.state == .downloading {
+                        Label(TorrentByteFormatter.eta(eta), systemImage: "clock")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
 
                     Spacer()
 
@@ -134,6 +149,22 @@ public struct TorrentItemCard: View {
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    }
+                }
+
+                if torrent.downloadLimit > 0 || torrent.uploadLimit > 0 {
+                    HStack(spacing: 12) {
+                        if torrent.downloadLimit > 0 {
+                            Label("DL \(TorrentByteFormatter.rate(torrent.downloadLimit))", systemImage: "speedometer")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if torrent.uploadLimit > 0 {
+                            Label("UL \(TorrentByteFormatter.rate(torrent.uploadLimit))", systemImage: "speedometer")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
                     }
                 }
             }
