@@ -460,7 +460,7 @@
 			buildRules = (
 			);
 			dependencies = (
-				DD1000012C60000100000001 /* PBXTargetDependency */,
+				DD1000012C60000100000010 /* PBXTargetDependency */,
 			);
 			name = FluxDL;
 			productName = FluxDL;
@@ -653,7 +653,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		DD1000012C60000100000001 /* PBXTargetDependency */ = {
+		DD1000012C60000100000010 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = LibTorrent;
 			targetProxy = CC1000022C60000100000002 /* PBXContainerItemProxy */;
