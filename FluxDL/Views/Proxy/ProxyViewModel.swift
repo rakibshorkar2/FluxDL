@@ -21,8 +21,8 @@ public final class ProxyViewModel: ObservableObject {
     @Published public var profilePendingDelete: ProxyProfile?
     @Published public var isDeleteConfirmationPresented = false
 
-    public init(service: ProxyService = (ServiceContainer.shared.proxyService as? ProxyService) ?? ProxyService()) {
-        self.service = service
+    public init(service: ProxyService? = nil) {
+        self.service = service ?? ((ServiceContainer.shared.proxyService as? ProxyService) ?? ProxyService())
     }
 
     // MARK: - Profile actions
