@@ -60,7 +60,20 @@ jobs:
             echo "No installed iOS runtime found"
             exit 1
           fi
-          UDID=$(xcrun simctl create "FluxDL CI Sim" "$RUNTIME")
+          DEVICE_TYPE=$(xcrun simctl list devicetypes -j | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for dt in data.get('devicetypes', []):
+              if 'iPhone' in dt.get('identifier', ''):
+                  print(dt['identifier'])
+                  sys.exit(0)
+          sys.exit(1)
+          ")
+          if [ -z "$DEVICE_TYPE" ]; then
+            echo "No iPhone device type found"
+            exit 1
+          fi
+          UDID=$(xcrun simctl create "FluxDL CI Sim" "$DEVICE_TYPE" "$RUNTIME")
           echo "RUNTIME=$RUNTIME"
           echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
 
