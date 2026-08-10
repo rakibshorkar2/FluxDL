@@ -1,5 +1,48 @@
 import SwiftUI
 import WebKit
+import Combine
+
+/// Passive JS bridge that reports the DOM element behind a tapped download
+/// link. WebKit's navigation callbacks never expose the element's CGRect, so
+/// the click listener captures href / download-attribute / bounding rect and
+/// posts them to Swift for popup anchoring. It never modifies page behavior.
+public enum DownloadBridgeScript {
+    public static let messageName = "downloadTrigger"
+
+    public static let source = """
+    (function () {
+        if (window.__fluxdlDownloadBridgeInstalled) { return; }
+        window.__fluxdlDownloadBridgeInstalled = true;
+        document.addEventListener("click", function (event) {
+            var el = event.target;
+            if (!el) { return; }
+            var anchor = null;
+            if (typeof el.closest === "function") {
+                anchor = el.closest("a[href]");
+            }
+            if (!anchor && el.tagName && String(el.tagName).toLowerCase() === "a" && el.href) {
+                anchor = el;
+            }
+            if (!anchor) { return; }
+            var href = anchor.getAttribute("href");
+            if (!href || href.toLowerCase().indexOf("javascript:") === 0) { return; }
+            var rect = anchor.getBoundingClientRect();
+            var message = {
+                href: anchor.href || href,
+                download: anchor.getAttribute("download") || "",
+                hasDownload: anchor.hasAttribute("download"),
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2,
+                scrollX: window.pageXOffset || document.documentElement.scrollLeft || 0,
+                scrollY: window.pageYOffset || document.documentElement.scrollTop || 0
+            };
+            try {
+                window.webkit.messageHandlers.downloadTrigger.postMessage(message);
+            } catch (err) {}
+        }, true);
+    })();
+    """
+}
 
 /// JavaScript used by Reader Mode. Extracts the main article content and
 /// presents it in a clean reading view. Exiting reader mode reloads the page.
@@ -94,6 +137,16 @@ public struct WebViewContainer: UIViewRepresentable {
         // Apply native Ad Blocker rules
         AdBlockEngine.shared.applyRuleList(to: configuration, domain: activeTab?.url?.host)
 
+        // Download-trigger bridge: captures the DOM element behind a tapped
+        // downloadable link so the "Download File?" popup can be anchored to it.
+        configuration.userContentController.addUserScript(
+            WKUserScript(
+                source: DownloadBridgeScript.source,
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+        )
+
         // Install the passive request-counting script alongside the rule list
         // so the UI can surface a per-page blocked-request badge.
         if AdBlockEngine.shared.shouldApplyProtection(domain: activeTab?.url?.host) {
@@ -121,6 +174,7 @@ public struct WebViewContainer: UIViewRepresentable {
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.delegate = context.coordinator
+        applyWebpageAppearance(to: webView)
         
         if let isDesktop = activeTab?.isDesktopMode, isDesktop {
             webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
@@ -150,6 +204,8 @@ public struct WebViewContainer: UIViewRepresentable {
             uiView.customUserAgent = expectedUA
         }
 
+        applyWebpageAppearance(to: uiView)
+
         // Only update the findInPage web-view reference when the WKWebView instance itself changes.
         if context.coordinator.observedWebView !== uiView {
             viewModel.findInPageManager.setWebView(uiView)
@@ -158,11 +214,19 @@ public struct WebViewContainer: UIViewRepresentable {
     
     // MARK: - Coordinator
     
-    public class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate {
+    public class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
         var viewModel: BrowserViewModel
         weak var observedWebView: WKWebView?
         private var lastScrollOffsetY: CGFloat = 0
         private var isDragging = false
+        private var cancellables = Set<AnyCancellable>()
+        
+        /// File extensions that trigger the "Download File?" popup.
+        static let downloadableExtensions: Set<String> = [
+            "zip", "rar", "7z", "ipa", "dmg", "pkg", "pdf", "mp4", "mkv",
+            "avi", "mp3", "aac", "flac", "png", "jpg", "gif", "webp", "docx",
+            "xlsx", "pptx", "iso", "apk", "exe"
+        ]
         
         init(viewModel: BrowserViewModel) {
             self.viewModel = viewModel
@@ -174,6 +238,22 @@ public struct WebViewContainer: UIViewRepresentable {
             webView.addObserver(self, forKeyPath: "estimatedProgress", options: .new, context: nil)
             webView.addObserver(self, forKeyPath: "title", options: .new, context: nil)
             webView.addObserver(self, forKeyPath: "URL", options: .new, context: nil)
+            webView.configuration.userContentController.add(
+                self,
+                name: DownloadBridgeScript.messageName
+            )
+            
+            // Live webpage-appearance updates while a page is open: when the
+            // user changes the "Webpage Appearance" setting the visible page's
+            // `prefers-color-scheme` environment is updated without a reload.
+            BrowserSettings.shared.$webpageAppearance
+                .receive(on: DispatchQueue.main)
+                .sink { [weak webView, weak self] _ in
+                    if let webView, let self {
+                        self.applyWebpageAppearance(to: webView)
+                    }
+                }
+                .store(in: &cancellables)
         }
         
         func detachObservers() {
@@ -182,7 +262,32 @@ public struct WebViewContainer: UIViewRepresentable {
                 webView.removeObserver(self, forKeyPath: "title")
                 webView.removeObserver(self, forKeyPath: "URL")
                 webView.scrollView.delegate = nil
+                webView.configuration.userContentController.removeScriptMessageHandler(
+                    forName: DownloadBridgeScript.messageName
+                )
                 self.observedWebView = nil
+            }
+            cancellables.removeAll()
+        }
+        
+        /// Maps the Browser "Webpage Appearance" setting onto WKWebView so the
+        /// page receives the matching `prefers-color-scheme` environment.
+        /// `.system` / `.automatic` follow the OS appearance; `.light` / `.dark`
+        /// force the preference. No CSS inversion is ever applied.
+        private func applyWebpageAppearance(to webView: WKWebView) {
+            switch BrowserSettings.shared.webpageAppearance {
+            case .system, .automatic:
+                if webView.overrideUserInterfaceStyle != .unspecified {
+                    webView.overrideUserInterfaceStyle = .unspecified
+                }
+            case .light:
+                if webView.overrideUserInterfaceStyle != .light {
+                    webView.overrideUserInterfaceStyle = .light
+                }
+            case .dark:
+                if webView.overrideUserInterfaceStyle != .dark {
+                    webView.overrideUserInterfaceStyle = .dark
+                }
             }
         }
         
@@ -241,6 +346,18 @@ public struct WebViewContainer: UIViewRepresentable {
         }
         
         public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            // Keep the "Download File?" popup attached to its triggering element
+            // while the page scrolls beneath it.
+            if self.viewModel.showDownloadPrompt,
+               let pagePoint = self.viewModel.downloadAnchorPagePoint,
+               let webView = observedWebView {
+                let viewPoint = CGPoint(
+                    x: pagePoint.x - scrollView.contentOffset.x,
+                    y: pagePoint.y - scrollView.contentOffset.y
+                )
+                self.viewModel.downloadAnchorPoint = webView.convert(viewPoint, to: nil)
+            }
+            
             guard isDragging, !viewModel.isAddressFieldFocused else { return }
             let y = scrollView.contentOffset.y
             let isScrollingDown = y > lastScrollOffsetY
@@ -279,16 +396,23 @@ public struct WebViewContainer: UIViewRepresentable {
             }
 
             if let url = navigationAction.request.url {
-                let ext = url.pathExtension.lowercased()
-                let downloadableExtensions = [
-                    "zip", "rar", "7z", "ipa", "dmg", "pkg", "pdf", "mp4", "mkv",
-                    "avi", "mp3", "aac", "flac", "png", "jpg", "gif", "webp", "docx",
-                    "xlsx", "pptx", "iso", "apk", "exe"
-                ]
-                
-                if downloadableExtensions.contains(ext) {
+                // `javascript:` links (e.g. <a href="javascript:...">) execute
+                // against the current page instead of navigating. This runs
+                // before any download detection so a `javascript:` URL can never
+                // be treated as a downloadable file.
+                if url.scheme?.lowercased() == "javascript",
+                   let script = BrowserJavaScript.script(fromJavaScriptURL: url) {
+                    decisionHandler(.cancel)
                     Task { @MainActor in
-                        self.viewModel.promptDownload(url: url)
+                        self.viewModel.executeJavaScript(script)
+                    }
+                    return
+                }
+
+                let ext = url.pathExtension.lowercased()
+                if Self.downloadableExtensions.contains(ext) {
+                    Task { @MainActor in
+                        self.viewModel.promptDownload(url: url, sourceURL: webView.url)
                     }
                     decisionHandler(.cancel)
                     return
@@ -303,6 +427,8 @@ public struct WebViewContainer: UIViewRepresentable {
             decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
         ) {
             if let response = navigationResponse.response as? HTTPURLResponse,
+               let responseURL = response.url,
+               responseURL.scheme?.lowercased() != "javascript",
                let mimeType = response.mimeType?.lowercased() {
                 
                 let downloadableMimeTypes = [
@@ -311,16 +437,89 @@ public struct WebViewContainer: UIViewRepresentable {
                     "application/pdf", "application/vnd.android.package-archive"
                 ]
                 
-                if downloadableMimeTypes.contains(mimeType),
-                   let url = response.url {
+                if downloadableMimeTypes.contains(mimeType) {
+                    // Capture Content-Disposition / Content-Length when available
+                    // so the popup shows the exact requested file.
+                    let contentDisposition = response.allHeaderFields["Content-Disposition"] as? String
+                    let filename = contentDisposition.flatMap {
+                        URLFilenameExtractor.extractFilename(fromContentDisposition: $0)
+                    }
+                    let expectedLength = response.expectedContentLength
+                    let fileSize: Int64? = expectedLength >= 0 ? expectedLength : nil
+                    
                     Task { @MainActor in
-                        self.viewModel.promptDownload(url: url)
+                        self.viewModel.promptDownload(
+                            url: responseURL,
+                            filename: filename,
+                            mimeType: response.mimeType,
+                            fileSize: fileSize,
+                            sourceURL: webView.url
+                        )
                     }
                     decisionHandler(.cancel)
                     return
                 }
             }
             decisionHandler(.allow)
+        }
+        
+        // MARK: - Download-trigger bridge (WKScriptMessageHandler)
+        
+        /// Receives the DOM element behind a tapped downloadable link. This is
+        /// the only reliable way to anchor the "Download File?" popup to the
+        /// exact control the user tapped — WKNavigationDelegate callbacks never
+        /// expose element coordinates.
+        public func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
+            guard message.name == DownloadBridgeScript.messageName,
+                  let payload = message.body as? [String: Any],
+                  let href = payload["href"] as? String,
+                  let url = URL(string: href),
+                  url.scheme?.lowercased() != "javascript",
+                  let webView = observedWebView else { return }
+            
+            // Only surface genuine download triggers: an explicit `download`
+            // attribute or a known downloadable extension.
+            let downloadAttribute = (payload["download"] as? String) ?? ""
+            let hasDownloadAttribute = (payload["hasDownload"] as? Bool) == true
+                || !downloadAttribute.isEmpty
+            let ext = url.pathExtension.lowercased()
+            guard hasDownloadAttribute || Self.downloadableExtensions.contains(ext) else { return }
+            
+            // `<a download="filename">`: the attribute value is the requested name.
+            let filename = !downloadAttribute.isEmpty
+                ? (downloadAttribute.removingPercentEncoding ?? downloadAttribute)
+                : nil
+            
+            guard let rawX = payload["x"] as? Double,
+                  let rawY = payload["y"] as? Double,
+                  let scrollX = payload["scrollX"] as? Double,
+                  let scrollY = payload["scrollY"] as? Double else {
+                Task { @MainActor in
+                    self.viewModel.promptDownload(url: url, filename: filename, sourceURL: webView.url)
+                }
+                return
+            }
+            
+            // CSS pixels -> UIKit points. Accomodates pinch zoom; the bridge
+            // reports viewport-relative rects, so document-space coordinates
+            // are reconstructed for scroll-following.
+            let zoom = webView.scrollView.zoomScale
+            let viewPoint = CGPoint(x: rawX * zoom, y: rawY * zoom)
+            let globalPoint = webView.convert(viewPoint, to: nil)
+            let pagePoint = CGPoint(x: rawX + scrollX, y: rawY + scrollY)
+            
+            Task { @MainActor in
+                self.viewModel.promptDownload(
+                    url: url,
+                    filename: filename,
+                    sourceURL: webView.url,
+                    anchorPoint: globalPoint,
+                    anchorPagePoint: pagePoint
+                )
+            }
         }
         
         public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {

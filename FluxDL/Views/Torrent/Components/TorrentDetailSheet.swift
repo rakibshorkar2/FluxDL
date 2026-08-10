@@ -1,6 +1,8 @@
 import SwiftUI
 import LibTorrent
 
+// MARK: - TorrentDetailSheet
+
 public struct TorrentDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -15,6 +17,8 @@ public struct TorrentDetailSheet: View {
         self.torrentID = torrentID
     }
 
+    /// The sheet always resolves its content from the stable `torrentID`, never
+    /// from list position, so popups and rows can never target another torrent.
     private var torrent: TorrentTaskModel? {
         viewModel.liveModel(for: torrentID)
     }
@@ -24,19 +28,19 @@ public struct TorrentDetailSheet: View {
             Group {
                 if let torrent = torrent {
                     List {
-                        headerSection(torrent)
-                        statsSection(torrent)
-                        downloadOptionsSection(torrent)
-                        speedLimitsSection(torrent)
+                        overviewSection(torrent)
+                        transferSection(torrent)
+                        peersSection(torrent)
+                        seedingSection(torrent)
+                        torrentInfoSection(torrent)
 
                         if !torrent.files.isEmpty {
                             filesSection(torrent)
                         }
 
                         trackersSection(torrent)
-
-                        metadataSection(torrent)
-
+                        downloadOptionsSection(torrent)
+                        speedLimitsSection(torrent)
                         actionsSection(torrent)
                     }
                 } else {
@@ -55,7 +59,7 @@ public struct TorrentDetailSheet: View {
                 }
             }
             .confirmationDialog(
-                "Remove '\(torrent?.name ?? "Torrent")'",
+                removeDialogTitle,
                 isPresented: $isRemoveConfirmationPresented,
                 titleVisibility: .visible
             ) {
@@ -69,95 +73,157 @@ public struct TorrentDetailSheet: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("The torrent will be removed from the session. Downloaded files will be deleted if you choose the delete option.")
+                Text("The torrent will be removed from the session. Downloaded files will be deleted only if you choose the delete option.")
             }
         }
     }
 
-    // MARK: - Sections
+    private var removeDialogTitle: String {
+        guard let name = torrent?.name else { return "Remove Torrent" }
+        return "Remove '\(name)'"
+    }
 
-    private func headerSection(_ torrent: TorrentTaskModel) -> some View {
-        Section {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(torrent.name)
-                    .font(.headline)
+    // MARK: - Overview
 
+    private func overviewSection(_ torrent: TorrentTaskModel) -> some View {
+        Section("Overview") {
+            HStack(spacing: 10) {
                 StatusBadge(
-                    title: torrent.state.displayTitle,
-                    icon: torrent.state.displayIcon,
-                    color: torrent.state.displayColor
+                    title: torrent.statusTitle,
+                    icon: torrent.isStalled ? "exclamationmark.triangle.fill" : torrent.state.displayIcon,
+                    color: torrent.isStalled ? .orange : torrent.state.displayColor
                 )
 
-                if torrent.total > 0 {
-                    ProgressView(value: torrent.progress)
-                        .tint(torrent.state == .storageError ? Color.red : Color.accentColor)
-
-                    Text("\(Int(torrent.progress * 100))% completed")
+                if torrent.isStalled {
+                    Text("No progress for a while — check trackers and peers.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-        }
-    }
 
-    private func statsSection(_ torrent: TorrentTaskModel) -> some View {
-        Section("Stats") {
-            LabeledContent("Download", value: TorrentByteFormatter.rate(torrent.downloadRate))
-            LabeledContent("Upload", value: TorrentByteFormatter.rate(torrent.uploadRate))
-            LabeledContent("Size", value: TorrentByteFormatter.string(torrent.total))
-            LabeledContent("Downloaded", value: TorrentByteFormatter.string(torrent.totalDone))
-            LabeledContent("Seeds", value: "\(torrent.seeds) (\(torrent.totalSeeds) total)")
-            LabeledContent("Peers", value: "\(torrent.peers) (\(torrent.totalPeers) total)")
-        }
-    }
+            if torrent.total > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    ProgressView(value: torrent.clampedProgress)
+                        .tint(torrent.state == .storageError ? Color.red : Color.accentColor)
 
-    private func downloadOptionsSection(_ torrent: TorrentTaskModel) -> some View {
-        Section(header: Text("Download Options"), footer: Text("Sequential download reads pieces in order, best for video playback. First/last pieces let playback start sooner.")) {
-            Toggle("Stop seeding when download completes", isOn: Binding(
-                get: { torrent.stopSeeding },
-                set: { enabled in viewModel.setStopSeeding(torrentID, enabled: enabled) }
-            ))
-
-            Toggle("Sequential download", isOn: Binding(
-                get: { torrent.isSequential },
-                set: { enabled in viewModel.setSequentialDownload(torrentID, enabled: enabled) }
-            ))
-
-            Toggle("Download first & last pieces first", isOn: Binding(
-                get: { torrent.isFirstLastPiecePriority },
-                set: { enabled in viewModel.setFirstLastPriorityDownload(torrentID, enabled: enabled) }
-            ))
-        }
-    }
-
-    private func speedLimitsSection(_ torrent: TorrentTaskModel) -> some View {
-        Section(header: Text("Speed Limits"), footer: Text("Per-torrent limits never exceed the global limits from Torrent Settings.")) {
-            Picker("Download Limit", selection: Binding(
-                get: { TorrentSpeedPreset(rawValue: Int(torrent.downloadLimit)) ?? .unlimited },
-                set: { preset in viewModel.setDownloadLimit(torrentID, bytesPerSecond: Int64(preset.rawValue)) }
-            )) {
-                ForEach(TorrentSpeedPreset.allCases) { preset in
-                    Text(preset.title).tag(preset)
+                    Text("\(torrent.displayPercentage)% complete")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
+
+                LabeledContent("Downloaded", value: "\(TorrentByteFormatter.string(torrent.totalDone)) of \(TorrentByteFormatter.string(torrent.total))")
+                LabeledContent("Remaining", value: TorrentByteFormatter.string(torrent.remainingBytes))
+                LabeledContent("Total Size", value: TorrentByteFormatter.string(torrent.total))
             }
 
-            Picker("Upload Limit", selection: Binding(
-                get: { TorrentSpeedPreset(rawValue: Int(torrent.uploadLimit)) ?? .unlimited },
-                set: { preset in viewModel.setUploadLimit(torrentID, bytesPerSecond: Int64(preset.rawValue)) }
-            )) {
-                ForEach(TorrentSpeedPreset.allCases) { preset in
-                    Text(preset.title).tag(preset)
-                }
+            if torrent.state == .downloading {
+                LabeledContent("ETA", value: etaText(torrent))
+            }
+
+            LabeledContent("Added", value: torrent.createdAt.formatted(date: .abbreviated, time: .shortened))
+
+            if let created = torrent.creationDate {
+                LabeledContent("Created (metadata)", value: created.formatted(date: .abbreviated, time: .omitted))
             }
         }
     }
+
+    // MARK: - Transfer
+
+    private func transferSection(_ torrent: TorrentTaskModel) -> some View {
+        Section("Transfer") {
+            LabeledContent("Download Speed", value: TorrentByteFormatter.rate(torrent.downloadRate))
+            LabeledContent("Upload Speed", value: TorrentByteFormatter.rate(torrent.uploadRate))
+
+            if let average = torrent.averageDownloadRate {
+                LabeledContent("Average Download", value: TorrentByteFormatter.rate(average))
+            }
+            if let average = torrent.averageUploadRate {
+                LabeledContent("Average Upload", value: TorrentByteFormatter.rate(average))
+            }
+
+            LabeledContent("Total Downloaded", value: TorrentByteFormatter.string(torrent.totalDownload))
+            LabeledContent("Total Uploaded", value: TorrentByteFormatter.string(torrent.totalUpload))
+        }
+    }
+
+    // MARK: - Peers
+
+    private func peersSection(_ torrent: TorrentTaskModel) -> some View {
+        Section("Peers") {
+            LabeledContent("Connected", value: "\(max(0, torrent.peers))")
+            LabeledContent("Seeders Connected", value: "\(max(0, torrent.seeds))")
+            LabeledContent("Leechers Connected", value: "\(max(0, torrent.leechers))")
+            LabeledContent("In Swarm", value: "\(max(0, torrent.totalPeers)) peers, \(max(0, torrent.totalSeeds)) seeds, \(max(0, torrent.totalLeechers)) leechers")
+        }
+    }
+
+    // MARK: - Seeding
+
+    private func seedingSection(_ torrent: TorrentTaskModel) -> some View {
+        Section("Seeding") {
+            LabeledContent("Uploaded", value: TorrentByteFormatter.string(torrent.totalUpload))
+            if let ratio = torrent.ratio {
+                LabeledContent("Ratio", value: "\(ratio, specifier: "%.2f")")
+            } else {
+                LabeledContent("Ratio", value: "—")
+            }
+        }
+    }
+
+    // MARK: - Torrent Info
+
+    private func torrentInfoSection(_ torrent: TorrentTaskModel) -> some View {
+        Section("Torrent Info") {
+            if let magnet = torrent.magnetLink {
+                Button {
+                    viewModel.copyMagnetLink(torrentID)
+                } label: {
+                    Label("Copy Magnet Link", systemImage: "doc.on.doc")
+                }
+            }
+
+            LabeledContent("Hash") {
+                Text(torrent.id)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+
+            if torrent.pieceCount > 0 {
+                LabeledContent("Pieces", value: "\(torrent.pieceCount) × \(TorrentByteFormatter.string(Int64(torrent.pieceLength)))")
+            }
+
+            if let savePath = torrent.downloadPath {
+                LabeledContent("Save Location") {
+                    Text(savePath)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+
+            if let creator = torrent.creator {
+                LabeledContent("Created By", value: creator)
+            }
+
+            if let comment = torrent.comment, !comment.isEmpty {
+                Text(comment)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Files
 
     private func filesSection(_ torrent: TorrentTaskModel) -> some View {
         Section("Files") {
             Menu {
                 Button("Normal Priority") { viewModel.setAllFilesPriority(torrentID, priority: .defaultPriority) }
-                Button("Don't Download") { viewModel.setAllFilesPriority(torrentID, priority: .dontDownload) }
                 Button("High Priority") { viewModel.setAllFilesPriority(torrentID, priority: .topPriority) }
+                Button("Low Priority") { viewModel.setAllFilesPriority(torrentID, priority: .lowPriority) }
+                Button("Don't Download", role: .destructive) { viewModel.setAllFilesPriority(torrentID, priority: .dontDownload) }
             } label: {
                 Label("Apply to All Files", systemImage: "slider.horizontal.3")
             }
@@ -169,39 +235,41 @@ public struct TorrentDetailSheet: View {
                             .font(.subheadline)
                             .lineLimit(2)
 
-                        Spacer()
+                        Spacer(minLength: 8)
 
                         Menu {
                             Button("Normal") { viewModel.setFilePriority(torrentID, index: file.index, priority: .defaultPriority) }
-                            Button("Don't Download") { viewModel.setFilePriority(torrentID, index: file.index, priority: .dontDownload) }
                             Button("High") { viewModel.setFilePriority(torrentID, index: file.index, priority: .topPriority) }
+                            Button("Low") { viewModel.setFilePriority(torrentID, index: file.index, priority: .lowPriority) }
+                            Button("Don't Download", role: .destructive) { viewModel.setFilePriority(torrentID, index: file.index, priority: .dontDownload) }
                         } label: {
                             Text(priorityTitle(file.priority))
                                 .font(.caption.bold())
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(file.priority == .dontDownload
-                                            ? Color.red.opacity(0.15)
-                                            : file.priority == .topPriority ? Color.green.opacity(0.15) : Color.blue.opacity(0.15))
+                                .background(priorityColor(file.priority))
                                 .clipShape(Capsule())
                         }
                     }
 
-                    HStack {
-                        if file.size > 0 {
-                            ProgressView(value: Double(file.downloaded), total: Double(file.size))
+                    if file.size > 0 {
+                        HStack(spacing: 8) {
+                            ProgressView(value: file.progress)
                                 .tint(Color.accentColor)
-                        }
 
-                        Text("\(TorrentByteFormatter.string(file.downloaded)) / \(TorrentByteFormatter.string(file.size))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            Text("\(TorrentByteFormatter.string(file.downloaded)) / \(TorrentByteFormatter.string(file.size))")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize()
+                        }
                     }
                 }
                 .padding(.vertical, 4)
             }
         }
     }
+
+    // MARK: - Trackers
 
     private func trackersSection(_ torrent: TorrentTaskModel) -> some View {
         Section("Trackers") {
@@ -226,29 +294,41 @@ public struct TorrentDetailSheet: View {
                 Label("Reannounce to Trackers", systemImage: "arrow.clockwise")
             }
 
+            if torrent.trackers.isEmpty {
+                Text("No trackers yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             ForEach(torrent.trackers) { tracker in
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(tracker.url)
                         .font(.caption)
                         .textSelection(.enabled)
 
                     HStack(spacing: 8) {
-                        Text(trackerStateTitle(tracker))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        Text(trackerStateTitle(tracker.state))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(trackerStateColor(tracker.state))
 
-                        if tracker.seeds + tracker.peers + tracker.leeches > 0 {
-                            Text("S:\(tracker.seeds) P:\(tracker.peers) L:\(tracker.leeches)")
+                        if tracker.hasSwarmStats {
+                            Text("Seeds \(max(0, tracker.seeds)) · Peers \(max(0, tracker.peers)) · Leechers \(max(0, tracker.leeches))")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
 
-                        if let message = tracker.message, !message.isEmpty {
-                            Text(message)
+                        if let next = tracker.nextAnnounceTime {
+                            Text("Next announce \(next.formatted(.relative(presentation: .named)))")
                                 .font(.caption2)
-                                .foregroundStyle(.red)
-                                .lineLimit(1)
+                                .foregroundStyle(.secondary)
                         }
+                    }
+
+                    if let message = tracker.message, !message.isEmpty {
+                        Text(message)
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                            .lineLimit(2)
                     }
                 }
                 .contextMenu {
@@ -269,35 +349,56 @@ public struct TorrentDetailSheet: View {
         }
     }
 
-    private func metadataSection(_ torrent: TorrentTaskModel) -> some View {
-        Section("Info") {
-            if let magnet = torrent.magnetLink {
-                Button {
-                    viewModel.copyMagnetLink(torrentID)
-                } label: {
-                    Label("Copy Magnet Link", systemImage: "doc.on.doc")
+    // MARK: - Download Options
+
+    private func downloadOptionsSection(_ torrent: TorrentTaskModel) -> some View {
+        Section(header: Text("Download Options"), footer: Text("Sequential download reads pieces in order, best for video playback. First/last pieces let playback start sooner.")) {
+            Toggle("Stop seeding when download completes", isOn: Binding(
+                get: { torrent.stopSeeding },
+                set: { enabled in viewModel.setStopSeeding(torrentID, enabled: enabled) }
+            ))
+
+            Toggle("Sequential download", isOn: Binding(
+                get: { torrent.isSequential },
+                set: { enabled in viewModel.setSequentialDownload(torrentID, enabled: enabled) }
+            ))
+
+            Toggle("Download first & last pieces first", isOn: Binding(
+                get: { torrent.isFirstLastPiecePriority },
+                set: { enabled in viewModel.setFirstLastPriorityDownload(torrentID, enabled: enabled) }
+            ))
+        }
+    }
+
+    // MARK: - Speed Limits
+
+    private func speedLimitsSection(_ torrent: TorrentTaskModel) -> some View {
+        Section(header: Text("Speed Limits"), footer: Text("Per-torrent limits never exceed the global limits from Torrent Settings.")) {
+            Picker("Download Limit", selection: Binding(
+                get: { TorrentSpeedPreset(rawValue: Int(torrent.downloadLimit)) ?? .unlimited },
+                set: { preset in viewModel.setDownloadLimit(torrentID, bytesPerSecond: Int64(preset.rawValue)) }
+            )) {
+                ForEach(TorrentSpeedPreset.allCases) { preset in
+                    Text(preset.title).tag(preset)
                 }
             }
 
-            if let comment = torrent.comment, !comment.isEmpty {
-                Text(comment)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let creator = torrent.creator, !creator.isEmpty {
-                LabeledContent("Created By", value: creator)
-            }
-
-            if let date = torrent.creationDate {
-                LabeledContent("Created", value: date.formatted(date: .abbreviated, time: .omitted))
+            Picker("Upload Limit", selection: Binding(
+                get: { TorrentSpeedPreset(rawValue: Int(torrent.uploadLimit)) ?? .unlimited },
+                set: { preset in viewModel.setUploadLimit(torrentID, bytesPerSecond: Int64(preset.rawValue)) }
+            )) {
+                ForEach(TorrentSpeedPreset.allCases) { preset in
+                    Text(preset.title).tag(preset)
+                }
             }
         }
     }
 
+    // MARK: - Actions
+
     private func actionsSection(_ torrent: TorrentTaskModel) -> some View {
         Section {
-            if torrent.state == .paused || torrent.state == .storageError {
+            if torrent.isPaused || torrent.state == .storageError {
                 Button {
                     viewModel.resume(torrentID)
                 } label: {
@@ -327,6 +428,11 @@ public struct TorrentDetailSheet: View {
 
     // MARK: - Helpers
 
+    private func etaText(_ torrent: TorrentTaskModel) -> String {
+        guard let eta = torrent.eta else { return "—" }
+        return TorrentByteFormatter.eta(eta)
+    }
+
     private func priorityTitle(_ priority: FileEntry.Priority) -> String {
         switch priority {
         case .dontDownload: return "Skip"
@@ -336,14 +442,34 @@ public struct TorrentDetailSheet: View {
         }
     }
 
-    private func trackerStateTitle(_ tracker: TorrentTrackerItem) -> String {
-        switch tracker.state {
+    private func priorityColor(_ priority: FileEntry.Priority) -> Color {
+        switch priority {
+        case .dontDownload: return Color.red.opacity(0.15)
+        case .topPriority: return Color.green.opacity(0.15)
+        case .lowPriority: return Color.orange.opacity(0.15)
+        case .defaultPriority: return Color.blue.opacity(0.15)
+        }
+    }
+
+    private func trackerStateTitle(_ state: TorrentTracker.State) -> String {
+        switch state {
         case .notContacted: return "Not contacted"
         case .working: return "Working"
-        case .updating: return "Updating"
+        case .updating: return "Announcing"
         case .notWorking: return "Not working"
         case .trackerError: return "Tracker error"
         case .unreachable: return "Unreachable"
+        }
+    }
+
+    private func trackerStateColor(_ state: TorrentTracker.State) -> Color {
+        switch state {
+        case .notContacted: return .secondary
+        case .working: return .green
+        case .updating: return .blue
+        case .notWorking: return .orange
+        case .trackerError: return .red
+        case .unreachable: return .orange
         }
     }
 }

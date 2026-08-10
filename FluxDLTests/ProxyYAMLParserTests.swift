@@ -183,9 +183,9 @@ final class ProxyYAMLParserTests: XCTestCase {
             server: example.com
             port: 1080
           - name: Bad
-            type: http
+            type: vmess
             server: example.com
-            port: 8080
+            port: 1080
         """
         let result = try ProxyYAMLParser.extractProxies(from: yaml)
         XCTAssertEqual(result.validCount, 1)
@@ -193,6 +193,111 @@ final class ProxyYAMLParserTests: XCTestCase {
         XCTAssertEqual(result.errors.first?.displayName, "Bad")
         XCTAssertTrue(result.errors.first?.message.contains("Unsupported proxy type") == true)
         XCTAssertEqual(result.configurations.first?.name, "Good")
+    }
+
+    // MARK: - All supported types
+
+    func testAllSupportedTypesParse() throws {
+        let yaml = """
+        proxies:
+          - name: HTTP Entry
+            type: http
+            server: example.com
+            port: 8080
+          - name: HTTPS Entry
+            type: https
+            server: example.com
+            port: 8443
+          - name: SOCKS4 Entry
+            type: socks4
+            server: 10.0.0.7
+            port: 1081
+          - name: SOCKS5 Entry
+            type: socks5
+            server: 10.0.0.8
+            port: 1080
+        """
+        let result = try ProxyYAMLParser.extractProxies(from: yaml)
+        XCTAssertEqual(result.validCount, 4)
+        XCTAssertEqual(result.errorCount, 0)
+        XCTAssertEqual(result.configurations.map(\.type), [.http, .https, .socks4, .socks5])
+    }
+
+    func testTypeAliasesNormalize() throws {
+        let yaml = """
+        proxies:
+          - name: SOCKS4a
+            type: socks4a
+            server: example.com
+            port: 1080
+          - name: SOCKS5h
+            type: socks5h
+            server: example.com
+            port: 1080
+        """
+        let result = try ProxyYAMLParser.extractProxies(from: yaml)
+        XCTAssertEqual(result.validCount, 2)
+        XCTAssertEqual(result.configurations.map(\.type), [.socks4, .socks5])
+    }
+
+    func testSOCKS4IgnoresPasswordField() throws {
+        let yaml = """
+        proxies:
+          - name: S4
+            type: socks4
+            server: example.com
+            port: 1080
+            username: user
+            password: pass
+        """
+        let result = try ProxyYAMLParser.extractProxies(from: yaml)
+        XCTAssertEqual(result.validCount, 1)
+        XCTAssertFalse(result.configurations.first?.authenticationEnabled == true)
+    }
+
+    func testDuplicateFingerprintsAreDeduplicated() throws {
+        let yaml = """
+        proxies:
+          - name: One
+            type: socks5
+            server: proxy.example.com
+            port: 1080
+            username: user
+          - name: Two (different password)
+            type: socks5
+            server: proxy.example.com
+            port: 1080
+            username: user
+            password: other
+        """
+        let result = try ProxyYAMLParser.extractProxies(from: yaml)
+        XCTAssertEqual(result.validCount, 1)
+        XCTAssertEqual(result.duplicateCount, 1)
+    }
+
+    // MARK: - URI-style entries
+
+    func testURIStyleEntriesParse() throws {
+        let yaml = """
+        proxies:
+          - socks5://user:pass@proxy.example.com:1080
+          - https://proxy.example.com:8443
+        """
+        let result = try ProxyYAMLParser.extractProxies(from: yaml)
+        XCTAssertEqual(result.validCount, 2)
+        XCTAssertEqual(result.configurations.map(\.type), [.socks5, .https])
+        XCTAssertEqual(result.configurations.first?.username, "user")
+    }
+
+    func testInvalidURIToPlainTextIsAnError() throws {
+        let yaml = """
+        proxies:
+          - this is not a uri
+        """
+        let result = try ProxyYAMLParser.extractProxies(from: yaml)
+        XCTAssertEqual(result.validCount, 0)
+        XCTAssertEqual(result.errorCount, 1)
+        XCTAssertTrue(result.errors.first?.message.contains("Invalid proxy URI") == true)
     }
 
     func testMissingRequiredFieldsAreReported() throws {

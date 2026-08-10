@@ -47,6 +47,8 @@ NS_SWIFT_NAME(TorrentHandle.Snapshot)
 @property (readonly) uint64_t totalWantedDone;
 @property (readonly) uint64_t totalDownload;
 @property (readonly) uint64_t totalUpload;
+@property (readonly) NSInteger pieceLength;
+@property (readonly) NSInteger pieceCount;
 @property (readonly) BOOL isPaused;
 @property (readonly) BOOL isFinished;
 @property (readonly) BOOL isSeed;

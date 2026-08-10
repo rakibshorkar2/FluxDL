@@ -57,8 +57,8 @@ final class ProxyStateTests: XCTestCase {
 
         XCTAssertTrue(service.isEnabled)
         XCTAssertEqual(service.connectionState, .connected)
-        XCTAssertNotNil(service.activeLatencyMs)
-        XCTAssertNil(service.lastFailureMessage)
+        XCTAssertNotNil(service.lastTestResult?.latencyMs)
+        XCTAssertNil(service.lastTestResult?.failure)
         XCTAssertNotNil(service.activeConfiguration)
         XCTAssertEqual(service.activeConfiguration?.host, "127.0.0.1")
     }
@@ -76,8 +76,8 @@ final class ProxyStateTests: XCTestCase {
 
         XCTAssertFalse(service.isEnabled)
         XCTAssertEqual(service.connectionState, .disabled)
-        XCTAssertNil(service.activeLatencyMs)
-        XCTAssertNil(service.lastFailureMessage)
+        XCTAssertNil(service.lastTestResult?.latencyMs)
+        XCTAssertNil(service.lastTestResult?.failure)
         XCTAssertNil(service.activeConfiguration)
     }
 
@@ -96,10 +96,10 @@ final class ProxyStateTests: XCTestCase {
 
         await service.enable()
 
-        XCTAssertTrue(service.isEnabled)
+        XCTAssertFalse(service.isEnabled)
         XCTAssertEqual(service.connectionState, .failed)
-        XCTAssertNotNil(service.lastFailureMessage)
-        XCTAssertNil(service.activeLatencyMs)
+        XCTAssertNotNil(service.lastTestResult?.failure)
+        XCTAssertNil(service.lastTestResult?.latencyMs)
     }
 
     func testEnableAfterDisableReconnects() async throws {
@@ -162,7 +162,7 @@ final class ProxyStateTests: XCTestCase {
         updated.name = "Renamed"
         updated.host = "127.0.0.1"
         updated.port = Int(server.port)
-        service.updateProfile(updated)
+        service.updateProfile(ProxyProfile(configuration: updated))
 
         XCTAssertEqual(service.activeConfiguration?.name, "Renamed")
         XCTAssertTrue(service.isEnabled, "Updating a live profile must keep the proxy enabled.")
@@ -176,7 +176,7 @@ final class ProxyStateTests: XCTestCase {
 
         var updated = first.configuration
         updated.host = "other.example.com"
-        service.updateProfile(updated)
+        service.updateProfile(ProxyProfile(configuration: updated))
 
         XCTAssertEqual(service.selectedProfile?.configuration.host, "127.0.0.1")
         XCTAssertNil(service.activeConfiguration)
@@ -233,9 +233,9 @@ final class ProxyStateTests: XCTestCase {
 
         await service.enable()
 
-        XCTAssertTrue(service.isEnabled)
+        XCTAssertFalse(service.isEnabled)
         XCTAssertEqual(service.connectionState, .failed)
-        XCTAssertEqual(service.lastFailureMessage, ProxyTestFailure.authenticationFailed.userMessage)
+        XCTAssertEqual(service.lastTestResult?.failure?.userMessage, ProxyTestFailure.authenticationFailed.userMessage)
     }
 
     func testDisableCancelsInFlightTest() async throws {

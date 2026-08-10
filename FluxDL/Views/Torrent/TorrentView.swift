@@ -7,6 +7,7 @@ public struct TorrentView: View {
 
     @State private var pendingRemoveID: String?
     @State private var isRemoveConfirmationPresented = false
+    @State private var isBatchRemovePresented = false
     @State private var isPauseAllPresented = false
     @State private var isSettingsPresented = false
 
@@ -31,13 +32,16 @@ public struct TorrentView: View {
                                 TorrentItemCard(
                                     torrent: torrent,
                                     isDeleting: viewModel.isDeleting(torrent.id),
+                                    isSelectionMode: viewModel.isEditing,
+                                    isSelected: viewModel.isSelected(torrent.id),
                                     onPause: { viewModel.pause(torrent.id) },
                                     onResume: { viewModel.resume(torrent.id) },
                                     onRemove: { deleteFiles in
                                         pendingRemoveID = torrent.id
                                         isRemoveConfirmationPresented = true
                                     },
-                                    onShowDetail: { viewModel.taskForDetail = torrent }
+                                    onShowDetail: { viewModel.taskForDetail = torrent },
+                                    onToggleSelection: { viewModel.toggleSelection(torrent.id) }
                                 )
                             }
                         }
@@ -59,6 +63,14 @@ public struct TorrentView: View {
             }
             .navigationTitle("Torrent")
             .toolbar { navigationToolbar }
+            // ── Edit mode action bar ──────────────────────────────────────
+            .safeAreaInset(edge: .bottom) {
+                if viewModel.isEditing {
+                    editActionBar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: viewModel.isEditing)
             // ── Sheets ────────────────────────────────────────────────────
             .sheet(isPresented: $viewModel.isAddSheetPresented) {
                 AddTorrentSheet(
@@ -89,7 +101,22 @@ public struct TorrentView: View {
                 }
                 Button("Cancel", role: .cancel) { pendingRemoveID = nil }
             } message: {
-                Text("Remove '\(pendingTorrentName)' from the session. Downloaded files will be deleted if you choose the delete option.")
+                Text("Remove '\(pendingTorrentName)' from the torrent list? Downloaded files are kept unless you choose to delete them.")
+            }
+            .confirmationDialog(
+                batchRemoveDialogTitle,
+                isPresented: $isBatchRemovePresented,
+                titleVisibility: .visible
+            ) {
+                Button("Remove \(batchCountText) (Keep Files)", role: .destructive) {
+                    viewModel.removeSelected(deleteFiles: false)
+                }
+                Button("Remove \(batchCountText) & Delete Files", role: .destructive) {
+                    viewModel.removeSelected(deleteFiles: true)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Remove the selected torrents? Download files are kept unless you choose to delete them.")
             }
             .confirmationDialog(
                 "Pause All Torrents",
@@ -107,6 +134,77 @@ public struct TorrentView: View {
                 Text(viewModel.alertMessage ?? "Unknown error.")
             }
             .onAppear { viewModel.startSessionIfNeeded() }
+        }
+    }
+
+    // MARK: - Edit Action Bar
+
+    private var editActionBar: some View {
+        let isAllSelected = !viewModel.visibleTorrents.isEmpty
+            && viewModel.visibleTorrents.allSatisfy { viewModel.isSelected($0.id) }
+
+        return HStack(spacing: 12) {
+            Button {
+                if isAllSelected {
+                    viewModel.deselectAll()
+                } else {
+                    viewModel.selectAllVisible()
+                }
+            } label: {
+                Text(isAllSelected ? "Deselect All" : "Select All")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+            .disabled(viewModel.visibleTorrents.isEmpty)
+
+            Spacer()
+
+            Button {
+                viewModel.pauseSelected()
+            } label: {
+                Label("Pause", systemImage: "pause.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .disabled(!viewModel.canPauseSelection)
+
+            Button {
+                viewModel.resumeSelected()
+            } label: {
+                Label("Resume", systemImage: "play.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .disabled(!viewModel.canResumeSelection)
+
+            Button(role: .destructive) {
+                isBatchRemovePresented = true
+            } label: {
+                Label("Delete", systemImage: "trash")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .disabled(viewModel.selectedIDs.isEmpty)
+
+            Menu {
+                Button {
+                    isPauseAllPresented = true
+                } label: {
+                    Label("Pause All", systemImage: "pause.fill")
+                }
+                Button {
+                    viewModel.resumeAll()
+                } label: {
+                    Label("Resume All", systemImage: "play.fill")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.primary)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Divider()
         }
     }
 
@@ -250,13 +348,23 @@ public struct TorrentView: View {
         pendingRemoveID == nil ? "Remove Torrent" : "Remove '\(pendingTorrentName)'"
     }
 
+    private var batchCountText: String {
+        let count = viewModel.selectedIDs.count
+        return count == 1 ? "1 Torrent" : "\(count) Torrents"
+    }
+
+    private var batchRemoveDialogTitle: String {
+        let count = viewModel.selectedIDs.count
+        return count == 1 ? "Delete Torrent?" : "Delete \(count) Torrents?"
+    }
+
     private func undoToastView(_ toast: TorrentUndoToast) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Torrent Removed")
+                Text(toast.title)
                     .font(.subheadline.weight(.semibold))
 
-                Text(toast.name)
+                Text(toast.subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -276,7 +384,7 @@ public struct TorrentView: View {
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(toast.magnetLink == nil)
+            .disabled(!toast.records.contains { $0.magnetLink != nil })
 
             Button {
                 viewModel.dismissUndoToast()
@@ -300,30 +408,13 @@ public struct TorrentView: View {
     private var navigationToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             if !viewModel.torrents.isEmpty {
-                Menu {
-                    Button {
-                        isPauseAllPresented = true
-                    } label: {
-                        Label("Pause All", systemImage: "pause.fill")
-                    }
-
-                    Button {
-                        viewModel.resumeAll()
-                    } label: {
-                        Label("Resume All", systemImage: "play.fill")
-                    }
-
-                    Divider()
-
-                    Button {
-                        isSettingsPresented = true
-                    } label: {
-                        Label("Torrent Settings", systemImage: "gearshape.fill")
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        viewModel.toggleEditMode()
                     }
                 } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.body)
-                        .foregroundStyle(Color.primary)
+                    Text(viewModel.isEditing ? "Done" : "Edit")
+                        .fontWeight(.semibold)
                 }
             }
         }
@@ -336,8 +427,22 @@ public struct TorrentView: View {
                             Text(order.rawValue).tag(order)
                         }
                     }
+
+                    Picker("Order", selection: $viewModel.sortDirection) {
+                        ForEach(TorrentSortDirection.allCases) { direction in
+                            Text(direction.rawValue).tag(direction)
+                        }
+                    }
                 } label: {
                     Image(systemName: "arrow.up.arrow.down")
+                        .font(.body)
+                        .foregroundStyle(Color.primary)
+                }
+
+                Button {
+                    isSettingsPresented = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
                         .font(.body)
                         .foregroundStyle(Color.primary)
                 }

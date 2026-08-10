@@ -110,26 +110,32 @@ public final class ProxyViewModel: ObservableObject {
     // MARK: - YAML import
 
     public func importYAML(_ text: String) {
-        do {
-            let result = try service.parseYAML(text)
-            yamlImportResult = result
-            if result.configurations.isEmpty && result.errors.isEmpty {
-                alertMessage = "No proxy configuration found in the selected file."
-                isAlertPresented = true
-            } else {
-                isYAMLResultsPresented = true
-            }
-        } catch {
-            alertMessage = (error as? ProxyYAMLParserError)?.userMessage ?? "Invalid YAML"
+        guard let result = service.parseYAML(text) else {
+            alertMessage = "The selected file could not be parsed as YAML."
             isAlertPresented = true
+            return
+        }
+        yamlImportResult = result
+        if result.configurations.isEmpty && result.errors.isEmpty {
+            alertMessage = "No proxy configuration found in the selected file."
+            isAlertPresented = true
+        } else {
+            isYAMLResultsPresented = true
         }
     }
 
     public func importConfigurations(_ configurations: [ProxyConfiguration]) {
         guard !configurations.isEmpty else { return }
-        for configuration in configurations {
-            service.importProfile(configuration)
+        let imported = service.importConfigurations(configurations)
+        var message = "Imported \(imported.configurations.count) prox"
+        if imported.duplicateCount > 0 {
+            message += " (skipped \(imported.duplicateCount) existing)"
         }
+        message += "."
+        alertMessage = imported.configurations.isEmpty
+            ? "All selected proxies already exist."
+            : message
+        isAlertPresented = true
         service.hapticService.notificationOccurred(.success)
     }
 

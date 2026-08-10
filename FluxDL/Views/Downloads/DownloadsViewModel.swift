@@ -54,8 +54,8 @@ public final class DownloadsViewModel: ObservableObject {
     @Published public var duplicateWarningMessage: String?
 
     // ── Delete confirmation ───────────────────────────────────────────────
-    @Published public var pendingDeleteID: UUID?
-    @Published public var isDeleteConfirmationPresented: Bool = false
+    // Single-item delete confirmation is row-local (see DownloadItemCard) and
+    // resolves its target by the row's stable `DownloadTaskModel.id`.
     @Published public var isBatchDeleteConfirmationPresented: Bool = false
 
     // ── Storage ───────────────────────────────────────────────────────────
@@ -219,11 +219,6 @@ public final class DownloadsViewModel: ObservableObject {
         downloadEngine.deleteDownload(id: id, deleteFile: deleteFile)
         queueManager.scheduleNextTasks(in: downloadEngine)
         refreshStorageInfo(forceDiskScan: true)
-    }
-
-    public func confirmDeleteTask(id: UUID) {
-        pendingDeleteID = id
-        isDeleteConfirmationPresented = true
     }
 
     public func shareTask(task: DownloadTaskModel) {

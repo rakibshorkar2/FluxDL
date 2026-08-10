@@ -56,7 +56,7 @@ final class ProxyPersistenceTests: XCTestCase {
         let profile = service.addProfile(sampleConfiguration())
 
         XCTAssertEqual(keychain.password(forProfileID: profile.id), "secret")
-        let rawData = defaults.data(forKey: "fluxdl_proxy_profiles")
+        let rawData = defaults.data(forKey: "fluxdl_proxy_profiles_v2")
         XCTAssertNotNil(rawData)
         if let rawData {
             XCTAssertFalse(String(data: rawData, encoding: .utf8)!.contains("secret"))
@@ -137,7 +137,7 @@ final class ProxyPersistenceTests: XCTestCase {
         let defaults = self.defaults!
         let profileID = UUID()
         defaults.set(true, forKey: "fluxdl_proxy_enabled")
-        defaults.set(profileID.uuidString, forKey: "fluxdl_proxy_selected_profile_id")
+        defaults.set(profileID.uuidString, forKey: "fluxdl_proxy_selected_id")
 
         let service = makeService()
         XCTAssertFalse(service.isEnabled, "Enabled state must reset when the profile no longer exists.")
@@ -187,7 +187,7 @@ final class ProxyPersistenceTests: XCTestCase {
         updated.host = "new.example.com"
         updated.port = 8080
         updated.password = "newsecret"
-        service.updateProfile(updated)
+        service.updateProfile(ProxyProfile(configuration: updated))
 
         let reloaded = makeService()
         let stored = reloaded.profiles.first
@@ -205,14 +205,14 @@ final class ProxyPersistenceTests: XCTestCase {
         var updated = profile.configuration
         updated.host = "new.example.com"
         updated.password = ""
-        service.updateProfile(updated)
+        service.updateProfile(ProxyProfile(configuration: updated))
 
         XCTAssertEqual(keychain.password(forProfileID: profile.id), "secret", "Empty password must keep the Keychain value.")
     }
 
     func testImportProfileAddsProfile() {
         let service = makeService()
-        service.importProfile(sampleConfiguration())
+        service.addProfile(sampleConfiguration())
         XCTAssertEqual(service.profiles.count, 1)
     }
 }

@@ -8,12 +8,6 @@ public struct BrowserFaviconView: View {
     var size: CGFloat = 16
     
     private static let cache = NSCache<NSString, UIImage>()
-    private static let session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 8
-        config.waitsForConnectivity = false
-        return URLSession(configuration: config)
-    }()
     
     @State private var image: UIImage?
     
@@ -63,12 +57,24 @@ public struct BrowserFaviconView: View {
         }
         
         Task {
-            guard let (data, _) = try? await Self.session.data(from: target),
+            let session = await Self.makeSession()
+            guard let (data, _) = try? await session.data(from: target),
                   let fetched = UIImage(data: data) else { return }
+            session.finishTasksAndInvalidate()
             Self.cache.setObject(fetched, forKey: key)
             await MainActor.run {
                 image = fetched
             }
         }
+    }
+
+    /// Short-lived session routed through the browser's proxy (direct when
+    /// no proxy is active; rebuilt on every route change).
+    @MainActor
+    private static func makeSession() async -> URLSession {
+        let config = BrowserProxySession.shared.sessionConfiguration()
+        config.timeoutIntervalForRequest = 8
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
     }
 }

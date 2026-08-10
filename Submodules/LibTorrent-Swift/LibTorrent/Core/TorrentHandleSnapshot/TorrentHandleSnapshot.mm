@@ -120,7 +120,10 @@ static lt::add_torrent_params magnetParams(lt::torrent_handle const &handle) {
 
     auto params = self.torrentParams;
     if (params == nullptr) { return NULL; }
-    _creationDate = [[NSDate alloc] initWithTimeIntervalSince1970:params->creation_date];
+    // A missing "creation date" key decodes as 0. Presenting epoch 1970-01-01
+    // as a real creation date is wrong, so treat it as "no date".
+    if (params->creation_date <= 0) { return NULL; }
+    _creationDate = [[NSDate alloc] initWithTimeIntervalSince1970:(NSTimeInterval)params->creation_date];
     return _creationDate;
 }
 
@@ -231,6 +234,20 @@ static lt::add_torrent_params magnetParams(lt::torrent_handle const &handle) {
 
 - (uint64_t)totalUpload {
     return _status.total_upload;
+}
+
+- (NSInteger)pieceLength {
+    if (!_status.has_metadata) { return 0; }
+    auto info = _torrentInfo.get();
+    if (info == nullptr) { return 0; }
+    return info->piece_length();
+}
+
+- (NSInteger)pieceCount {
+    if (!_status.has_metadata) { return 0; }
+    auto info = _torrentInfo.get();
+    if (info == nullptr) { return 0; }
+    return info->num_pieces();
 }
 
 - (BOOL)isPaused {

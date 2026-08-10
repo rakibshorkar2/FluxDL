@@ -1,18 +1,11 @@
 import Foundation
+import Yams
 
-// MARK: - ProxyYAMLParser
+// MARK: - YAMLNode
 //
-// A small, self-contained YAML parser covering the subset of YAML that
-// proxy configuration files commonly use (Clash-style and single-proxy
-// documents). It performs REAL parsing: indentation-aware nested maps and
-// sequences, quoted scalars, comments, and scalar typing.
-//
-// Supported syntax:
-//   - comments (`#` up to end of line, outside quotes)
-//   - mappings       `key: value`
-//   - sequences      `- item` / `- key: value`
-//   - nested blocks via indentation (spaces only)
-//   - plain, single-quoted and double-quoted scalars
+// Protocol-agnostic representation of a parsed YAML document, converted from
+// the Yams node tree. Kept so existing consumers (and tests) can walk the
+// document without depending on Yams types directly.
 
 public enum YAMLNode: Equatable, Sendable {
     case scalar(String)
@@ -23,7 +16,6 @@ public enum YAMLNode: Equatable, Sendable {
     public var asString: String? {
         switch self {
         case .scalar(let value): return value
-        case .null: return nil
         default: return nil
         }
     }
@@ -56,20 +48,81 @@ public struct ProxyYAMLParserError: Error, Equatable, Sendable {
     }
 }
 
+// MARK: - ProxyYAMLParser
+//
+// Parsing is delegated to Yams (a maintained, standards-compliant YAML
+// parser). Indentation handling, quoting, comments, scalar typing and
+// multi-document input are Yams' responsibility — this is not a fragile
+// string-splitting parser.
+
 public enum ProxyYAMLParser {
+
+    /// Maps a Yams `Any` tree into our `YAMLNode` type.
+    private static func node(from value: Any?) -> YAMLNode {
+        guard let value, !(value is NSNull) else { return .null }
+
+        if let dictionary = value as? [AnyHashable: Any] {
+            var mapping: [String: YAMLNode] = [:]
+            for (key, child) in dictionary {
+                mapping[String(describing: key)] = node(from: child)
+            }
+            return .mapping(mapping)
+        }
+        if let array = value as? [Any] {
+            return .sequence(array.map { node(from: $0) })
+        }
+        if let string = value as? String {
+            return .scalar(string)
+        }
+        if let integer = value as? Int {
+            return .scalar(String(integer))
+        }
+        if let double = value as? Double {
+            return .scalar(String(double))
+        }
+        if let bool = value as? Bool {
+            return .scalar(bool ? "true" : "false")
+        }
+        return .scalar(String(describing: value))
+    }
+
+    /// Loads a YAML document (single or multi) with Yams.
+    private static func loadYams(_ input: String) throws -> Any? {
+        if let single = try? Yams.load(yaml: input) {
+            return single
+        }
+        let documents = try Yams.loadMultiple(yaml: input)
+        return documents.first { $0 != nil } ?? nil
+    }
+
+    /// Tabs are never valid YAML indentation. Rejecting them up front (a
+    /// simple lint, not parsing) keeps error messages deterministic.
+    private static func assertNoTabIndentation(in input: String) throws {
+        for (offset, rawLine) in input.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+            let line = String(rawLine)
+            if line.first == "\t" {
+                throw ProxyYAMLParserError(line: offset + 1, message: "tabs are not allowed for indentation")
+            }
+        }
+    }
 
     // MARK: - Public API
 
     /// Parses a YAML document into a `YAMLNode` tree.
     public static func parse(_ input: String) throws -> YAMLNode {
-        let lines = try preprocess(input)
-        guard !lines.isEmpty else {
+        try assertNoTabIndentation(in: input)
+        let value: Any?
+        do {
+            value = try loadYams(input)
+        } catch {
+            throw ProxyYAMLParserError(line: nil, message: String(describing: error))
+        }
+        guard let value else {
             throw ProxyYAMLParserError(line: nil, message: "file is empty")
         }
-        let (root, next) = try parseBlock(lines, from: 0, indent: lines[0].indent)
-        guard next == lines.count else {
-            // Trailing content at a shallower indentation than the root.
-            throw ProxyYAMLParserError(line: lines[next].number, message: "unexpected content")
+        let root = node(from: value)
+        if root.isNull {
+            throw ProxyYAMLParserError(line: nil, message: "file is empty")
         }
         return root
     }
@@ -90,28 +143,34 @@ public enum ProxyYAMLParser {
                 }
                 proxyNodes = sequence
             } else if let proxyNode = dict["proxy"] {
-                guard case .mapping = proxyNode else {
-                    throw ProxyYAMLParserError(line: nil, message: "'proxy' must be a mapping")
-                }
                 proxyNodes = [proxyNode]
-            } else if dict.keys.contains("server") || dict.keys.contains("host") || dict.keys.contains("type") {
+            } else if dict.keys.contains("server") || dict.keys.contains("host")
+                        || dict.keys.contains("type") || dict.keys.contains("port") {
                 proxyNodes = [.mapping(dict)]
             } else {
                 throw ProxyYAMLParserError(line: nil, message: "no proxy configuration found in YAML")
             }
         case .sequence(let sequence):
             proxyNodes = sequence
+        case .scalar(let scalar):
+            guard ProxyURIParser.parse(scalar) != nil else {
+                throw ProxyYAMLParserError(line: nil, message: "no proxy configuration found in YAML")
+            }
+            proxyNodes = [.scalar(scalar)]
         case .null:
             throw ProxyYAMLParserError(line: nil, message: "file is empty")
-        default:
-            throw ProxyYAMLParserError(line: nil, message: "no proxy configuration found in YAML")
         }
 
         var result = ProxyYAMLImportResult()
+        var fingerprints = Set<String>()
         for (index, node) in proxyNodes.enumerated() {
             let outcome = configuration(from: node, index: index)
             if let configuration = outcome.configuration {
-                result.configurations.append(configuration)
+                if fingerprints.insert(configuration.fingerprint).inserted {
+                    result.configurations.append(configuration)
+                } else {
+                    result.duplicateCount += 1
+                }
             } else if let error = outcome.error {
                 result.errors.append(error)
             }
@@ -121,52 +180,83 @@ public enum ProxyYAMLParser {
 
     // MARK: - Proxy extraction
 
-    private static func configuration(from node: YAMLNode, index: Int) -> (configuration: ProxyConfiguration?, error: ProxyYAMLImportError?) {
+    private static func configuration(
+        from node: YAMLNode,
+        index: Int
+    ) -> (configuration: ProxyConfiguration?, error: ProxyYAMLImportError?) {
+
+        // URI-style entry: a plain scalar string such as
+        // socks5://user:pass@host:port
+        if case .scalar(let uri) = node {
+            if let parsed = ProxyURIParser.parse(uri) {
+                return (parsed, nil)
+            }
+            let display = uri.count > 40 ? String(uri.prefix(40)) + "…" : uri
+            return (nil, ProxyYAMLImportError(displayName: nil, message: "Invalid proxy URI: \(display)"))
+        }
+
         guard case .mapping(let dict) = node else {
             return (nil, ProxyYAMLImportError(displayName: nil, message: "proxy entry \(index + 1) is not a mapping"))
         }
 
         let name = nonEmpty(dict["name"]?.asString)
-        let type = dict["type"]?.asString?.trimmingCharacters(in: .whitespaces).lowercased()
+        let typeRaw = dict["type"]?.asString?.trimmingCharacters(in: .whitespaces).lowercased()
         let server = nonEmpty(dict["server"]?.asString) ?? nonEmpty(dict["host"]?.asString)
         let portValue = dict["port"]?.asInt
         let username = nonEmpty(dict["username"]?.asString)
         let password = nonEmpty(dict["password"]?.asString)
 
-        // ── Field validation ─────────────────────────────────────────────
-        if let type = type {
-            guard type == ProxyType.socks5.rawValue else {
-                return (nil, ProxyYAMLImportError(displayName: name, message: "Unsupported proxy type: \(type)"))
+        // ── Type mapping (socks5h / socks4a alias onto the base protocols) ──
+        let type: ProxyType
+        if let typeRaw {
+            switch typeRaw {
+            case "http":               type = .http
+            case "https":              type = .https
+            case "socks4", "socks4a":  type = .socks4
+            case "socks5", "socks5h":  type = .socks5
+            default:
+                return (nil, ProxyYAMLImportError(displayName: name, message: "Unsupported proxy type: \(typeRaw)"))
             }
         } else {
             return (nil, ProxyYAMLImportError(displayName: name, message: "Missing required YAML field: type"))
         }
 
-        guard let server = server, !server.isEmpty else {
+        guard let server, !server.isEmpty else {
             return (nil, ProxyYAMLImportError(displayName: name, message: "Missing required YAML field: server"))
         }
         if let hostIssue = ProxyConfigurationValidator.validateHost(server) {
             return (nil, ProxyYAMLImportError(displayName: name, message: hostIssue))
         }
 
-        guard let portValue = portValue else {
+        guard let portValue else {
             return (nil, ProxyYAMLImportError(displayName: name, message: "Missing required YAML field: port"))
         }
         if let portIssue = ProxyConfigurationValidator.validatePort(portValue) {
             return (nil, ProxyYAMLImportError(displayName: name, message: portIssue))
         }
 
-        let authenticationEnabled = username != nil || password != nil
-        if authenticationEnabled && (username == nil || password == nil) {
-            let missing = username == nil ? "username" : "password"
-            return (nil, ProxyYAMLImportError(displayName: name, message: "Missing required YAML field: \(missing)"))
+        let authenticationEnabled: Bool
+        if type == .socks4 {
+            // SOCKS4 accepts an optional USERID; it has no password channel.
+            authenticationEnabled = false
+            if username != nil && password != nil {
+                return (nil, ProxyYAMLImportError(displayName: name, message: "SOCKS4 proxies do not support passwords"))
+            }
+        } else if username != nil || password != nil {
+            if username == nil || password == nil {
+                let missing = username == nil ? "username" : "password"
+                return (nil, ProxyYAMLImportError(displayName: name, message: "Missing required YAML field: \(missing)"))
+            }
+            authenticationEnabled = true
+        } else {
+            authenticationEnabled = false
         }
 
-        let finalName = name ?? "\(server):\(portValue)"
+        let finalName = name ?? "\(ProxyConfigurationValidator.bracketedHost(server)):\(portValue)"
         return (
             ProxyConfiguration(
                 name: finalName,
-                type: .socks5,
+                type: type,
                 host: server,
                 port: portValue,
                 authenticationEnabled: authenticationEnabled,
@@ -177,278 +267,8 @@ public enum ProxyYAMLParser {
         )
     }
 
-    // MARK: - Preprocessing
-
-    private struct Line {
-        let number: Int
-        let indent: Int
-        let content: String
-    }
-
-    private static func preprocess(_ input: String) throws -> [Line] {
-        let rawLines = input.replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
-            .split(separator: "\n", omittingEmptySubsequences: false)
-
-        var result: [Line] = []
-        for (index, raw) in rawLines.enumerated() {
-            let lineNumber = index + 1
-            let line = String(raw)
-
-            // Tabs are not valid for indentation in the supported subset.
-            if let firstTab = line.firstIndex(of: "\t") {
-                let beforeTab = line[..<firstTab]
-                if !beforeTab.trimmingCharacters(in: .whitespaces).isEmpty || !beforeTab.isEmpty {
-                    throw ProxyYAMLParserError(line: lineNumber, message: "tabs are not allowed for indentation")
-                }
-            }
-
-            var indent = 0
-            var contentStart = line.startIndex
-            while contentStart < line.endIndex {
-                let char = line[contentStart]
-                if char == " " {
-                    indent += 1
-                    contentStart = line.index(after: contentStart)
-                } else {
-                    break
-                }
-            }
-
-            var content = String(line[contentStart...])
-            content = stripComment(from: content)
-
-            let trimmed = content.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else { continue }
-
-            result.append(Line(number: lineNumber, indent: indent, content: trimmed))
-        }
-        return result
-    }
-
-    /// Removes a `#` comment that is not inside single or double quotes.
-    private static func stripComment(from line: String) -> String {
-        var inSingleQuote = false
-        var inDoubleQuote = false
-        var escaped = false
-        for (offset, character) in line.enumerated() {
-            if escaped {
-                escaped = false
-                continue
-            }
-            if character == "\\" && inDoubleQuote {
-                escaped = true
-                continue
-            }
-            switch character {
-            case "'":
-                if !inDoubleQuote { inSingleQuote.toggle() }
-            case "\"":
-                if !inSingleQuote { inDoubleQuote.toggle() }
-            case "#":
-                if !inSingleQuote && !inDoubleQuote {
-                    return String(line.prefix(offset))
-                }
-            default:
-                break
-            }
-        }
-        return line
-    }
-
-    // MARK: - Recursive descent
-
-    private static func parseBlock(_ lines: [Line], from index: Int, indent: Int) throws -> (YAMLNode, Int) {
-        guard index < lines.count, lines[index].indent == indent else {
-            return (.null, index)
-        }
-        if lines[index].content == "-" || lines[index].content.hasPrefix("- ") {
-            return try parseSequence(lines, from: index, indent: indent)
-        }
-        return try parseMapping(lines, from: index, indent: indent)
-    }
-
-    private static func parseMapping(_ lines: [Line], from index: Int, indent: Int) throws -> (YAMLNode, Int) {
-        var dict: [String: YAMLNode] = [:]
-        var i = index
-        while i < lines.count {
-            guard lines[i].indent == indent else { break }
-
-            guard let (key, value) = splitKeyValue(lines[i].content) else {
-                throw ProxyYAMLParserError(line: lines[i].number, message: "expected 'key: value'")
-            }
-            let keyString = try unquote(key).trimmingCharacters(in: .whitespaces)
-            guard !keyString.isEmpty else {
-                throw ProxyYAMLParserError(line: lines[i].number, message: "empty key")
-            }
-
-            var node: YAMLNode = .null
-            if let value = value {
-                node = try scalarNode(value, line: lines[i].number)
-            }
-            i += 1
-
-            if i < lines.count, lines[i].indent > indent {
-                let (child, next) = try parseBlock(lines, from: i, indent: lines[i].indent)
-                if value == nil {
-                    node = child
-                } else if !child.isNull {
-                    throw ProxyYAMLParserError(
-                        line: lines[i].number,
-                        message: "unexpected indented block after '\(keyString): \(value ?? "")'"
-                    )
-                }
-                i = next
-            }
-
-            dict[keyString] = node
-        }
-        return (.mapping(dict), i)
-    }
-
-    private static func parseSequence(_ lines: [Line], from index: Int, indent: Int) throws -> (YAMLNode, Int) {
-        var items: [YAMLNode] = []
-        var i = index
-        while i < lines.count {
-            guard lines[i].indent == indent else { break }
-
-            let content = lines[i].content
-            guard content == "-" || content.hasPrefix("- ") else { break }
-
-            let rest = content == "-" ? "" : String(content.dropFirst(2)).trimmingCharacters(in: .whitespaces)
-            i += 1
-
-            if rest.isEmpty {
-                // Item is a nested block on the following lines.
-                if i < lines.count, lines[i].indent > indent {
-                    let (node, next) = try parseBlock(lines, from: i, indent: lines[i].indent)
-                    items.append(node)
-                    i = next
-                } else {
-                    items.append(.null)
-                }
-                continue
-            }
-
-            if let (key, value) = splitKeyValue(rest) {
-                // Inline mapping item: `- key: value`, possibly continued by
-                // deeper-indented keys belonging to the same item.
-                var itemDict: [String: YAMLNode] = [:]
-                let keyString = try unquote(key).trimmingCharacters(in: .whitespaces)
-                if let value = value {
-                    itemDict[keyString] = try scalarNode(value, line: lines[i - 1].number)
-                } else {
-                    itemDict[keyString] = .null
-                }
-
-                if i < lines.count, lines[i].indent > indent {
-                    let (node, next) = try parseBlock(lines, from: i, indent: lines[i].indent)
-                    if case .mapping(let nested) = node {
-                        for (nestedKey, nestedValue) in nested {
-                            itemDict[nestedKey] = nestedValue
-                        }
-                    } else if !node.isNull {
-                        throw ProxyYAMLParserError(
-                            line: lines[i].number,
-                            message: "unexpected nested list inside proxy entry"
-                        )
-                    }
-                    i = next
-                }
-                items.append(.mapping(itemDict))
-            } else {
-                items.append(try scalarNode(rest, line: lines[i - 1].number))
-            }
-        }
-        return (.sequence(items), i)
-    }
-
-    // MARK: - Scalars
-
-    /// Splits `key: value`. Returns nil when the line is not a key/value pair.
-    private static func splitKeyValue(_ content: String) -> (String, String?)? {
-        var inSingleQuote = false
-        var inDoubleQuote = false
-        var escaped = false
-        for (offset, character) in content.enumerated() {
-            if escaped {
-                escaped = false
-                continue
-            }
-            if character == "\\" && inDoubleQuote {
-                escaped = true
-                continue
-            }
-            switch character {
-            case "'":
-                if !inDoubleQuote { inSingleQuote.toggle() }
-            case "\"":
-                if !inSingleQuote { inDoubleQuote.toggle() }
-            case ":":
-                if !inSingleQuote && !inDoubleQuote {
-                    let key = String(content.prefix(offset))
-                    let value = String(content.dropFirst(offset + 1)).trimmingCharacters(in: .whitespaces)
-                    return (key, value.isEmpty ? nil : value)
-                }
-            default:
-                break
-            }
-        }
-        return nil
-    }
-
-    private static func scalarNode(_ raw: String, line: Int) throws -> YAMLNode {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        if trimmed.isEmpty { return .null }
-        let lower = trimmed.lowercased()
-        if trimmed == "~" || lower == "null" { return .null }
-        return .scalar(try unquote(trimmed))
-    }
-
-    /// Removes surrounding quotes and resolves the supported escape sequences.
-    private static func unquote(_ raw: String) throws -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        if trimmed.count >= 2, trimmed.first == "'", trimmed.last == "'" {
-            let inner = String(trimmed.dropFirst().dropLast())
-            return inner.replacingOccurrences(of: "''", with: "'")
-        }
-        if trimmed.count >= 2, trimmed.first == "\"", trimmed.last == "\"" {
-            let inner = String(trimmed.dropFirst().dropLast())
-            var result = ""
-            var iterator = inner.makeIterator()
-            var pendingEscape = false
-            while let character = iterator.next() {
-                if pendingEscape {
-                    switch character {
-                    case "n": result.append("\n")
-                    case "t": result.append("\t")
-                    case "\\": result.append("\\")
-                    case "\"": result.append("\"")
-                    case "u":
-                        var hex = ""
-                        for _ in 0..<4 {
-                            if let hexChar = iterator.next() { hex.append(hexChar) }
-                        }
-                        if let codePoint = UInt32(hex, radix: 16), let scalar = Unicode.Scalar(codePoint) {
-                            result.unicodeScalars.append(scalar)
-                        }
-                    default:
-                        result.append(character)
-                    }
-                    pendingEscape = false
-                } else if character == "\\" {
-                    pendingEscape = true
-                } else {
-                    result.append(character)
-                }
-            }
-            return result
-        }
-        return trimmed
-    }
-
     private static func nonEmpty(_ value: String?) -> String? {
-        guard let value = value else { return nil }
+        guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespaces)
         return trimmed.isEmpty ? nil : trimmed
     }

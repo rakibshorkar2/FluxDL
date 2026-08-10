@@ -433,4 +433,289 @@ final class BrowserTests: XCTestCase {
         settings.isPopupBlockingEnabled = false
         XCTAssertFalse(settings.isPopupBlockingEnabled)
     }
+    
+    // MARK: - JavaScript URLs (javascript: scheme support)
+    
+    /// Loads an HTML page into a fresh ViewModel's web view and waits until the
+    /// page finished loading.
+    @MainActor
+    private func makeViewModelWithPage(_ html: String) -> BrowserViewModel {
+        let viewModel = BrowserViewModel()
+        let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        if var tab = viewModel.tabManager.activeTab {
+            tab.webView = webView
+            viewModel.tabManager.activeTab = tab
+        }
+        
+        let loaded = expectation(description: "page didFinish")
+        webView.navigationDelegate = PageLoadDelegate(onFinish: {
+            loaded.fulfill()
+        })
+        webView.loadHTMLString(html, baseURL: nil)
+        wait(for: [loaded], timeout: 10)
+        return viewModel
+    }
+    
+    /// Synchronously evaluates JavaScript and returns the result (bridges the
+    /// async completion handler onto the test's run loop).
+    @MainActor
+    private func evaluateJS(_ webView: WKWebView, _ script: String) -> Any? {
+        var result: Any?
+        let done = expectation(description: "evaluateJavaScript")
+        webView.evaluateJavaScript(script) { value, _ in
+            result = value
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 5)
+        return result
+    }
+    
+    /// Polls a condition while pumping the run loop so async WebKit callbacks fire.
+    @discardableResult
+    private func poll(_ condition: () -> Bool, timeout: TimeInterval = 6) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if condition() { return true }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        return condition()
+    }
+    
+    /// Test A — Basic JavaScript URL executes against the current page.
+    @MainActor
+    func testJavaScriptURLExecutesInCurrentPage() {
+        let viewModel = makeViewModelWithPage("<html><body></body></html>")
+        guard let webView = viewModel.tabManager.activeTab?.webView else {
+            XCTFail("No web view")
+            return
+        }
+        let expectedURL = viewModel.currentURL?.absoluteString
+        
+        viewModel.inputURLText = "javascript:document.body.setAttribute('data-test','success');"
+        viewModel.handleSearchOrNavigate()
+        
+        // State invariants: no navigation, no URL mutation, no tab mutation.
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, expectedURL)
+        XCTAssertEqual(viewModel.tabManager.activeTab?.url?.absoluteString, expectedURL)
+        XCTAssertEqual(viewModel.inputURLText, "javascript:document.body.setAttribute('data-test','success');")
+        XCTAssertNil(viewModel.javascriptExecutionMessage)
+        
+        let got: String? = evaluateJS(webView, "document.body.getAttribute('data-test')") as? String
+        XCTAssertEqual(got, "success")
+    }
+    
+    /// Test B — Form submission through a `javascript:` command.
+    @MainActor
+    func testJavaScriptURLSubmitsForm() {
+        let html = """
+        <html><body>
+        <form id="90200" method="get" action="https://example.com/90200-submitted">
+        <input type="text" name="q"><input type="submit">
+        </form>
+        </body></html>
+        """
+        let viewModel = makeViewModelWithPage(html)
+        guard let webView = viewModel.tabManager.activeTab?.webView else {
+            XCTFail("No web view")
+            return
+        }
+        let expectedURL = viewModel.currentURL?.absoluteString
+        
+        viewModel.inputURLText = "javascript:document.getElementById('90200').submit();"
+        viewModel.handleSearchOrNavigate()
+        
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, expectedURL)
+        // The form really submitted: a navigation toward its action URL started.
+        let submitted = poll { webView.url?.absoluteString.contains("90200-submitted") == true }
+        XCTAssertTrue(submitted, "form.submit() did not trigger a navigation")
+    }
+    
+    /// Test C — Case-insensitive `javascript:` scheme detection.
+    @MainActor
+    func testJavaScriptURLSchemeCaseInsensitive() {
+        let viewModel = makeViewModelWithPage("<html><body></body></html>")
+        guard let webView = viewModel.tabManager.activeTab?.webView else {
+            XCTFail("No web view")
+            return
+        }
+        
+        viewModel.inputURLText = "JavaScript:document.body.setAttribute('data-test','success');"
+        viewModel.handleSearchOrNavigate()
+        
+        let got: String? = evaluateJS(webView, "document.body.getAttribute('data-test')") as? String
+        XCTAssertEqual(got, "success")
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, "https://google.com")
+    }
+    
+    /// Test D — Normal HTTPS URL still performs normal navigation.
+    @MainActor
+    func testJavaScriptURLDoesNotAffectNormalHTTPSNavigation() {
+        let viewModel = BrowserViewModel()
+        viewModel.inputURLText = "https://example.com"
+        viewModel.handleSearchOrNavigate()
+        
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, "https://example.com")
+        XCTAssertEqual(viewModel.tabManager.activeTab?.url?.absoluteString, "https://example.com")
+        XCTAssertNil(viewModel.javascriptExecutionMessage)
+    }
+    
+    /// Test E — Ordinary text still uses the configured search engine.
+    @MainActor
+    func testJavaScriptURLDoesNotAffectSearchQueries() {
+        let viewModel = BrowserViewModel()
+        viewModel.inputURLText = "fluxdl javascript test"
+        viewModel.handleSearchOrNavigate()
+        
+        XCTAssertTrue(viewModel.currentURL?.absoluteString.contains("google.com/search") == true)
+        XCTAssertNil(viewModel.javascriptExecutionMessage)
+    }
+    
+    /// Test F — JavaScript-disabled rejects javascript: execution without
+    /// breaking normal navigation.
+    @MainActor
+    func testJavaScriptURLRespectsDisabledJavaScriptSetting() {
+        let settings = BrowserSettings.shared
+        let saved = settings.isJavaScriptEnabled
+        settings.isJavaScriptEnabled = false
+        defer { settings.isJavaScriptEnabled = saved }
+        
+        let viewModel = makeViewModelWithPage("<html><body></body></html>")
+        guard let webView = viewModel.tabManager.activeTab?.webView else {
+            XCTFail("No web view")
+            return
+        }
+        
+        viewModel.inputURLText = "javascript:document.body.setAttribute('data-test','nope');"
+        viewModel.handleSearchOrNavigate()
+        
+        // Rejected with a clear user-facing message.
+        XCTAssertNotNil(viewModel.javascriptExecutionMessage)
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, "https://google.com")
+        
+        let got: String? = evaluateJS(webView, "document.body.getAttribute('data-test')") as? String
+        XCTAssertNil(got, "JavaScript must not run while disabled")
+        
+        // Normal navigation remains unaffected.
+        viewModel.inputURLText = "https://example.com"
+        viewModel.handleSearchOrNavigate()
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, "https://example.com")
+    }
+    
+    /// Test G — A webpage `javascript:` link executes instead of navigating.
+    @MainActor
+    func testJavaScriptWebpageLinkExecutesInsteadOfNavigating() {
+        // WKNavigationAction cannot be constructed by tests, so this exercises
+        // the exact extraction + execution helpers the navigation policy uses.
+        let url = URL(string: "javascript:document.body.setAttribute('data-test','success');")!
+        let script = BrowserJavaScript.script(fromJavaScriptURL: url)
+        XCTAssertEqual(script, "document.body.setAttribute('data-test','success');")
+        
+        let viewModel = makeViewModelWithPage("<html><body></body></html>")
+        guard let webView = viewModel.tabManager.activeTab?.webView else {
+            XCTFail("No web view")
+            return
+        }
+        let expectedURL = viewModel.currentURL?.absoluteString
+        
+        guard let script else {
+            XCTFail("Script not extracted")
+            return
+        }
+        viewModel.executeJavaScript(script)
+        
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, expectedURL)
+        let got: String? = evaluateJS(webView, "document.body.getAttribute('data-test')") as? String
+        XCTAssertEqual(got, "success")
+    }
+    
+    /// Test H — Percent-encoded JavaScript is decoded exactly once.
+    @MainActor
+    func testJavaScriptURLEncodedDecodedOnce() {
+        let viewModel = makeViewModelWithPage("<html><body></body></html>")
+        guard let webView = viewModel.tabManager.activeTab?.webView else {
+            XCTFail("No web view")
+            return
+        }
+        
+        // "a%26b" decodes once to the JS string 'a&b'; '%2526' decodes once to
+        // the literal text '%26' — proving there is no double-decoding.
+        viewModel.inputURLText = "javascript:window.__fluxdlA='a%26b';window.__fluxdlB='%2526';"
+        viewModel.handleSearchOrNavigate()
+        
+        let a: String? = evaluateJS(webView, "window.__fluxdlA") as? String
+        let b: String? = evaluateJS(webView, "window.__fluxdlB") as? String
+        XCTAssertEqual(a, "a&b")
+        XCTAssertEqual(b, "%26")
+        XCTAssertNil(viewModel.javascriptExecutionMessage)
+    }
+    
+    /// javascript: commands must never reach download detection.
+    @MainActor
+    func testJavaScriptURLNeverTreatedAsDownload() {
+        let viewModel = BrowserViewModel()
+        viewModel.promptDownload(url: URL(string: "javascript:void(0)")!)
+        XCTAssertFalse(viewModel.showDownloadPrompt)
+        XCTAssertNil(viewModel.pendingDownload)
+        viewModel.promptDownload(url: URL(string: "javascript:document.getElementById('90200').submit();")!)
+        XCTAssertFalse(viewModel.showDownloadPrompt)
+        XCTAssertNil(viewModel.pendingDownload)
+    }
+    
+    // MARK: - Download request identity & popup content
+    
+    /// Every pending download carries a unique ID and the popup must reflect
+    /// the exact request that triggered it (no stale first/last state).
+    @MainActor
+    func testDownloadRequestUniqueIdentityAndFilename() {
+        let viewModel = BrowserViewModel()
+        
+        viewModel.promptDownload(url: URL(string: "https://example.com/first.zip")!)
+        let first = viewModel.pendingDownload
+        XCTAssertNotNil(first)
+        XCTAssertEqual(first?.url.absoluteString, "https://example.com/first.zip")
+        XCTAssertEqual(first?.displayFilename, "first.zip")
+        
+        viewModel.promptDownload(url: URL(string: "https://example.com/other.bin")!, filename: "report.pdf", mimeType: "application/pdf", fileSize: 1024)
+        let second = viewModel.pendingDownload
+        XCTAssertNotNil(second)
+        XCTAssertNotEqual(first?.id, second?.id, "each request must get a fresh unique ID")
+        XCTAssertEqual(second?.displayFilename, "report.pdf")
+        XCTAssertEqual(second?.mimeType, "application/pdf")
+        XCTAssertEqual(second?.fileSize, 1024)
+        
+        // A duplicate detection of the same URL must not replace the visible request.
+        viewModel.promptDownload(url: URL(string: "https://example.com/other.bin")!)
+        XCTAssertEqual(viewModel.pendingDownload?.id, second?.id)
+        XCTAssertEqual(viewModel.pendingDownload?.displayFilename, "report.pdf")
+        
+        // New tap, new request: no stale state from the previous popup.
+        viewModel.cancelDetectedDownload()
+        XCTAssertNil(viewModel.pendingDownload)
+        XCTAssertFalse(viewModel.showDownloadPrompt)
+        
+        viewModel.promptDownload(url: URL(string: "https://example.com/third.tar.gz")!)
+        XCTAssertNotEqual(viewModel.pendingDownload?.id, first?.id)
+        XCTAssertEqual(viewModel.pendingDownload?.displayFilename, "third.tar.gz")
+    }
+}
+
+/// Minimal WKNavigationDelegate used to wait for `loadHTMLString` completion.
+private final class PageLoadDelegate: NSObject, WKNavigationDelegate {
+    let onFinish: () -> Void
+
+    init(onFinish: @escaping () -> Void) {
+        self.onFinish = onFinish
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        onFinish()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        onFinish()
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        onFinish()
+    }
 }

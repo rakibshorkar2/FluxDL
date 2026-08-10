@@ -55,10 +55,21 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     public private(set) var session: URLSession = URLSession(configuration: .default)
     public var backgroundCompletionHandler: (() -> Void)?
 
+    /// Proxy route, injected by `ServiceContainer`. While the proxy is enabled
+    /// and the downloads route is on, NEW download tasks are created on a
+    /// dedicated proxied (foreground) session. The background session keeps
+    /// owning restored tasks so Apple's background-transfer semantics are
+    /// never broken.
+    public weak var proxyProvider: ProxyProviding?
+    private let proxySessionProvider = ProxySessionProvider()
+    private var proxiedSession: URLSession?
+    /// Fired after the effective routing state changes.
+    public var onRoutingStateChange: (() -> Void)?
+
     // ── O(1) reverse-lookup: URLSessionTask.taskIdentifier → task UUID ──────
     // Touched only from delegate queue – no MainActor annotation needed because
     // it is protected by delegateQueue (serial).
-    nonisolated(unsafe) private var taskIDBySessionID: [Int: UUID] = [:]           // delegate queue only
+    nonisolated(unsafe) private var taskIDBySessionID: [String: UUID] = [:]       // delegate queue only
     nonisolated(unsafe) private var progressByID:      [UUID: ProgressSnapshot] = [:] // delegate queue only
 
     // URLSessionDownloadTask reference (for cancel/pause) – MainActor only
@@ -109,18 +120,60 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
     // MARK: ── Public API (all @MainActor) ───────────────────────────────────
 
+    /// Session used for NEW download tasks. While the downloads proxy route
+    /// is active, tasks are created on a foreground proxied session through
+    /// `ProxySessionProvider` (SOCKS4 inbound traffic is bridged by the local
+    /// adapter). Otherwise the background session is used as before.
+    private func activeSession() -> URLSession {
+        if let proxyProvider,
+           proxyProvider.isEnabled,
+           proxyProvider.downloadsProxyEnabled,
+           let configuration = proxyProvider.activeConfiguration {
+            if proxiedSession == nil {
+                let config = proxySessionProvider.sessionConfiguration(for: configuration)
+                config.waitsForConnectivity = true
+                config.timeoutIntervalForResource = 0
+                config.httpMaximumConnectionsPerHost = 4
+                proxiedSession = URLSession(configuration: config, delegate: self, delegateQueue: delegateQueue)
+            }
+            return proxiedSession ?? session
+        }
+        return session
+    }
+
+    /// Re-evaluates routing after the proxy state changes. In-flight proxied
+    /// tasks are allowed to finish; the proxied session is dropped so new
+    /// tasks go direct. Consumers (browser) are notified through
+    /// `onRoutingStateChange`.
+    public func refreshProxyRouting() {
+        if proxyProvider?.isEnabled != true || proxyProvider?.downloadsProxyEnabled != true {
+            proxiedSession?.finishTasksAndInvalidate()
+            proxiedSession = nil
+        }
+        onRoutingStateChange?()
+    }
+
+    /// Stable identity for the task reverse-lookup. Delegate callbacks arrive
+    /// with their owning session; when the proxied and background sessions
+    /// coexist, their taskIdentifiers can collide, so keys are namespaced by
+    /// session identity.
+    nonisolated private func lookupKey(for session: URLSession, taskIdentifier: Int) -> String {
+        "\(ObjectIdentifier(session).hashValue)-\(taskIdentifier)"
+    }
+
     @discardableResult
     public func startDownload(url: URL, filename: String? = nil) -> UUID {
         var model = DownloadTaskModel(url: url, filename: filename, status: .downloading)
         model.startedAt = Date()
         tasks.insert(model, at: 0)
 
-        let dlTask = session.downloadTask(with: url)
+        let usedSession = activeSession()
+        let dlTask = usedSession.downloadTask(with: url)
         urlTaskByID[model.id] = dlTask
 
         // Register reverse lookup on delegate queue (serialised)
         let taskID     = model.id
-        let sessionKey = dlTask.taskIdentifier
+        let sessionKey = lookupKey(for: usedSession, taskIdentifier: dlTask.taskIdentifier)
         delegateQueue.addOperation { [weak self] in
             self?.taskIDBySessionID[sessionKey] = taskID
             self?.progressByID[taskID] = ProgressSnapshot(
@@ -188,18 +241,19 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         tasks[index].errorMessage = nil
         if tasks[index].startedAt == nil { tasks[index].startedAt = Date() }
 
+        let usedSession = activeSession()
         let dlTask: URLSessionDownloadTask
         if let data = model.resumeData {
-            dlTask = session.downloadTask(withResumeData: data)
+            dlTask = usedSession.downloadTask(withResumeData: data)
         } else {
-            dlTask = session.downloadTask(with: model.activeURL)
+            dlTask = usedSession.downloadTask(with: model.activeURL)
         }
 
         urlTaskByID[id] = dlTask
         tasks[index].sessionTaskIdentifier = dlTask.taskIdentifier
 
         let taskID     = id
-        let sessionKey = dlTask.taskIdentifier
+        let sessionKey = lookupKey(for: usedSession, taskIdentifier: dlTask.taskIdentifier)
         let startBytes = model.downloadedBytes
         delegateQueue.addOperation { [weak self] in
             self?.taskIDBySessionID[sessionKey] = taskID
@@ -263,12 +317,13 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         tasks[index].retryHistory.append(record)
         if tasks[index].startedAt == nil { tasks[index].startedAt = Date() }
 
-        let dlTask = session.downloadTask(with: tasks[index].activeURL)
+        let usedSession = activeSession()
+        let dlTask = usedSession.downloadTask(with: tasks[index].activeURL)
         urlTaskByID[id] = dlTask
         tasks[index].sessionTaskIdentifier = dlTask.taskIdentifier
 
         let taskID     = id
-        let sessionKey = dlTask.taskIdentifier
+        let sessionKey = lookupKey(for: usedSession, taskIdentifier: dlTask.taskIdentifier)
         delegateQueue.addOperation { [weak self] in
             self?.taskIDBySessionID[sessionKey] = taskID
             self?.progressByID[taskID] = ProgressSnapshot(
@@ -379,8 +434,10 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     /// the delegate queue so that subsequent `didFinishDownloadingTo` / `didWriteData`
     /// callbacks are properly routed to the correct task model.
     public func reregisterRestoredTask(taskId: UUID, sessionTaskIdentifier: Int, startBytes: Int64, totalBytes: Int64) {
+        // Restored tasks always come from the background session (`session`).
+        let key = lookupKey(for: session, taskIdentifier: sessionTaskIdentifier)
         delegateQueue.addOperation { [weak self] in
-            self?.taskIDBySessionID[sessionTaskIdentifier] = taskId
+            self?.taskIDBySessionID[key] = taskId
             self?.progressByID[taskId] = ProgressSnapshot(
                 downloadedBytes: startBytes,
                 totalBytes: totalBytes,
@@ -508,8 +565,9 @@ extension DownloadEngine: URLSessionDownloadDelegate {
         totalBytesExpectedToWrite: Int64
     ) {
         // O(1) lookup – no MainActor needed
-        guard var snap = progressByID[taskIDBySessionID[downloadTask.taskIdentifier] ?? UUID()] else { return }
-        guard let id   = taskIDBySessionID[downloadTask.taskIdentifier] else { return }
+        let hitKey = lookupKey(for: session, taskIdentifier: downloadTask.taskIdentifier)
+        guard var snap = progressByID[taskIDBySessionID[hitKey] ?? UUID()] else { return }
+        guard let id   = taskIDBySessionID[hitKey] else { return }
 
         snap.downloadedBytes = totalBytesWritten
         if totalBytesExpectedToWrite > 0 { snap.totalBytes = totalBytesExpectedToWrite }
@@ -560,7 +618,7 @@ extension DownloadEngine: URLSessionDownloadDelegate {
             return
         }
 
-        guard let id = taskIDBySessionID[downloadTask.taskIdentifier] else {
+        guard let id = taskIDBySessionID[lookupKey(for: session, taskIdentifier: downloadTask.taskIdentifier)] else {
             try? FileManager.default.removeItem(at: copyURL)
             return
         }
@@ -742,7 +800,7 @@ extension DownloadEngine: URLSessionDownloadDelegate {
         // Ignore user-initiated cancels
         if nsErr.domain == NSURLErrorDomain && nsErr.code == NSURLErrorCancelled { return }
 
-        guard let id = taskIDBySessionID[task.taskIdentifier] else { return }
+        guard let id = taskIDBySessionID[lookupKey(for: session, taskIdentifier: task.taskIdentifier)] else { return }
 
         Task { @MainActor [weak self] in
             guard let self,
@@ -798,7 +856,7 @@ extension DownloadEngine: URLSessionDownloadDelegate {
         newRequest request: URLRequest,
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
-        if let id = taskIDBySessionID[task.taskIdentifier] {
+        if let id = taskIDBySessionID[lookupKey(for: session, taskIdentifier: task.taskIdentifier)] {
             Task { @MainActor [weak self] in
                 self?.redirectCountByID[id, default: 0] += 1
             }

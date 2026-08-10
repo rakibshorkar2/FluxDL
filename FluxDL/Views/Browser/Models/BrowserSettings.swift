@@ -1,5 +1,15 @@
 import Foundation
 
+/// Controls how `<prefers-color-scheme>` is resolved inside the webpage.
+public enum WebpageAppearance: String, CaseIterable, Identifiable, Codable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+    case automatic = "Automatic"
+
+    public var id: String { rawValue }
+}
+
 public enum SearchEngine: String, CaseIterable, Identifiable, Codable {
     case google = "Google"
     case duckDuckGo = "DuckDuckGo"
@@ -64,6 +74,11 @@ public final class BrowserSettings: ObservableObject {
         didSet { UserDefaults.standard.set(restoreTabsOnLaunch, forKey: "browser_restore_tabs") }
     }
     
+    /// Webpage color-scheme preference applied to every WKWebView.
+    @Published public var webpageAppearance: WebpageAppearance {
+        didSet { UserDefaults.standard.set(webpageAppearance.rawValue, forKey: "browser_webpage_appearance") }
+    }
+    
     private init() {
         self.homepage = UserDefaults.standard.string(forKey: "browser_homepage") ?? "https://google.com"
         
@@ -91,6 +106,13 @@ public final class BrowserSettings: ObservableObject {
         
         self.restoreTabsOnLaunch = UserDefaults.standard.object(forKey: "browser_restore_tabs") != nil
             ? UserDefaults.standard.bool(forKey: "browser_restore_tabs") : true
+        
+        if let appearanceRaw = UserDefaults.standard.string(forKey: "browser_webpage_appearance"),
+           let appearance = WebpageAppearance(rawValue: appearanceRaw) {
+            self.webpageAppearance = appearance
+        } else {
+            self.webpageAppearance = .system
+        }
     }
     
     public func isWhitelisted(domain: String) -> Bool {

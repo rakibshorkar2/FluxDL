@@ -1,83 +1,94 @@
 import Foundation
+import Combine
+import Network
 
-/// Bridges the app's active proxy configuration into browser networking.
-///
-/// WKWebView does not honor `URLSessionConfiguration.connectionProxyDictionary`
-/// directly; instead we expose the resolved proxy so the browser layer can
-/// apply it to a URLSession used for pre-loads / favicon fetches, and publish
-/// the human-readable proxy status for the toolbar indicator.
+// MARK: - BrowserProxySession
+//
+// Bridges the app's active proxy configuration into browser networking.
+//
+// WKWebView cannot be tunneled without VPN/private APIs, so browser traffic
+// follows the same APPLICATION-LEVEL proxy rule as everything else in FluxDL:
+// sessions are built through `ProxySessionProvider` using the native
+// `Network.ProxyConfiguration` (iOS 17+) path — SOCKS4 is bridged by the
+// local loopback adapter. Traffic from other apps is never affected, and
+// once the proxy applies, `allowFailover` is false (no silent direct
+// fallback — a failed proxy is a failed request).
+//
+// The state here is event-driven (Combine, no polling timer). When the
+// effective route changes, `proxyDidChange` fires so consumers (the browser
+// tab manager) can reload tabs and rebuild their session configuration.
+
 @MainActor
 public final class BrowserProxySession: ObservableObject {
     public static let shared = BrowserProxySession()
-    
+
+    /// True when the proxy is enabled AND the browser route is on.
     @Published public private(set) var isProxyActive: Bool = false
+    /// "host:port" (IPv6 bracketed) for the toolbar indicator.
     @Published public private(set) var proxyLabel: String?
-    
-    private var timer: Timer?
-    
+    /// The configuration currently applied to browser sessions.
+    @Published public private(set) var activeConfiguration: ProxyConfiguration?
+
+    /// Emitted every time the effective route changes (enable/disable/toggle).
+    public let proxyDidChange = PassthroughSubject<Void, Never>()
+
+    private let sessionProvider = ProxySessionProvider()
+    private var cancellables = Set<AnyCancellable>()
+
     private init() {
-        refresh()
+        guard let service = ServiceContainer.shared.proxyService as? ProxyService else { return }
+        service.$isEnabled
+            .combineLatest(service.$activeConfiguration, service.$browserProxyEnabled)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isEnabled, configuration, browserEnabled in
+                self?.apply(
+                    isEnabled: isEnabled,
+                    configuration: configuration,
+                    browserEnabled: browserEnabled
+                )
+            }
+            .store(in: &cancellables)
+        apply(
+            isEnabled: service.isEnabled,
+            configuration: service.activeConfiguration,
+            browserEnabled: service.browserProxyEnabled
+        )
     }
-    
-    /// The resolved proxy configuration currently in effect, if enabled.
-    public var activeConfiguration: ProxyConfiguration? {
-        ServiceContainer.shared.proxyService.activeConfiguration
-    }
-    
-    /// A URLSessionConfiguration with the proxy applied. Use for background
-    /// fetches (e.g. favicon downloads) so they share the proxy path.
-    public func sessionConfiguration() -> URLSessionConfiguration {
-        let config = URLSessionConfiguration.default
-        if let proxy = activeConfiguration {
-            config.connectionProxyDictionary = Self.proxyDictionary(for: proxy)
+
+    private func apply(isEnabled: Bool, configuration: ProxyConfiguration?, browserEnabled: Bool) {
+        let active = (isEnabled && browserEnabled) ? configuration : nil
+        let didChange = activeConfiguration != active
+        activeConfiguration = active
+        isProxyActive = active != nil
+        proxyLabel = active.map { "\($0.displayHost):\($0.port)" }
+        if didChange {
+            proxyDidChange.send()
         }
-        return config
     }
-    
-    /// True when the URL host should bypass the proxy (local hosts / loopback).
+
+    // MARK: - Session
+
+    /// A URLSessionConfiguration with the active proxy applied through the
+    /// native `Network.ProxyConfiguration` path. Favicon fetches and other
+    /// browser-side URLSession traffic share this path with downloads.
+    public func sessionConfiguration() -> URLSessionConfiguration {
+        sessionProvider.sessionConfiguration(for: activeConfiguration)
+    }
+
+    /// Always true for loopback: the local SOCKS4 adapter lives on
+    /// 127.0.0.1 and must never be routed through itself.
     public func shouldBypassProxy(for url: URL) -> Bool {
         guard let host = url.host?.lowercased() else { return true }
-        return host == "localhost" || host.hasPrefix("127.") || host == "0.0.0.0"
+        return host == "localhost" || host == "127.0.0.1" || host == "0.0.0.0"
     }
-    
+
+    /// Compatibility entry point used by the browser toolbar indicator.
     public func refresh() {
-        let proxy = ServiceContainer.shared.proxyService.activeConfiguration
-        isProxyActive = proxy != nil
-        proxyLabel = proxy.map { "\($0.host):\($0.port)" }
-        scheduleRefresh()
-    }
-    
-    private func scheduleRefresh() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.refresh()
-            }
-        }
-    }
-    
-    private static func proxyDictionary(for configuration: ProxyConfiguration) -> [AnyHashable: Any] {
-        let host = configuration.host
-        let port = configuration.port
-        
-        var dict: [AnyHashable: Any] = [
-            "HTTPEnable": 1,
-            "HTTPProxy": host,
-            "HTTPPort": port,
-            "HTTPSEnable": 1,
-            "HTTPSProxy": host,
-            "HTTPSPort": port,
-            "SOCKSEnable": 1,
-            "SOCKSProxy": host,
-            "SOCKSPort": port
-        ]
-        
-        // Authenticated proxies: only supported for HTTP(S) via the URLSession
-        // delegate; here we just flag it for the browser session.
-        if let password = configuration.password, !password.isEmpty {
-            dict["__FLUXDL_AUTHENTICATED"] = true
-        }
-        
-        return dict
+        guard let service = ServiceContainer.shared.proxyService as? ProxyService else { return }
+        apply(
+            isEnabled: service.isEnabled,
+            configuration: service.activeConfiguration,
+            browserEnabled: service.browserProxyEnabled
+        )
     }
 }

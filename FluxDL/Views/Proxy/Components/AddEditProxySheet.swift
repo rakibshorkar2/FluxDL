@@ -12,6 +12,7 @@ public struct AddEditProxySheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
+    @State private var selectedType: ProxyType = .socks5
     @State private var host = ""
     @State private var port = ""
     @State private var authenticationEnabled = false
@@ -46,11 +47,13 @@ public struct AddEditProxySheet: View {
                 }
 
                 Section {
-                    Picker("Type", selection: .constant(ProxyType.socks5)) {
-                        Text("SOCKS5").tag(ProxyType.socks5)
+                    Picker("Type", selection: $selectedType) {
+                        ForEach(ProxyType.allCases) { type in
+                            Text(type.displayName).tag(type)
+                        }
                     }
                     .pickerStyle(.menu)
-                    .disabled(true)
+                    .accessibilityIdentifier("proxy.form.type")
 
                     TextField("Host / IP Address", text: $host)
                         .textInputAutocapitalization(.never)
@@ -71,15 +74,20 @@ public struct AddEditProxySheet: View {
                 } header: {
                     Text("Server")
                 } footer: {
-                    Text("SOCKS5 is the only protocol currently supported.")
+                    Text("SOCKS5, SOCKS4, HTTP and HTTPS proxies are supported.")
                 }
 
                 Section {
-                    Toggle(isOn: $authenticationEnabled) {
-                        Label("Authentication", systemImage: "lock.fill")
+                    if selectedType != .socks4 {
+                        Toggle(isOn: $authenticationEnabled) {
+                            Label("Authentication", systemImage: "lock.fill")
+                        }
+                        .tint(Color.accentColor)
+                        .accessibilityIdentifier("proxy.form.authToggle")
+                    } else {
+                        Label("Authentication", systemImage: "lock.slash")
+                            .foregroundStyle(.secondary)
                     }
-                    .tint(Color.accentColor)
-                    .accessibilityIdentifier("proxy.form.authToggle")
 
                     if authenticationEnabled {
                         TextField("Username", text: $username)
@@ -191,15 +199,17 @@ public struct AddEditProxySheet: View {
         guard let profile = profile else { return }
         let configuration = profile.configuration
         name = configuration.name
+        selectedType = configuration.type
         host = configuration.host
         port = "\(configuration.port)"
-        authenticationEnabled = configuration.authenticationEnabled
+        authenticationEnabled = configuration.authenticationEnabled && configuration.type != .socks4
         username = configuration.username
         password = ""
     }
 
     private func clearFields() {
         name = ""
+        selectedType = .socks5
         host = ""
         port = ""
         authenticationEnabled = false
@@ -233,7 +243,9 @@ public struct AddEditProxySheet: View {
             errors["port"] = "Port must be a number"
         }
 
-        if authenticationEnabled {
+        // SOCKS4 has no challenge mechanism — credentials are meaningless.
+        let effectiveAuth = authenticationEnabled && selectedType != .socks4
+        if effectiveAuth {
             if username.trimmingCharacters(in: .whitespaces).isEmpty {
                 errors["username"] = "Username is required"
             }
@@ -247,7 +259,7 @@ public struct AddEditProxySheet: View {
 
         // An empty password while editing keeps the Keychain-stored value.
         let resolvedPassword: String?
-        if password.isEmpty, let profile = profile {
+        if password.isEmpty, let profile = profile, effectiveAuth {
             resolvedPassword = viewModel.service.password(forProfileID: profile.id)
         } else {
             resolvedPassword = password
@@ -256,10 +268,10 @@ public struct AddEditProxySheet: View {
         return ProxyConfiguration(
             id: profile?.id ?? UUID(),
             name: trimmedName,
-            type: .socks5,
+            type: selectedType,
             host: trimmedHost,
             port: portInt,
-            authenticationEnabled: authenticationEnabled,
+            authenticationEnabled: effectiveAuth,
             username: username.trimmingCharacters(in: .whitespaces),
             password: resolvedPassword
         )
@@ -271,7 +283,7 @@ public struct AddEditProxySheet: View {
             return
         }
         if let profile = profile {
-            viewModel.service.updateProfile(configuration)
+            viewModel.service.updateProfile(ProxyProfile(configuration: configuration))
         } else {
             viewModel.service.addProfile(configuration)
         }

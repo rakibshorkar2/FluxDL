@@ -1,0 +1,120 @@
+proxies:
+  - name: "Bangladesh Server-1"
+    type: socks5
+    server: 118.179.216.138
+    port: 1920
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-2"
+    type: socks5
+    server: 103.91.231.244
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-3"
+    type: socks5
+    server: 123.49.39.120
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-4"
+    type: socks5
+    server: 103.140.25.10
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-5"
+    type: socks5
+    server: 103.197.48.154
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-6"
+    type: socks5
+    server: 103.108.60.173
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-7"
+    type: socks5
+    server: 103.166.253.92
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-8"
+    type: socks5
+    server: 103.4.65.237
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-9"
+    type: socks5
+    server: 203.76.110.118
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-10"
+    type: socks5
+    server: 103.122.254.33
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-11"
+    type: socks5
+    server: 220.247.165.129
+    port: 1088
+    username: test
+    password: test
+    country: BD
+  - name: "Bangladesh Server-12"
+    type: socks5
+    server: 203.76.220.168
+    port: 1052
+    username: exrex
+    password: exrex
+    country: BD
+  - name: "Bangladesh Server-13"
+    type: socks5
+    server: 203.80.190.110
+    port: 1080
+    username: 50mbs
+    password: 50mbs
+    country: BD
+  - name: "Bangladesh Server-14"
+    type: socks5
+    server: 203.80.190.94
+    port: 1080
+    username: 50mbs
+    password: 50mbs
+    country: BD
+  - name: "Bangladesh Server-15"
+    type: socks5
+    server: 103.199.109.154
+    port: 6969
+    username: "1"
+    password: "1"
+    country: BD
+  - name: "Bangladesh Server-16"
+    type: socks5
+    server: 103.143.139.173
+    port: 1080
+    username: "1"
+    password: "1"
+    country: BD
+  - name: "Bangladesh Server-17"
+    type: socks5
+    server: 103.106.241.235
+    port: 6969
+    username: "@bdiix_bypass"
+    password: "@bdiix_bypass"
+    country: BD

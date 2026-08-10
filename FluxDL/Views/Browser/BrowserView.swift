@@ -99,8 +99,51 @@ public struct BrowserView: View {
                         .zIndex(20)
                         .ignoresSafeArea()
                 }
+                
+                // "Download File?" popup — anchored to the exact element that
+                // triggered the download. Falls back to a tab-bar-adjacent
+                // position for programmatic (non-element) download triggers.
+                if viewModel.showDownloadPrompt, let request = viewModel.pendingDownload {
+                    let anchor = viewModel.downloadAnchorPoint
+                    let edgeInset: CGFloat = 160
+                    let halfWidth = max(edgeInset, geo.size.width - edgeInset)
+                    let localX: CGFloat
+                    var localY: CGFloat
+                    if let anchor {
+                        localX = min(max(anchor.x - viewModel.browserWindowOrigin.x, edgeInset), halfWidth)
+                        localY = anchor.y - viewModel.browserWindowOrigin.y
+                    } else {
+                        // Programmatic trigger (no DOM element): deterministic
+                        // fallback next to the bottom chrome, never fixed center.
+                        localX = min(max(geo.size.width / 2, edgeInset), halfWidth)
+                        localY = geo.size.height - 140
+                    }
+                    let placeBelow = localY < 150
+                    
+                    BrowserDownloadPromptView(
+                        request: request,
+                        onDownload: { viewModel.startDetectedDownload() },
+                        onCancel: { viewModel.cancelDetectedDownload() }
+                    )
+                    .position(x: localX, y: localY)
+                    .offset(y: placeBelow ? 96 : -86)
+                    .zIndex(30)
+                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.downloadAnchorPoint)
+                }
             }
             .onPreferenceChange(ChromeHeightKey.self) { chromeHeight = $0 }
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: BrowserWindowOriginKey.self,
+                        value: proxy.frame(in: .global).origin
+                    )
+                }
+            )
+            .onPreferenceChange(BrowserWindowOriginKey.self) { origin in
+                viewModel.browserWindowOrigin = origin
+            }
             .onChange(of: tabManager.activeTabId) { _ in
                 viewModel.isChromeCollapsed = false
             }
@@ -134,19 +177,16 @@ public struct BrowserView: View {
         } message: {
             Text("This removes all browsing history from this device.")
         }
-        .confirmationDialog(
-            "Download File?",
-            isPresented: $viewModel.showDownloadPrompt,
-            titleVisibility: .visible
+        .alert(
+            "JavaScript",
+            isPresented: Binding(
+                get: { viewModel.javascriptExecutionMessage != nil },
+                set: { if !$0 { viewModel.javascriptExecutionMessage = nil } }
+            )
         ) {
-            Button("Download Now") {
-                viewModel.startDetectedDownload()
-            }
-            Button("Cancel", role: .cancel) {}
+            Button("OK", role: .cancel) {}
         } message: {
-            if let url = viewModel.detectedDownloadURL {
-                Text("Detected downloadable file:\n\(url.lastPathComponent)")
-            }
+            Text(viewModel.javascriptExecutionMessage ?? "")
         }
     }
     
@@ -283,6 +323,13 @@ public struct BrowserView: View {
 private struct ChromeHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+private struct BrowserWindowOriginKey: PreferenceKey {
+    static var defaultValue: CGPoint = .zero
+    static func reduce(value: inout CGPoint, nextValue: () -> CGPoint) {
         value = nextValue()
     }
 }

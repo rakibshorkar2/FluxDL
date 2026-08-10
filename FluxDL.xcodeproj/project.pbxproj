@@ -61,6 +61,7 @@
 		AA1000412C60000100000041 /* BrowserProxySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000412C60000100000041 /* BrowserProxySession.swift */; };
 		AA1000422C60000100000042 /* BrowserFaviconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000422C60000100000042 /* BrowserFaviconView.swift */; };
 		AA1000432C60000100000043 /* BrowserErrorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000432C60000100000043 /* BrowserErrorView.swift */; };
+		FF1000012C90000100000001 /* BrowserDownloadPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000022C90000100000002 /* BrowserDownloadPromptView.swift */; };
 		AA1000442C60000100000044 /* BrowserEditBookmarkSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000442C60000100000044 /* BrowserEditBookmarkSheet.swift */; };
 		AA1000502C60000100000050 /* DownloadFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000502C60000100000050 /* DownloadFilters.swift */; };
 		AA1000512C60000100000051 /* DownloadMetadataCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000512C60000100000051 /* DownloadMetadataCapture.swift */; };
@@ -112,6 +113,11 @@
 		AA30000B2C6000010000000B /* ProxyKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000B2C6000010000000B /* ProxyKeychainStore.swift */; };
 		A3E000012C60000100000001 /* ProxyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E000012C60000100000001 /* ProxyUITests.swift */; };
 		AA1000642C60000100000064 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB1000642C60000100000064 /* Assets.xcassets */; };
+		AA30000C2C6000010000000C /* ProxyTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000C2C6000010000000C /* ProxyTransport.swift */; };
+		AA30000D2C6000010000000D /* ProxyTester.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000D2C6000010000000D /* ProxyTester.swift */; };
+		AA30000E2C6000010000000E /* ProxySessionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000E2C6000010000000E /* ProxySessionProvider.swift */; };
+		AA30000F2C6000010000000F /* DefaultProxies.yaml in Resources */ = {isa = PBXBuildFile; fileRef = BB30000F2C6000010000000F /* DefaultProxies.yaml */; };
+		AA4000032C60000100000003 /* Yams in Sources */ = {isa = PBXBuildFile; productRef = AA4000022C60000100000002 /* Yams */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -195,6 +201,7 @@
 		BB1000412C60000100000041 /* BrowserProxySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserProxySession.swift; sourceTree = "<group>"; };
 		BB1000422C60000100000042 /* BrowserFaviconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserFaviconView.swift; sourceTree = "<group>"; };
 		BB1000432C60000100000043 /* BrowserErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserErrorView.swift; sourceTree = "<group>"; };
+		FF1000022C90000100000002 /* BrowserDownloadPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserDownloadPromptView.swift; sourceTree = "<group>"; };
 		BB1000442C60000100000044 /* BrowserEditBookmarkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserEditBookmarkSheet.swift; sourceTree = "<group>"; };
 		BB1000502C60000100000050 /* DownloadFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadFilters.swift; sourceTree = "<group>"; };
 		BB1000512C60000100000051 /* DownloadMetadataCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadMetadataCapture.swift; sourceTree = "<group>"; };
@@ -245,6 +252,10 @@
 		BB3000092C60000100000009 /* SOCKS5Client.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SOCKS5Client.swift; sourceTree = "<group>"; };
 		BB30000A2C6000010000000A /* ProxyYAMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyYAMLParser.swift; sourceTree = "<group>"; };
 		BB30000B2C6000010000000B /* ProxyKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyKeychainStore.swift; sourceTree = "<group>"; };
+		BB30000C2C6000010000000C /* ProxyTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTransport.swift; sourceTree = "<group>"; };
+		BB30000D2C6000010000000D /* ProxyTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTester.swift; sourceTree = "<group>"; };
+		BB30000E2C6000010000000E /* ProxySessionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxySessionProvider.swift; sourceTree = "<group>"; };
+		BB30000F2C6000010000000F /* DefaultProxies.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = DefaultProxies.yaml; sourceTree = "<group>"; };
 		B3E000012C60000100000001 /* ProxyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyUITests.swift; sourceTree = "<group>"; };
 		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -272,6 +283,7 @@
 				GG1000032C60000100000003 /* Services */,
 				GG1000042C60000100000004 /* DesignSystem */,
 				GG1000052C60000100000005 /* Views */,
+				GG3000042C60000100000004 /* Resources */,
 			);
 			path = FluxDL;
 			sourceTree = "<group>";
@@ -340,6 +352,9 @@
 				BB3000092C60000100000009 /* SOCKS5Client.swift */,
 				BB30000A2C6000010000000A /* ProxyYAMLParser.swift */,
 				BB30000B2C6000010000000B /* ProxyKeychainStore.swift */,
+				BB30000C2C6000010000000C /* ProxyTransport.swift */,
+				BB30000D2C6000010000000D /* ProxyTester.swift */,
+				BB30000E2C6000010000000E /* ProxySessionProvider.swift */,
 			);
 			path = Proxy;
 			sourceTree = "<group>";
@@ -377,6 +392,22 @@
 				BB1000082C60000100000008 /* StatusBadge.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		GG3000042C60000100000004 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				GG3000052C60000100000005 /* Proxies */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		GG3000052C60000100000005 /* Proxies */ = {
+			isa = PBXGroup;
+			children = (
+				BB30000F2C6000010000000F /* DefaultProxies.yaml */,
+			);
+			path = Proxies;
 			sourceTree = "<group>";
 		};
 		GG1000052C60000100000005 /* Views */ = {
@@ -495,6 +526,7 @@
 				BB1000412C60000100000041 /* BrowserProxySession.swift */,
 				BB1000422C60000100000042 /* BrowserFaviconView.swift */,
 				BB1000432C60000100000043 /* BrowserErrorView.swift */,
+				FF1000022C90000100000002 /* BrowserDownloadPromptView.swift */,
 				BB1000442C60000100000044 /* BrowserEditBookmarkSheet.swift */,
 			);
 			path = Browser;
@@ -568,6 +600,9 @@
 				DD1000012C60000100000010 /* PBXTargetDependency */,
 			);
 			name = FluxDL;
+			packageProductDependencies = (
+				AA4000022C60000100000002 /* Yams */,
+			);
 			productName = FluxDL;
 			productReference = BB1000992C60000100000099 /* FluxDL.app */;
 			productType = "com.apple.product-type.application";
@@ -637,6 +672,9 @@
 			);
 			mainGroup = GG1000002C60000100000000 /* Main Group */;
 			productRefGroup = GG1000992C60000100000099 /* Products */;
+			packageReferences = (
+				AA4000012C60000100000001 /* XCLocalSwiftPackageReference "Yams" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -645,6 +683,20 @@
 				EE3000012C60000100000001 /* FluxDLUITests */,
 			);
 		};
+/* Begin XCLocalSwiftPackageReference section */
+		AA4000012C60000100000001 /* XCLocalSwiftPackageReference "Yams" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Submodules/Yams;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA4000022C60000100000002 /* Yams */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA4000012C60000100000001 /* XCLocalSwiftPackageReference "Yams" */;
+			productName = Yams;
+		};
+/* End XCSwiftPackageProductDependency section */
 /* End PBXProject section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -678,6 +730,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA1000642C60000100000064 /* Assets.xcassets in Resources */,
+				AA30000F2C6000010000000F /* DefaultProxies.yaml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -742,6 +795,7 @@
 				AA1000412C60000100000041 /* BrowserProxySession.swift in Sources */,
 				AA1000422C60000100000042 /* BrowserFaviconView.swift in Sources */,
 				AA1000432C60000100000043 /* BrowserErrorView.swift in Sources */,
+				FF1000012C90000100000001 /* BrowserDownloadPromptView.swift in Sources */,
 				AA1000442C60000100000044 /* BrowserEditBookmarkSheet.swift in Sources */,
 				AA1000502C60000100000050 /* DownloadFilters.swift in Sources */,
 				AA1000512C60000100000051 /* DownloadMetadataCapture.swift in Sources */,
@@ -773,6 +827,10 @@
 				AA3000092C60000100000009 /* SOCKS5Client.swift in Sources */,
 				AA30000A2C6000010000000A /* ProxyYAMLParser.swift in Sources */,
 				AA30000B2C6000010000000B /* ProxyKeychainStore.swift in Sources */,
+				AA30000C2C6000010000000C /* ProxyTransport.swift in Sources */,
+				AA30000D2C6000010000000D /* ProxyTester.swift in Sources */,
+				AA30000E2C6000010000000E /* ProxySessionProvider.swift in Sources */,
+				AA4000032C60000100000003 /* Yams in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -186,7 +186,7 @@ final class ProxyUITests: XCTestCase {
 
         XCTAssertFalse(viewModel.isYAMLResultsPresented)
         XCTAssertTrue(viewModel.isAlertPresented)
-        XCTAssertEqual(viewModel.alertMessage, "Invalid YAML: no proxy configuration found in YAML")
+        XCTAssertEqual(viewModel.alertMessage, "No proxy configuration found in the selected file.")
     }
 
     func testImportConfigurationsAddsAllProfiles() {

@@ -71,30 +71,8 @@ public struct DownloadsView: View {
                     }
                 }
             }
-            // Delete confirmation (single item)
-            .confirmationDialog(
-                "Delete Download",
-                isPresented: $viewModel.isDeleteConfirmationPresented,
-                titleVisibility: .visible
-            ) {
-                Button("Delete File & Record", role: .destructive) {
-                    if let id = viewModel.pendingDeleteID {
-                        viewModel.deleteTask(id: id, deleteFile: true)
-                    }
-                    viewModel.pendingDeleteID = nil
-                }
-                Button("Remove from List Only", role: .destructive) {
-                    if let id = viewModel.pendingDeleteID {
-                        viewModel.deleteTask(id: id, deleteFile: false)
-                    }
-                    viewModel.pendingDeleteID = nil
-                }
-                Button("Cancel", role: .cancel) {
-                    viewModel.pendingDeleteID = nil
-                }
-            } message: {
-                Text("This action cannot be undone.")
-            }
+            // Delete confirmation is presented per-card, anchored to each
+            // row's own trash button (see DownloadItemCard).
             // Batch delete confirmation
             .confirmationDialog(
                 "Delete \(viewModel.selectedCount) Downloads",
@@ -285,7 +263,7 @@ public struct DownloadsView: View {
                             onResume:         { viewModel.resumeTask(id: task.id) },
                             onCancel:         { viewModel.cancelTask(id: task.id) },
                             onRetry:          { viewModel.retryTask(id: task.id) },
-                            onDelete:         { viewModel.confirmDeleteTask(id: task.id) },
+                            onDelete:         { deleteFile in viewModel.deleteTask(id: task.id, deleteFile: deleteFile) },
                             onShare:          { viewModel.shareTask(task: task) },
                             onChangePriority: { p in viewModel.changeTaskPriority(id: task.id, newPriority: p) },
                             onShowInfo:       { viewModel.taskForInfoSheet = task },

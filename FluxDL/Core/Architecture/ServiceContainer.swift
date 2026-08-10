@@ -44,19 +44,24 @@ public final class ServiceContainer: ObservableObject {
         self.liveActivityManager = LiveActivityManager()
         self.backgroundKeepAliveService = BackgroundKeepAliveService()
         
-        let powerMon = PowerNetworkMonitor()
+let powerMon = PowerNetworkMonitor()
         self.powerNetworkMonitor = powerMon
-        
+
+        let proxy = ProxyService()
+        self.proxyService = proxy
+
         let engine = DownloadEngine(
             repository: downloadRepository,
             fileManagerService: fileManagementService,
             hapticService: hapticService,
             notificationService: notifService
         )
+        engine.proxyProvider = proxy
+        proxy.onProxyStateChange = { [weak engine] in
+            engine?.refreshProxyRouting()
+        }
         self.downloadEngine = engine
-        
-        self.proxyService = ProxyService()
-        
+
         powerMon.startMonitoring(engine: engine)
     }
 }

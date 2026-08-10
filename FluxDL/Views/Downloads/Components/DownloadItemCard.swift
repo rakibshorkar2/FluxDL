@@ -10,7 +10,8 @@ public struct DownloadItemCard: View {
     public let onResume:          () -> Void
     public let onCancel:          () -> Void
     public let onRetry:           () -> Void
-    public let onDelete:          () -> Void
+    /// Performs deletion for this card's download. Parameter = `deleteFile`.
+    public let onDelete:          (Bool) -> Void
     public let onShare:           () -> Void
     public let onChangePriority:  (DownloadPriority) -> Void
     public let onShowInfo:        () -> Void
@@ -18,6 +19,9 @@ public struct DownloadItemCard: View {
     public let onShowMirrors:     () -> Void
     public let onShowDiagnostics: () -> Void
     public let onToggleSelect:    () -> Void
+
+    /// Row-local delete confirmation state so the popup belongs to this card only.
+    @State private var showingDeletePopup = false
 
     public init(
         task:             DownloadTaskModel,
@@ -27,7 +31,7 @@ public struct DownloadItemCard: View {
         onResume:         @escaping () -> Void,
         onCancel:         @escaping () -> Void,
         onRetry:          @escaping () -> Void,
-        onDelete:         @escaping () -> Void,
+        onDelete:         @escaping (Bool) -> Void,
         onShare:          @escaping () -> Void,
         onChangePriority: @escaping (DownloadPriority) -> Void,
         onShowInfo:       @escaping () -> Void        = {},
@@ -280,10 +284,30 @@ public struct DownloadItemCard: View {
             }
 
             // Delete
-            Button(action: onDelete) {
+            Button {
+                showingDeletePopup = true
+            } label: {
                 Image(systemName: "trash")
                     .font(.caption)
                     .foregroundStyle(Color.red)
+            }
+            // Delete confirmation — anchored to THIS row's trash button.
+            .confirmationDialog(
+                "Delete Download",
+                isPresented: $showingDeletePopup,
+                titleVisibility: .visible
+            ) {
+                Button("Delete File & Record", role: .destructive) {
+                    onDelete(true)
+                }
+                Button("Remove from List Only", role: .destructive) {
+                    onDelete(false)
+                }
+                Button("Cancel", role: .cancel) {
+                    showingDeletePopup = false
+                }
+            } message: {
+                Text("This action cannot be undone.")
             }
         }
     }
@@ -364,7 +388,9 @@ public struct DownloadItemCard: View {
             Label("Select", systemImage: "checkmark.circle")
         }
 
-        Button(role: .destructive, action: onDelete) {
+        Button(role: .destructive) {
+            showingDeletePopup = true
+        } label: {
             Label("Delete", systemImage: "trash")
         }
     }
@@ -400,7 +426,7 @@ public struct EquatableDownloadItemCard: View, Equatable {
     public let onResume:         () -> Void
     public let onCancel:         () -> Void
     public let onRetry:          () -> Void
-    public let onDelete:         () -> Void
+    public let onDelete:         (Bool) -> Void
     public let onShare:          () -> Void
     public let onChangePriority: (DownloadPriority) -> Void
     public let onShowInfo:       () -> Void

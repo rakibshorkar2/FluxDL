@@ -31,6 +31,17 @@ public struct BrowserSettingsSheet: View {
                     Toggle("Restore Tabs on Launch", isOn: $settings.restoreTabsOnLaunch)
                 }
                 
+                Section("Webpage Appearance") {
+                    Picker("Webpage Appearance", selection: $settings.webpageAppearance) {
+                        ForEach(WebpageAppearance.allCases) { appearance in
+                            Text(appearance.rawValue).tag(appearance)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } footer: {
+                    Text("System follows the OS appearance. Dark/Light request that rendering for every page. Automatic lets each website use its own native dark theme without forced styling.")
+                }
+                
                 Section("Privacy & Protection") {
                     Toggle("Ad Blocker", isOn: $settings.isAdBlockerEnabled)
                     Toggle("JavaScript", isOn: $settings.isJavaScriptEnabled)

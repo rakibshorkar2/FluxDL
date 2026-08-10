@@ -96,7 +96,7 @@ public struct ProxyStatusCard: View {
             return "\(configuration.type.displayName) \u{2022} \(configuration.hostAndPortString)"
         }
         if service.connectionState == .failed {
-            return service.lastFailureMessage ?? "The proxy could not be reached."
+            return service.lastTestResult?.failure?.userMessage ?? "The proxy could not be reached."
         }
         if service.connectionState == .disabled {
             return "Add a proxy below to route app downloads and browser traffic."
@@ -147,7 +147,7 @@ public struct ProxyStatusCard: View {
     }
 
     private var latencyText: String {
-        guard service.connectionState == .connected, let latencyMs = service.activeLatencyMs else {
+        guard service.connectionState == .connected, let latencyMs = service.lastTestResult?.latencyMs else {
             return "—"
         }
         return "\(latencyMs) ms"
@@ -214,7 +214,7 @@ public struct ProxyStatusCard: View {
         if service.isEnabled, let configuration = service.activeConfiguration {
             parts.append("\(configuration.type.displayName), host \(configuration.host), port \(configuration.port)")
             parts.append(connectionText)
-            if service.connectionState == .connected, let latencyMs = service.activeLatencyMs {
+            if service.connectionState == .connected, let latencyMs = service.lastTestResult?.latencyMs {
                 parts.append("\(latencyMs) milliseconds")
             }
         }

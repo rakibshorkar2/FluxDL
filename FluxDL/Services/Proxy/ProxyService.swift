@@ -3,139 +3,234 @@ import Combine
 
 // MARK: - ProxyProviding
 //
-// App-wide proxy contract. Other subsystems (Downloads, Browser) can observe
-// and control the proxy through this protocol WITHOUT depending on the
-// concrete service or any SwiftUI type. This keeps the proxy subsystem
-// decoupled from its consumers.
+// App-wide proxy contract. Other subsystems (Downloads, Browser) depend on
+// this protocol rather than the concrete service, keeping the proxy
+// subsystem decoupled from its consumers.
 //
 // IMPORTANT — Scope:
-//   * The proxy is an APPLICATION-LEVEL proxy. It never touches iOS system
-//     proxy settings, Wi-Fi/cellular configuration, VPN profiles, or traffic
-//     from other apps, and it uses no private APIs.
-//   * The Torrent subsystem is COMPLETELY INDEPENDENT: it must never be
+//   * The proxy is an APPLICATION-LEVEL proxy only. It never touches iOS
+//     system proxy settings, Wi-Fi/cellular configuration, VPN profiles or
+//     private APIs, and it does not affect traffic from other apps.
+//   * The Torrent subsystem is entirely independent and must NEVER be
 //     routed through this proxy.
+//   * No silent fallback: when the proxy is enabled but fails, app requests
+//     fail rather than leaking traffic.
 
 @MainActor
 public protocol ProxyProviding: AnyObject {
-    /// Whether the proxy is currently enabled for app networking.
     var isEnabled: Bool { get }
-    /// The configuration currently active when `isEnabled` is true.
     var activeConfiguration: ProxyConfiguration? { get }
-    /// Current connection state (disabled / connecting / connected / failed).
     var connectionState: ProxyConnectionState { get }
-
-    /// Enables the proxy using the currently selected profile and verifies
-    /// connectivity through a real SOCKS5 handshake.
+    var browserProxyEnabled: Bool { get }
+    var downloadsProxyEnabled: Bool { get }
     func enable() async
-    /// Disables the proxy immediately and cancels any in-flight test.
     func disable()
-    /// Performs a real connectivity test through the given configuration.
+    func activate(_ proxy: ProxyProfile) async throws
+    func deactivate()
     func test(_ configuration: ProxyConfiguration) async throws -> ProxyTestResult
 }
 
-// MARK: - ProxyService
+public enum ProxyServiceError: Error {
+    case noProfileSelected
+    case notEnabled
+}
 
 @MainActor
 public final class ProxyService: ObservableObject, ProxyProviding {
 
-    // MARK: Configuration
+    // MARK: Public configuration
 
-    /// Host used as the end-to-end destination when testing proxy connectivity.
-    public static let testTargetHost = "www.example.com"
-    public static let testTargetPort: UInt16 = 80
-    /// Reasonable overall timeout for a connectivity test.
-    public static let testTimeout: TimeInterval = 10
+    /// Overall timeout (seconds) applied to each connectivity probe.
+    public var testTimeout: TimeInterval = 10
+    /// Maximum retries performed by consumer sessions when failover is
+    /// enabled (used by session wrappers; handshakes are single-shot).
+    public var failoverMaxRetries: Int = 2
 
-    /// Timeout (seconds) used for connectivity tests. Injectable so tests can
-    /// run with short timeouts instead of waiting for the default.
-    public var testTimeout: TimeInterval = ProxyService.testTimeout
+    // MARK: Persistence keys
 
-    // MARK: Published State
-
-    @Published public private(set) var isEnabled: Bool = false
-    @Published public private(set) var profiles: [ProxyProfile] = []
-    @Published public private(set) var selectedProfileID: UUID?
-    @Published public private(set) var connectionState: ProxyConnectionState = .disabled
-    @Published public private(set) var activeLatencyMs: Int?
-    @Published public private(set) var lastFailureMessage: String?
-    @Published public private(set) var isTesting: Bool = false
-
-    public var activeConfiguration: ProxyConfiguration? {
-        guard isEnabled, let selectedProfileID,
-              let profile = profiles.first(where: { $0.id == selectedProfileID }) else {
-            return nil
-        }
-        return resolvingCredentials(profile.configuration)
+    private enum Key {
+        static let profiles = "fluxdl_proxy_profiles_v2"
+        static let selectedProfileID = "fluxdl_proxy_selected_id"
+        static let isEnabled = "fluxdl_proxy_enabled"
+        static let browserRouting = "fluxdl_proxy_browser_routing"
+        static let downloadsRouting = "fluxdl_proxy_downloads_routing"
+        static let failoverEnabled = "fluxdl_proxy_failover_enabled"
+        static let sortOption = "fluxdl_proxy_sort_option"
+        static let filterOption = "fluxdl_proxy_filter_option"
+        static let bundledImportDone = "fluxdl_proxy_bundled_import_done"
     }
 
-    public var selectedProfile: ProxyProfile? {
-        guard let selectedProfileID else { return nil }
-        return profiles.first(where: { $0.id == selectedProfileID })
-    }
-
-    // MARK: Private
+    // MARK: Dependencies
 
     private let keychainStore: ProxyKeychainStoring
-    private let defaults: UserDefaults
-    private var activeTestTask: Task<Void, Never>? = nil
-
-    // MARK: Persistence Keys
-
-    private static let enabledKey = "fluxdl_proxy_enabled"
-    private static let selectedProfileIDKey = "fluxdl_proxy_selected_profile_id"
-    private static let profilesKey = "fluxdl_proxy_profiles"
-    private static let connectionStateKey = "fluxdl_proxy_connection_state"
-    private static let activeLatencyKey = "fluxdl_proxy_active_latency_ms"
-    private static let failureMessageKey = "fluxdl_proxy_failure_message"
-
-    /// The haptic service used for UI feedback tied to proxy events.
+    public let defaults: UserDefaults
     public let hapticService: HapticServiceProtocol
+
+    // MARK: Published state
+
+    @Published public private(set) var profiles: [ProxyProfile] = []
+    @Published public private(set) var selectedProfileID: UUID?
+    @Published public private(set) var isEnabled = false
+    @Published public private(set) var connectionState: ProxyConnectionState
+        = ProxyConnectionState.disabled
+    @Published public private(set) var activeConfiguration: ProxyConfiguration?
+    @Published public private(set) var isTesting = false
+    @Published public private(set) var lastTestResult: ProxyTestResult?
+    @Published public private(set) var effectiveness: ProxyEffectivenessChecker.Result?
+    @Published public private(set) var bulkTestProgress: (completed: Int, total: Int, succeeded: Int)?
+    @Published public private(set) var isBulkTesting = false
+
+    @Published public var browserProxyEnabled = false {
+        didSet { defaults.set(browserProxyEnabled, forKey: Key.browserRouting) }
+    }
+    @Published public var downloadsProxyEnabled = false {
+        didSet { defaults.set(downloadsProxyEnabled, forKey: Key.downloadsRouting) }
+    }
+    @Published public var failoverEnabled = false {
+        didSet { defaults.set(failoverEnabled, forKey: Key.failoverEnabled) }
+    }
+    @Published public var sortOption: ProxySortOption = .name {
+        didSet { defaults.set(sortOption.rawValue, forKey: Key.sortOption) }
+    }
+    @Published public var filterOption: ProxyFilterOption = .all {
+        didSet { defaults.set(filterOption.rawValue, forKey: Key.filterOption) }
+    }
+
+    // MARK: Runtime state
+
+    private let sessionProvider = ProxySessionProvider()
+    private var bulkTask: Task<Void, Never>?
+    private var activeEnableTask: Task<ProxyTestResult, Error>?
+    /// Optional hook for consumers that must rebuild their networking when
+    /// the effective routing state changes (DownloadEngine, Browser).
+    public var onProxyStateChange: (() -> Void)?
+
+    // MARK: Init
 
     public init(
         keychainStore: ProxyKeychainStoring = ProxyKeychainStore(),
         defaults: UserDefaults = .standard,
-        hapticService: HapticServiceProtocol? = nil
+        hapticService: HapticServiceProtocol = MainActor.assumeIsolated { HapticService() }
     ) {
         self.keychainStore = keychainStore
         self.defaults = defaults
-        self.hapticService = hapticService ?? HapticService()
-        loadPersistedState()
+        self.hapticService = hapticService
+        loadState()
     }
 
-    // MARK: - Profile Management
+    // MARK: - State persistence
 
-    /// Adds a new profile. The password (if any) is stored in the Keychain;
-    /// the persisted profile never contains it.
+    private func loadState() {
+        if let data = defaults.data(forKey: Key.profiles),
+           let decoded = try? JSONDecoder().decode([ProxyProfile].self, from: data) {
+            profiles = decoded
+        }
+        if let idString = defaults.string(forKey: Key.selectedProfileID),
+           let id = UUID(uuidString: idString),
+           profiles.contains(where: { $0.id == id }) {
+            selectedProfileID = id
+        }
+        // Enabled state is restored so the user's routing choice survives
+        // relaunch. Connectivity is always re-verified on the next enable();
+        // session consumers re-check `isEnabled` before routing anything.
+        isEnabled = defaults.bool(forKey: Key.isEnabled) && selectedProfileID != nil
+        if isEnabled {
+            connectionState = .connected
+            if let selectedProfile {
+                activeConfiguration = resolveConfiguration(selectedProfile)
+            }
+        } else {
+            connectionState = .disabled
+        }
+        browserProxyEnabled = defaults.bool(forKey: Key.browserRouting)
+        downloadsProxyEnabled = defaults.bool(forKey: Key.downloadsRouting)
+        failoverEnabled = defaults.bool(forKey: Key.failoverEnabled)
+        if let raw = defaults.string(forKey: Key.sortOption),
+           let option = ProxySortOption(rawValue: raw) {
+            sortOption = option
+        }
+        if let raw = defaults.string(forKey: Key.filterOption),
+           let option = ProxyFilterOption(rawValue: raw) {
+            filterOption = option
+        }
+    }
+
+    private func persistProfiles() {
+        if let data = try? JSONEncoder().encode(profiles) {
+            defaults.set(data, forKey: Key.profiles)
+        }
+    }
+
+    // MARK: - Profile access
+
+    public var selectedProfile: ProxyProfile? {
+        guard let id = selectedProfileID else { return nil }
+        return profiles.first(where: { $0.id == id })
+    }
+
+    public var activeProfile: ProxyProfile? {
+        guard isEnabled else { return nil }
+        return selectedProfile
+    }
+
+    /// Builds the runtime configuration for a profile, restoring the Keychain
+    /// password when authentication is enabled. The password never enters
+    /// any persisted representation.
+    private func resolveConfiguration(_ profile: ProxyProfile) -> ProxyConfiguration {
+        var configuration = profile.configuration
+        if configuration.authenticationEnabled {
+            configuration.password = keychainStore.password(forProfileID: profile.id)
+        }
+        return configuration
+    }
+
+    // MARK: - Selection / CRUD
+
     @discardableResult
     public func addProfile(_ configuration: ProxyConfiguration) -> ProxyProfile {
-        if let password = configuration.password, !password.isEmpty {
-            keychainStore.savePassword(password, forProfileID: configuration.id)
+        var profile = ProxyProfile(configuration: configuration)
+        if configuration.authenticationEnabled,
+           let password = configuration.password {
+            keychainStore.savePassword(password, forProfileID: profile.id)
+            profile.configuration.password = nil
         }
-        var stored = configuration
-        stored.password = nil
-        let profile = ProxyProfile(configuration: stored)
         profiles.append(profile)
-        selectProfile(id: profile.id)
         persistProfiles()
+        // First added profile becomes the selection so the main toggle is
+        // immediately available.
+        if selectedProfileID == nil {
+            selectedProfileID = profile.id
+            defaults.set(profile.id.uuidString, forKey: Key.selectedProfileID)
+        }
+        hapticService.notificationOccurred(.success)
         return profile
     }
 
-    /// Updates an existing profile. An empty password keeps the Keychain value.
-    public func updateProfile(_ configuration: ProxyConfiguration) {
-        guard let index = profiles.firstIndex(where: { $0.id == configuration.id }) else { return }
-        if let password = configuration.password, !password.isEmpty {
-            keychainStore.savePassword(password, forProfileID: configuration.id)
-        }
-        var stored = configuration
-        stored.password = nil
-        var profile = profiles[index]
-        profile.configuration = stored
-        profiles[index] = profile
-        persistProfiles()
+    /// Updates an existing profile. Runtime tracking fields (test history,
+    /// last result) are write-protected — they are only changed by the
+    /// test pipeline.
+    public func updateProfile(_ profile: ProxyProfile) {
+        guard let index = profiles.firstIndex(where: { $0.id == profile.id }) else { return }
+        var updated = profile
+        updated.testHistory = profiles[index].testHistory
+        updated.lastTestedAt = profiles[index].lastTestedAt
+        updated.lastLatencyMs = profiles[index].lastLatencyMs
+        updated.lastConnectionState = profiles[index].lastConnectionState
+        updated.lastExitIP = profiles[index].lastExitIP
+        updated.createdAt = profiles[index].createdAt
 
-        if isEnabled, selectedProfileID == configuration.id {
-            // Live config changed while enabled — re-verify connectivity.
-            Task { await verifyActiveProxy() }
+        if updated.configuration.authenticationEnabled,
+           let password = updated.configuration.password,
+           !password.isEmpty {
+            keychainStore.savePassword(password, forProfileID: updated.id)
+            updated.configuration.password = nil
+        } else if !updated.configuration.authenticationEnabled {
+            keychainStore.deletePassword(forProfileID: updated.id)
+        }
+        profiles[index] = updated
+        persistProfiles()
+        if activeProfile?.id == updated.id {
+            activeConfiguration = resolveConfiguration(updated)
         }
     }
 
@@ -144,209 +239,285 @@ public final class ProxyService: ObservableObject, ProxyProviding {
         keychainStore.deletePassword(forProfileID: id)
         if selectedProfileID == id {
             selectedProfileID = nil
+            defaults.removeObject(forKey: Key.selectedProfileID)
             if isEnabled {
                 disable()
             }
         }
         persistProfiles()
-        persistSelection()
     }
 
     public func selectProfile(id: UUID?) {
-        selectedProfileID = id
-        persistSelection()
-    }
-
-    public func password(forProfileID id: UUID) -> String? {
-        keychainStore.password(forProfileID: id)
-    }
-
-    /// Imports a valid configuration from YAML (password routed to Keychain).
-    @discardableResult
-    public func importProfile(_ configuration: ProxyConfiguration) -> ProxyProfile {
-        addProfile(configuration)
-    }
-
-    /// Parses YAML and returns valid configurations plus per-entry errors.
-    public func parseYAML(_ yaml: String) throws -> ProxyYAMLImportResult {
-        try ProxyYAMLParser.extractProxies(from: yaml)
-    }
-
-    // MARK: - Enable / Disable
-
-    public func enable() async {
-        guard !isEnabled, let selectedProfileID,
-              let profile = profiles.first(where: { $0.id == selectedProfileID }) else { return }
-
-        activeTestTask?.cancel()
-        isEnabled = true
-        connectionState = .connecting
-        activeLatencyMs = nil
-        lastFailureMessage = nil
-        persistEnabledState()
-
-        let task = Task { @MainActor in
-            await self.verifyActiveProxy()
+        guard let id else {
+            // nil clears the selection (and disables an active proxy).
+            selectedProfileID = nil
+            defaults.removeObject(forKey: Key.selectedProfileID)
+            if isEnabled {
+                disable()
+            }
+            return
         }
-        activeTestTask = task
-        await task.value
+        guard profiles.contains(where: { $0.id == id }) else { return }
+        selectedProfileID = id
+        defaults.set(id.uuidString, forKey: Key.selectedProfileID)
+        if isEnabled, let profile = selectedProfile {
+            activeConfiguration = resolveConfiguration(profile)
+        }
     }
 
+    // MARK: - Enabled profile list (filtering / sorting are preferences)
+
+    /// Profiles after applying the current filter and sort options.
+    public func visibleProfiles() -> [ProxyProfile] {
+        let filtered = profiles.filter { filterOption.applies(to: $0) }
+        return sortOption.sort(filtered)
+    }
+
+    public func setSortOption(_ option: ProxySortOption) {
+        sortOption = option
+    }
+
+    public func setFilterOption(_ option: ProxyFilterOption) {
+        filterOption = option
+    }
+
+    // MARK: - Enable / disable
+
+    public func toggleEnabled() {
+        if isEnabled { disable() } else { enable() }
+    }
+
+    /// Enables the proxy: the selected profile is probed with a REAL
+    /// handshake + HTTP request through the tunnel. Only a successful probe
+    /// activates the proxy — enabling is never optimistic. A `disable()`
+    /// issued mid-probe cancels the probe and leaves the proxy disabled.
+    public func enable() async {
+        guard let profile = selectedProfile else { return }
+        isTesting = true
+        connectionState = .connecting
+
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return ProxyTestResult.failure(.connectionFailed) }
+            let result = await ProxyTester.test(self.resolveConfiguration(profile), timeout: self.testTimeout)
+            if Task.isCancelled {
+                throw CancellationError()
+            }
+            return result
+        }
+        activeEnableTask = task
+
+        let result: ProxyTestResult
+        do {
+            result = try await task.value
+        } catch {
+            // Cancelled by disable() — state already reflects .disabled.
+            return
+        }
+        isTesting = false
+        applyTestResult(result, to: profile.id)
+
+        isEnabled = result.success
+        connectionState = result.success ? .connected : .failed
+        activeConfiguration = result.success ? resolveConfiguration(profile) : nil
+        defaults.set(result.success, forKey: Key.isEnabled)
+        hapticService.notificationOccurred(result.success ? .success : .error)
+        onProxyStateChange?()
+    }
+
+    /// Disables the proxy immediately and cancels any in-flight bulk test.
     public func disable() {
-        activeTestTask?.cancel()
+        bulkTask?.cancel()
+        activeEnableTask?.cancel()
         isEnabled = false
         connectionState = .disabled
-        activeLatencyMs = nil
-        lastFailureMessage = nil
+        activeConfiguration = nil
         isTesting = false
-        persistEnabledState()
+        defaults.set(false, forKey: Key.isEnabled)
+        sessionProvider.stopAdapter()
+        onProxyStateChange?()
+    }
+
+    public func activate(_ proxy: ProxyProfile) async throws {
+        selectProfile(id: proxy.id)
+        await enable()
+        guard isEnabled else { throw ProxyServiceError.notEnabled }
+    }
+
+    public func deactivate() {
+        disable()
     }
 
     // MARK: - Testing
 
-    /// Performs a REAL SOCKS5 handshake through the proxy and measures latency.
-    /// Never fake: on success the latency is measured, on failure a meaningful
-    /// reason is returned.
     public func test(_ configuration: ProxyConfiguration) async throws -> ProxyTestResult {
-        let resolved = resolvingCredentials(configuration)
-        guard let validationIssue = ProxyConfigurationValidator.validate(resolved) else {
-            let result = await runHandshakeTest(resolved)
-            applyTestResult(result, toProfileWithID: resolved.id)
-            if isEnabled, resolved.id == selectedProfileID {
-                connectionState = result.success ? .connected : .failed
-                activeLatencyMs = result.latencyMs
-                lastFailureMessage = result.failure?.userMessage
-            }
-            persistTestState()
-            return result
-        }
-        return ProxyTestResult.failure(.invalidConfiguration(validationIssue))
-    }
-
-    private func verifyActiveProxy() async {
         isTesting = true
         defer { isTesting = false }
-        guard let configuration = activeConfiguration else {
-            connectionState = .failed
-            lastFailureMessage = "No proxy selected"
-            return
+        let result = await ProxyTester.test(configuration, timeout: testTimeout)
+        // A manual test on a saved profile also refreshes its stored outcome.
+        if let profile = profiles.first(where: { $0.id == configuration.id }) {
+            applyTestResult(result, to: profile.id)
+        } else if let profile = profiles.first(where: { $0.fingerprint == configuration.fingerprint }) {
+            applyTestResult(result, to: profile.id)
         }
-        let result = await runHandshakeTest(configuration)
-        guard isEnabled else { return }
-        connectionState = result.success ? .connected : .failed
-        activeLatencyMs = result.latencyMs
-        lastFailureMessage = result.success ? nil : result.failure?.userMessage
-        persistTestState()
+        return result
     }
 
-    private func runHandshakeTest(_ configuration: ProxyConfiguration) async -> ProxyTestResult {
-        let client = SOCKS5Client(
-            configuration: configuration,
-            targetHost: Self.testTargetHost,
-            targetPort: Self.testTargetPort,
+    /// Tests a saved profile with its Keychain credentials restored and
+    /// persists the outcome (latency, state, exit IP, history).
+    public func testProfile(_ profile: ProxyProfile) async -> ProxyTestResult {
+        isTesting = true
+        defer { isTesting = false }
+        let result = await ProxyTester.test(resolveConfiguration(profile), timeout: testTimeout)
+        applyTestResult(result, to: profile.id)
+        return result
+    }
+
+    private func applyTestResult(_ result: ProxyTestResult, to id: UUID) {
+        guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
+        profiles[index].lastTestedAt = result.testedAt
+        profiles[index].lastLatencyMs = result.latencyMs
+        profiles[index].lastConnectionState = result.success ? .connected : .failed
+        profiles[index].lastExitIP = result.exitIP
+        profiles[index].recordTest(result)
+        persistProfiles()
+        lastTestResult = result
+    }
+
+    // MARK: - Test All
+
+    /// Probes every profile concurrently (bounded by the tunnel limit) and
+    /// persists each outcome as it completes.
+    public func testAll() {
+        bulkTask?.cancel()
+        let items = profiles.map {
+            ProxyBulkTester.Item(id: $0.id, configuration: resolveConfiguration($0))
+        }
+        guard !items.isEmpty else { return }
+
+        isBulkTesting = true
+        bulkTestProgress = (0, items.count, 0)
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let results = await ProxyBulkTester.testAll(
+                items,
+                timeout: self.testTimeout,
+                progress: { completed, total, succeeded in
+                    let progress = (completed, total, succeeded)
+                    Task { @MainActor in
+                        self.bulkTestProgress = progress
+                    }
+                }
+            )
+            guard !Task.isCancelled else {
+                self.isBulkTesting = false
+                return
+            }
+            for (id, result) in results {
+                self.applyTestResult(result, to: id)
+            }
+            let succeeded = results.values.filter(\.success).count
+            self.bulkTestProgress = (items.count, items.count, succeeded)
+            self.isBulkTesting = false
+        }
+        bulkTask = task
+    }
+
+    public func cancelBulkTesting() {
+        bulkTask?.cancel()
+        isBulkTesting = false
+    }
+
+    // MARK: - Effectiveness check
+
+    /// Verifies that a real session built with the proxy configuration used
+    /// by the Downloads/Browser layers actually exits through the proxy.
+    /// Result is published but never persisted.
+    public func checkEffectiveness() async -> ProxyEffectivenessChecker.Result? {
+        guard isEnabled, let active = activeConfiguration else { return nil }
+        let sessionConfiguration = sessionProvider.sessionConfiguration(for: active)
+        let result = await ProxyEffectivenessChecker.check(
+            sessionConfiguration: sessionConfiguration,
             timeout: testTimeout
         )
-        do {
-            let elapsed = try await client.performConnectTest()
-            let latencyMs = max(1, Int((elapsed * 1000).rounded()))
-            return ProxyTestResult.success(latencyMs: latencyMs)
-        } catch let failure as ProxyTestFailure {
-            return ProxyTestResult.failure(failure)
-        } catch is CancellationError {
-            return ProxyTestResult.failure(.timedOut)
-        } catch {
-            return ProxyTestResult.failure(.connectionFailed)
-        }
+        effectiveness = result
+        return result
     }
 
-    // MARK: - Credentials
+    // MARK: - YAML / bundled import
 
-    /// Returns a configuration with the Keychain password filled in when the
-    /// configuration belongs to a stored profile.
-    private func resolvingCredentials(_ configuration: ProxyConfiguration) -> ProxyConfiguration {
-        guard configuration.password == nil || configuration.password?.isEmpty == true else {
-            return configuration
-        }
-        var resolved = configuration
-        if let stored = keychainStore.password(forProfileID: configuration.id) {
-            resolved.password = stored
-        }
-        return resolved
+    /// Imports the bundled test proxies once (marker survives in UserDefaults).
+    /// Deduplicated against existing fingerprints; never auto-enables.
+    public func importBundledIfNeeded() -> Bool {
+        guard !defaults.bool(forKey: Key.bundledImportDone) else { return false }
+        defaults.set(true, forKey: Key.bundledImportDone)
+        return importBundled()
     }
 
-    // MARK: - Test result bookkeeping
-
-    private func applyTestResult(_ result: ProxyTestResult, toProfileWithID id: UUID) {
-        guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
-        var profile = profiles[index]
-        profile.lastTestedAt = result.testedAt
-        profile.lastLatencyMs = result.latencyMs
-        profile.lastConnectionState = result.success ? .connected : .failed
-        profiles[index] = profile
-        persistProfiles()
+    @discardableResult
+    public func importBundled() -> Bool {
+        guard let url = Bundle.main.url(forResource: "DefaultProxies", withExtension: "yaml"),
+              let data = try? Data(contentsOf: url),
+              let yaml = String(data: data, encoding: .utf8),
+              let result = importYAML(yaml),
+              !result.configurations.isEmpty else {
+            return false
+        }
+        return true
     }
 
-    // MARK: - Persistence
-
-    private func loadPersistedState() {
-        if let data = defaults.data(forKey: Self.profilesKey),
-           let decoded = try? JSONDecoder().decode([ProxyProfile].self, from: data) {
-            profiles = decoded
+    /// Parses a YAML document and imports every valid entry (deduplicated).
+    /// Returns nil only when the document itself is unparseable.
+    @discardableResult
+    public func importYAML(_ yaml: String) -> ProxyYAMLImportResult? {
+        guard let parsed = try? ProxyYAMLParser.extractProxies(from: yaml) else {
+            return nil
         }
+        let imported = importConfigurations(parsed.configurations)
+        var merged = parsed
+        merged.duplicateCount += imported.duplicateCount
+        return merged
+    }
 
-        if let rawID = defaults.string(forKey: Self.selectedProfileIDKey) {
-            selectedProfileID = UUID(uuidString: rawID)
-        }
+    /// Convenience: importYAML over raw Data (UTF-8).
+    @discardableResult
+    public func importYAML(_ data: Data) -> ProxyYAMLImportResult? {
+        guard let yaml = String(data: data, encoding: .utf8) else { return nil }
+        return importYAML(yaml)
+    }
 
-        isEnabled = defaults.bool(forKey: Self.enabledKey)
-        if let rawState = defaults.string(forKey: Self.connectionStateKey),
-           let state = ProxyConnectionState(rawValue: rawState) {
-            connectionState = state
-        } else {
-            connectionState = isEnabled ? .connected : .disabled
-        }
+    /// Parses a YAML document WITHOUT importing anything. Used by the
+    /// preview-then-commit import flow so users can review entries before
+    /// they become profiles. Returns nil only when the document itself is
+    /// unparseable.
+    public func parseYAML(_ yaml: String) -> ProxyYAMLImportResult? {
+        try? ProxyYAMLParser.extractProxies(from: yaml)
+    }
 
-        let latency = defaults.integer(forKey: Self.activeLatencyKey)
-        activeLatencyMs = latency > 0 ? latency : nil
-        lastFailureMessage = defaults.string(forKey: Self.failureMessageKey)
+    /// Keychain password for a profile — used by edit flows so an empty
+    /// password field means "keep the stored one".
+    public func password(forProfileID id: UUID) -> String? {
+        keychainStore.password(forProfileID: id)
+    }
 
-        // If the persisted "enabled" profile no longer exists, disable.
-        if isEnabled {
-            if let selectedProfileID, profiles.contains(where: { $0.id == selectedProfileID }) {
-                // Restored as-is.
-            } else {
-                isEnabled = false
-                connectionState = .disabled
-                persistEnabledState()
+    /// Imports configurations, skipping fingerprints that already exist so
+    /// re-imports never create duplicates.
+    @discardableResult
+    public func importConfigurations(_ configurations: [ProxyConfiguration]) -> ProxyYAMLImportResult {
+        var imported = ProxyYAMLImportResult()
+        let existing = Set(profiles.map(\.fingerprint))
+        for configuration in configurations {
+            guard !existing.contains(configuration.fingerprint) else {
+                imported.duplicateCount += 1
+                continue
             }
+            _ = addProfile(configuration)
+            imported.configurations.append(configuration)
         }
+        return imported
     }
 
-    private func persistProfiles() {
-        guard let data = try? JSONEncoder().encode(profiles) else { return }
-        defaults.set(data, forKey: Self.profilesKey)
-    }
-
-    private func persistSelection() {
-        defaults.set(selectedProfileID?.uuidString, forKey: Self.selectedProfileIDKey)
-    }
-
-    private func persistEnabledState() {
-        defaults.set(isEnabled, forKey: Self.enabledKey)
-        persistTestState()
-    }
-
-    private func persistTestState() {
-        defaults.set(connectionState.rawValue, forKey: Self.connectionStateKey)
-        if let latency = activeLatencyMs {
-            defaults.set(latency, forKey: Self.activeLatencyKey)
-        } else {
-            defaults.removeObject(forKey: Self.activeLatencyKey)
-        }
-        if let message = lastFailureMessage {
-            defaults.set(message, forKey: Self.failureMessageKey)
-        } else {
-            defaults.removeObject(forKey: Self.failureMessageKey)
-        }
+    deinit {
+        bulkTask?.cancel()
+        activeEnableTask?.cancel()
     }
 }

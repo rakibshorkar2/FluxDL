@@ -24,6 +24,61 @@ public struct URLSuggestion: Identifiable, Equatable {
     }
 }
 
+/// The exact, uniquely-identified download request that triggered the
+/// "Download File?" popup. Every pending request carries its own UUID so the
+/// popup can never show stale state from an earlier tap.
+public struct BrowserDownloadRequest: Identifiable, Equatable {
+    public let id: UUID
+    public let url: URL
+    public let filename: String?
+    public let mimeType: String?
+    public let fileSize: Int64?
+    public let sourceURL: URL?
+
+    public init(
+        id: UUID = UUID(),
+        url: URL,
+        filename: String? = nil,
+        mimeType: String? = nil,
+        fileSize: Int64? = nil,
+        sourceURL: URL? = nil
+    ) {
+        self.id = id
+        self.url = url
+        self.filename = filename
+        self.mimeType = mimeType
+        self.fileSize = fileSize
+        self.sourceURL = sourceURL
+    }
+
+    /// Best available filename for the popup: exact request metadata first,
+    /// then a safe derivation from Content-Disposition / URL path / MIME.
+    public var displayFilename: String {
+        if let filename, !filename.isEmpty { return filename }
+        return URLFilenameExtractor.extractFilename(from: url, contentDisposition: nil)
+    }
+}
+
+/// Extractors for `javascript:` URLs. The scheme prefix is stripped and the
+/// source is percent-decoded exactly once — arbitrary JavaScript (containing
+/// `%`, `+`, quotes, parentheses, semicolons, etc.) is never re-decoded.
+public enum BrowserJavaScript {
+    public static let scheme = "javascript:"
+
+    public static func script(fromJavaScriptURLString input: String) -> String? {
+        guard input.lowercased().hasPrefix(scheme) else { return nil }
+        let schemeEnd = input.index(input.startIndex, offsetBy: scheme.count)
+        let raw = String(input[schemeEnd...])
+        guard !raw.isEmpty else { return nil }
+        return raw.removingPercentEncoding ?? raw
+    }
+
+    public static func script(fromJavaScriptURL url: URL) -> String? {
+        guard url.scheme?.lowercased() == "javascript" else { return nil }
+        return script(fromJavaScriptURLString: url.absoluteString)
+    }
+}
+
 @MainActor
 public final class BrowserViewModel: ObservableObject {
     @Published public var inputURLText: String = "" {
@@ -39,8 +94,24 @@ public final class BrowserViewModel: ObservableObject {
     @Published public var suggestions: [URLSuggestion] = []
     @Published public var isReaderMode: Bool = false
 
-    @Published public var detectedDownloadURL: URL? = nil
+    /// Convenience mirror of `pendingDownload` for the pre-existing API surface.
+    public var detectedDownloadURL: URL? {
+        get { pendingDownload?.url }
+        set { pendingDownload = newValue.map { BrowserDownloadRequest(url: $0) } }
+    }
+    @Published public var pendingDownload: BrowserDownloadRequest? = nil
     @Published public var showDownloadPrompt: Bool = false
+    /// Global (window) coordinates of the element that triggered the pending
+    /// download — nil when the trigger was programmatic (no DOM element).
+    @Published public var downloadAnchorPoint: CGPoint? = nil
+    /// Document-space coordinates of the element, used to re-anchor the popup
+    /// as the page scrolls under it.
+    @Published public var downloadAnchorPagePoint: CGPoint? = nil
+    /// User-facing message for `javascript:` execution failures / disabled JS.
+    @Published public var javascriptExecutionMessage: String? = nil
+    /// Global origin of the Browser chrome, used to convert anchor coordinates
+    /// from window space into SwiftUI local space.
+    public var browserWindowOrigin: CGPoint = .zero
     @Published public var loadErrorMessage: String? = nil
     @Published public var isOffline: Bool = false
     @Published public var isChromeCollapsed: Bool = false
@@ -102,6 +173,19 @@ public final class BrowserViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // When the proxy route changes, reload every tab that has loaded a
+        // page so content is fetched under the new route (or direct mode).
+        proxySession.$isProxyActive
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                for tab in self.tabManager.tabs where tab.webView.url != nil {
+                    tab.webView.reload()
+                }
+            }
+            .store(in: &cancellables)
+
         syncActiveTabState()
     }
     
@@ -128,6 +212,15 @@ public final class BrowserViewModel: ObservableObject {
         let trimmed = inputURLText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         suggestions = []
+        isAddressFieldFocused = false
+        
+        // `javascript:` URLs execute against the currently loaded page.
+        // They must never hit the search engine, the URL bar state, history,
+        // or webView.load().
+        if let script = BrowserJavaScript.script(fromJavaScriptURLString: trimmed) {
+            executeJavaScript(script)
+            return
+        }
         
         let targetURL: URL
         if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") || trimmed.hasPrefix("file://") {
@@ -147,6 +240,40 @@ public final class BrowserViewModel: ObservableObject {
             tabManager.activeTab = activeTab
             activeTab.webView?.load(URLRequest(url: targetURL))
         }
+    }
+    
+    /// Runs JavaScript against the active tab's `WKWebView` without navigating,
+    /// without touching `currentURL` and without touching browsing history.
+    ///
+    /// `BrowserSettings.isJavaScriptEnabled` stays authoritative: when disabled,
+    /// execution is rejected with a user-facing message and navigation is untouched.
+    @discardableResult
+    public func executeJavaScript(_ script: String) -> Bool {
+        let trimmed = script.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        
+        guard settings.isJavaScriptEnabled else {
+            javascriptExecutionMessage = "JavaScript is disabled. Turn on JavaScript in Browser Settings to run it."
+            return false
+        }
+        
+        guard let webView = tabManager.activeTab?.webView else {
+            javascriptExecutionMessage = "There is no loaded page to run JavaScript on."
+            return false
+        }
+        
+        webView.evaluateJavaScript(trimmed) { [weak self] _, error in
+            Task { @MainActor in
+                guard let self else { return }
+                if let error {
+                    #if DEBUG
+                    print("FluxDL: evaluateJavaScript failed — \(error.localizedDescription)")
+                    #endif
+                    self.javascriptExecutionMessage = "JavaScript could not be executed: \(error.localizedDescription)"
+                }
+            }
+        }
+        return true
     }
     
     public func goBack() {
@@ -300,15 +427,70 @@ public final class BrowserViewModel: ObservableObject {
 
     
     public func promptDownload(url: URL) {
-        detectedDownloadURL = url
+        promptDownload(url: url, filename: nil, mimeType: nil, fileSize: nil, sourceURL: nil, anchorPoint: nil, anchorPagePoint: nil)
+    }
+    
+    /// Registers the exact download request that triggered the popup. Unique
+    /// per request; a newer request replaces an older visible one
+    /// deterministically, but the same URL is deduplicated so the JS bridge
+    /// and the navigation delegate don't double-present the same tap.
+    public func promptDownload(
+        url: URL,
+        filename: String? = nil,
+        mimeType: String? = nil,
+        fileSize: Int64? = nil,
+        sourceURL: URL? = nil,
+        anchorPoint: CGPoint? = nil,
+        anchorPagePoint: CGPoint? = nil
+    ) {
+        // `javascript:` commands must never be treated as downloadable files.
+        guard url.scheme?.lowercased() != "javascript" else { return }
+        
+        let request = BrowserDownloadRequest(
+            url: url,
+            filename: filename,
+            mimeType: mimeType,
+            fileSize: fileSize,
+            sourceURL: sourceURL ?? tabManager.activeTab?.url
+        )
+        presentDownloadPrompt(request, anchorPoint: anchorPoint, anchorPagePoint: anchorPagePoint)
+    }
+    
+    private func presentDownloadPrompt(
+        _ request: BrowserDownloadRequest,
+        anchorPoint: CGPoint? = nil,
+        anchorPagePoint: CGPoint? = nil
+    ) {
+        if showDownloadPrompt, pendingDownload?.url == request.url {
+            // Same request already visible (JS bridge + delegate both detect the
+            // same tap). Upgrade it with an anchor if one just arrived.
+            if anchorPoint != nil, downloadAnchorPoint == nil {
+                downloadAnchorPoint = anchorPoint
+                downloadAnchorPagePoint = anchorPagePoint
+            }
+            return
+        }
+        pendingDownload = request
+        downloadAnchorPoint = anchorPoint
+        downloadAnchorPagePoint = anchorPagePoint
         showDownloadPrompt = true
     }
     
     public func startDetectedDownload() {
-        guard let url = detectedDownloadURL else { return }
-        _ = ServiceContainer.shared.downloadEngine.startDownload(url: url, filename: nil)
+        guard let request = pendingDownload else { return }
+        _ = ServiceContainer.shared.downloadEngine.startDownload(url: request.url, filename: request.filename)
+        dismissDownloadPrompt()
+    }
+    
+    public func cancelDetectedDownload() {
+        dismissDownloadPrompt()
+    }
+    
+    private func dismissDownloadPrompt() {
         showDownloadPrompt = false
-        detectedDownloadURL = nil
+        pendingDownload = nil
+        downloadAnchorPoint = nil
+        downloadAnchorPagePoint = nil
     }
     
     public func toggleBookmarkCurrentPage() {
