@@ -17,13 +17,18 @@ public final class BrowserViewModel: ObservableObject {
     @Published public var loadErrorMessage: String? = nil
     @Published public var isOffline: Bool = false
     @Published public var isChromeCollapsed: Bool = false
+    @Published public var isAddressFieldFocused: Bool = false {
+        didSet {
+            if isAddressFieldFocused { isChromeCollapsed = false }
+        }
+    }
+    @Published public var isClearHistoryPresented: Bool = false
     
     // Sub-view presentation flags
     @Published public var isBookmarksPresented: Bool = false
     @Published public var isHistoryPresented: Bool = false
     @Published public var isSettingsPresented: Bool = false
     @Published public var isFindInPagePresented: Bool = false
-    @Published public var isPageActionsPresented: Bool = false
     
     @Published public var tabManager = BrowserTabManager.shared
     public let bookmarkManager = BookmarkManager.shared
@@ -112,12 +117,25 @@ public final class BrowserViewModel: ObservableObject {
     
     public func reloadOrStop() {
         if isLoading {
-            tabManager.activeTab?.webView?.stopLoading()
-            isLoading = false
+            stopLoading()
         } else {
             loadErrorMessage = nil
             tabManager.activeTab?.webView?.reload()
         }
+    }
+    
+    public func stopLoading() {
+        tabManager.activeTab?.webView?.stopLoading()
+        isLoading = false
+        if var activeTab = tabManager.activeTab {
+            activeTab.isLoading = false
+            tabManager.activeTab = activeTab
+        }
+    }
+    
+    public func clearHistory() {
+        historyManager.clearAllHistory()
+        hapticService.impactOccurred(.light)
     }
     
     public func goHome() {

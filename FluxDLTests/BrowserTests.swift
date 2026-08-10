@@ -1,4 +1,6 @@
 import XCTest
+import UIKit
+import WebKit
 @testable import FluxDL
 
 final class BrowserTests: XCTestCase {
@@ -154,5 +156,228 @@ final class BrowserTests: XCTestCase {
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: "browser_restore_tabs")
         XCTAssertTrue(BrowserSettings.shared.restoreTabsOnLaunch)
+    }
+    
+    // MARK: - Navigation state
+    
+    @MainActor
+    func testBackForwardStateSync() {
+        let viewModel = BrowserViewModel()
+        if var tab = viewModel.tabManager.activeTab {
+            tab.canGoBack = true
+            tab.canGoForward = true
+            viewModel.tabManager.activeTab = tab
+        }
+        viewModel.syncActiveTabState()
+        XCTAssertTrue(viewModel.canGoBack)
+        XCTAssertTrue(viewModel.canGoForward)
+    }
+    
+    @MainActor
+    func testStopLoadingClearsState() {
+        let viewModel = BrowserViewModel()
+        viewModel.isLoading = true
+        viewModel.stopLoading()
+        XCTAssertFalse(viewModel.isLoading)
+        if let tab = viewModel.tabManager.activeTab {
+            XCTAssertFalse(tab.isLoading)
+        }
+    }
+    
+    @MainActor
+    func testCopyCurrentURL() {
+        let viewModel = BrowserViewModel()
+        viewModel.currentURL = URL(string: "https://example.com/copy-me")
+        viewModel.copyCurrentURL()
+        XCTAssertEqual(UIPasteboard.general.string, "https://example.com/copy-me")
+    }
+    
+    @MainActor
+    func testDesktopMobileToggle() {
+        let viewModel = BrowserViewModel()
+        let initial = viewModel.tabManager.activeTab?.isDesktopMode ?? false
+        
+        viewModel.toggleDesktopMode()
+        XCTAssertNotEqual(viewModel.tabManager.activeTab?.isDesktopMode, initial)
+        
+        viewModel.toggleDesktopMode()
+        XCTAssertEqual(viewModel.tabManager.activeTab?.isDesktopMode, initial)
+    }
+    
+    @MainActor
+    func testClearHistoryViaViewModel() {
+        let history = BrowserHistoryManager.shared
+        history.clearAllHistory()
+        history.addHistory(title: "A", urlString: "https://a.com")
+        history.addHistory(title: "B", urlString: "https://b.com")
+        XCTAssertEqual(history.historyItems.count, 2)
+        
+        let viewModel = BrowserViewModel()
+        viewModel.clearHistory()
+        XCTAssertTrue(history.historyItems.isEmpty)
+    }
+    
+    // MARK: - History
+    
+    @MainActor
+    func testHistorySearchDeleteClear() {
+        let history = BrowserHistoryManager.shared
+        history.clearAllHistory()
+        history.addHistory(title: "GitHub", urlString: "https://github.com")
+        history.addHistory(title: "Apple", urlString: "https://apple.com")
+        
+        let matches = history.historyItems.filter {
+            $0.title.localizedCaseInsensitiveContains("git") ||
+            $0.urlString.localizedCaseInsensitiveContains("git")
+        }
+        XCTAssertEqual(matches.count, 1)
+        XCTAssertEqual(matches.first?.urlString, "https://github.com")
+        
+        if let item = history.historyItems.first {
+            history.deleteEntry(id: item.id)
+            XCTAssertFalse(history.historyItems.contains { $0.id == item.id })
+        }
+        
+        history.clearAllHistory()
+        XCTAssertTrue(history.historyItems.isEmpty)
+    }
+    
+    @MainActor
+    func testHistoryStoresTimestamp() {
+        let history = BrowserHistoryManager.shared
+        history.clearAllHistory()
+        let before = Date()
+        history.addHistory(title: "Dated", urlString: "https://dated.com")
+        let after = Date()
+        
+        let item = history.historyItems.first
+        XCTAssertNotNil(item)
+        XCTAssertNotNil(item?.visitDate)
+        if let date = item?.visitDate {
+            XCTAssertGreaterThanOrEqual(date, before)
+            XCTAssertLessThanOrEqual(date, after)
+        }
+    }
+    
+    // MARK: - Bookmarks
+    
+    @MainActor
+    func testBookmarkEditAndPersistence() {
+        let manager = BookmarkManager.shared
+        let title = "Edit Target \(UUID().uuidString.prefix(6))"
+        let url = "https://edittarget.example.com"
+        manager.addBookmark(title: title, urlString: url)
+        XCTAssertTrue(manager.isBookmarked(urlString: url))
+        
+        if let item = manager.bookmarks.first(where: { $0.urlString == url }) {
+            manager.updateBookmark(id: item.id, newTitle: "Renamed", newFolder: "Work", isFavorite: true)
+            let updated = manager.bookmarks.first(where: { $0.id == item.id })
+            XCTAssertEqual(updated?.title, "Renamed")
+            XCTAssertEqual(updated?.folder, "Work")
+            XCTAssertTrue(updated?.isFavorite == true)
+            manager.removeBookmark(id: item.id)
+        }
+        XCTAssertFalse(manager.isBookmarked(urlString: url))
+    }
+    
+    // MARK: - Tab restoration / app relaunch simulation
+    
+    @MainActor
+    func testAppRelaunchRestoresTabs() {
+        let persistence = BrowserTabPersistence.shared
+        persistence.clear()
+        
+        // Session before relaunch
+        var tab1 = BrowserTabModel(title: "One", url: URL(string: "https://one.com"))
+        tab1.isDesktopMode = true
+        let tab2 = BrowserTabModel(title: "Two", url: URL(string: "https://two.com"))
+        persistence.save(tabs: [tab1, tab2], activeTabId: tab1.id)
+        
+        // Simulate relaunch: load persisted session the way BrowserTabManager does.
+        let restored = persistence.load()
+        XCTAssertNotNil(restored)
+        let tabs = restored?.tabs.map { BrowserTabModel(snapshot: $0) } ?? []
+        
+        XCTAssertEqual(tabs.count, 2)
+        XCTAssertEqual(tabs[0].url?.absoluteString, "https://one.com")
+        XCTAssertTrue(tabs[0].isDesktopMode)
+        XCTAssertEqual(tabs[1].title, "Two")
+        XCTAssertTrue(tabs.allSatisfy { $0.webView == nil })
+        
+        let activeID = restored?.activeTabId
+        XCTAssertEqual(activeID, tab1.id)
+        
+        persistence.clear()
+    }
+    
+    // MARK: - Downloads
+    
+    @MainActor
+    func testDownloadPromptAndCancellation() {
+        let viewModel = BrowserViewModel()
+        let url = URL(string: "https://example.com/file.mkv")!
+        viewModel.promptDownload(url: url)
+        XCTAssertTrue(viewModel.showDownloadPrompt)
+        XCTAssertEqual(viewModel.detectedDownloadURL, url)
+        
+        viewModel.showDownloadPrompt = false
+        viewModel.detectedDownloadURL = nil
+        XCTAssertFalse(viewModel.showDownloadPrompt)
+        XCTAssertNil(viewModel.detectedDownloadURL)
+    }
+    
+    // MARK: - Proxy state
+    
+    @MainActor
+    func testProxyStateReflectsServiceWhenDisabled() {
+        let session = BrowserProxySession.shared
+        session.refresh()
+        
+        let proxyService = ServiceContainer.shared.proxyService
+        if proxyService.isEnabled {
+            proxyService.disable()
+        }
+        session.refresh()
+        
+        XCTAssertNil(session.activeConfiguration)
+        XCTAssertFalse(session.isProxyActive)
+    }
+    
+    @MainActor
+    func testProxyBypassForLocalHosts() {
+        let session = BrowserProxySession.shared
+        XCTAssertTrue(session.shouldBypassProxy(for: URL(string: "http://localhost:8080")!))
+        XCTAssertTrue(session.shouldBypassProxy(for: URL(string: "http://127.0.0.1")!))
+        XCTAssertFalse(session.shouldBypassProxy(for: URL(string: "https://example.com")!))
+    }
+    
+    // MARK: - Content blocking & privacy settings
+    
+    @MainActor
+    func testAdBlockerSettingsAndWhitelist() {
+        let settings = BrowserSettings.shared
+        XCTAssertTrue(settings.isAdBlockerEnabled)
+        
+        let domain = "ads.example.com"
+        XCTAssertFalse(settings.isWhitelisted(domain: domain))
+        settings.toggleWhitelist(domain: domain)
+        XCTAssertTrue(settings.isWhitelisted(domain: domain))
+        settings.toggleWhitelist(domain: domain)
+        XCTAssertFalse(settings.isWhitelisted(domain: domain))
+    }
+    
+    @MainActor
+    func testAdBlockEngineAppliesRuleListSafely() {
+        let config = WKWebViewConfiguration()
+        // Disabled: must be a no-op that never crashes.
+        let settings = BrowserSettings.shared
+        let wasEnabled = settings.isAdBlockerEnabled
+        settings.isAdBlockerEnabled = false
+        AdBlockEngine.shared.applyRuleList(to: config, domain: "example.com")
+        settings.isAdBlockerEnabled = wasEnabled
+        
+        // Whitelisted domain: must be a no-op.
+        AdBlockEngine.shared.applyRuleList(to: config, domain: "fluxdl.example.com")
+        XCTAssertEqual(config.userContentController.userScripts.count, 0)
     }
 }

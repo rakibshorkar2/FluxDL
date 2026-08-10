@@ -56,7 +56,10 @@ public struct MainTabView: View {
                     }
                     .tag(AppTab.downloads)
                 
-                BrowserView()
+                BrowserView(onOpenDownloads: {
+                    selectedTab = .downloads
+                    hapticService.selectionChanged()
+                })
                     .tabItem {
                         Label(AppTab.browser.title, systemImage: AppTab.browser.iconName)
                     }

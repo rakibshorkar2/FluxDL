@@ -157,7 +157,7 @@ public struct WebViewContainer: UIViewRepresentable {
         }
         
         public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-            guard isDragging else { return }
+            guard isDragging, !viewModel.isAddressFieldFocused else { return }
             let y = scrollView.contentOffset.y
             let isScrollingDown = y > lastScrollOffsetY
             lastScrollOffsetY = y

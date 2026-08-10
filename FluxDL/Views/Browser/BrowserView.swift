@@ -3,8 +3,11 @@ import SwiftUI
 public struct BrowserView: View {
     @StateObject private var viewModel = BrowserViewModel()
     @State private var chromeHeight: CGFloat = 0
+    private let onOpenDownloads: () -> Void
     
-    public init() {}
+    public init(onOpenDownloads: @escaping () -> Void = {}) {
+        self.onOpenDownloads = onOpenDownloads
+    }
     
     public var body: some View {
         GeometryReader { geo in
@@ -26,18 +29,25 @@ public struct BrowserView: View {
                     .transition(.opacity)
                 }
                 
-                // Custom chrome: address bar + find-in-page bar
+                // Custom chrome: toolbar + find-in-page bar
                 VStack(spacing: 0) {
                     BrowserAddressBar(
                         text: $viewModel.inputURLText,
                         isLoading: viewModel.isLoading,
                         progress: viewModel.estimatedProgress,
-                        isDesktopMode: viewModel.tabManager.activeTab?.isDesktopMode ?? false,
+                        canGoBack: viewModel.canGoBack,
+                        canGoForward: viewModel.canGoForward,
+                        tabCount: viewModel.tabManager.tabs.count,
                         onCommit: { viewModel.handleSearchOrNavigate() },
                         onReload: { viewModel.reloadOrStop() },
-                        onToggleDesktop: { viewModel.toggleDesktopMode() },
-                        onOpenPageActions: { viewModel.isPageActionsPresented = true }
-                    )
+                        onGoBack: { viewModel.goBack() },
+                        onGoForward: { viewModel.goForward() },
+                        onGoHome: { viewModel.goHome() },
+                        onOpenTabs: { viewModel.tabManager.isTabGridPresented = true },
+                        onFocusChange: { focused in viewModel.isAddressFieldFocused = focused }
+                    ) {
+                        moreMenu
+                    }
                     
                     if viewModel.isFindInPagePresented {
                         FindInPageBar(manager: viewModel.findInPageManager) {
@@ -96,22 +106,16 @@ public struct BrowserView: View {
             BrowserSettingsSheet()
         }
         .confirmationDialog(
-            "Page Actions",
-            isPresented: $viewModel.isPageActionsPresented,
+            "Clear History?",
+            isPresented: $viewModel.isClearHistoryPresented,
             titleVisibility: .visible
         ) {
-            Button("Reload Page") { viewModel.reloadOrStop() }
-            Button(viewModel.tabManager.activeTab?.isDesktopMode == true ? "Request Mobile Website" : "Request Desktop Website") {
-                viewModel.toggleDesktopMode()
+            Button("Clear All History", role: .destructive) {
+                viewModel.clearHistory()
             }
-            Button("Add Bookmark") { viewModel.toggleBookmarkCurrentPage() }
-            Button("Copy URL") { viewModel.copyCurrentURL() }
-            Button("Share...") { viewModel.shareCurrentPage() }
-            Button("Find in Page") { viewModel.isFindInPagePresented = true }
-            Button("Open in Safari") { viewModel.openInSafari() }
-            Button("Save Page as PDF") { viewModel.savePageAsPDF() }
-            Button("Go to Home") { viewModel.goHome() }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes all browsing history from this device.")
         }
         .confirmationDialog(
             "Download File?",
@@ -127,6 +131,110 @@ public struct BrowserView: View {
                 Text("Detected downloadable file:\n\(url.lastPathComponent)")
             }
         }
+    }
+    
+    // MARK: - More menu
+    
+    @ViewBuilder
+    private var moreMenu: some View {
+        Menu {
+            Button {
+                viewModel.reloadOrStop()
+            } label: {
+                Label("Reload", systemImage: "arrow.clockwise")
+            }
+            
+            Button {
+                viewModel.stopLoading()
+            } label: {
+                Label("Stop Loading", systemImage: "xmark")
+            }
+            .disabled(!viewModel.isLoading)
+            
+            Divider()
+            
+            Button {
+                viewModel.copyCurrentURL()
+            } label: {
+                Label("Copy Link", systemImage: "doc.on.doc")
+            }
+            
+            Button {
+                viewModel.shareCurrentPage()
+            } label: {
+                Label("Share...", systemImage: "square.and.arrow.up")
+            }
+            
+            Button {
+                viewModel.isFindInPagePresented = true
+            } label: {
+                Label("Find in Page", systemImage: "magnifyingglass")
+            }
+            
+            Divider()
+            
+            Button {
+                viewModel.toggleDesktopMode()
+            } label: {
+                if viewModel.tabManager.activeTab?.isDesktopMode == true {
+                    Label("Request Mobile Website", systemImage: "iphone")
+                } else {
+                    Label("Request Desktop Website", systemImage: "desktopcomputer")
+                }
+            }
+            
+            Button {
+                viewModel.toggleBookmarkCurrentPage()
+            } label: {
+                Label("Add Bookmark", systemImage: "bookmark")
+            }
+            
+            Divider()
+            
+            Button {
+                viewModel.isBookmarksPresented = true
+            } label: {
+                Label("Bookmarks", systemImage: "bookmark.fill")
+            }
+            
+            Button {
+                viewModel.isHistoryPresented = true
+            } label: {
+                Label("History", systemImage: "clock")
+            }
+            
+            Button(role: .destructive) {
+                viewModel.isClearHistoryPresented = true
+            } label: {
+                Label("Clear History", systemImage: "trash")
+            }
+            
+            Button {
+                onOpenDownloads()
+            } label: {
+                Label("Downloads", systemImage: "arrow.down.circle")
+            }
+            
+            Divider()
+            
+            Button {
+                viewModel.openInSafari()
+            } label: {
+                Label("Open in Safari", systemImage: "safari")
+            }
+            
+            Button {
+                viewModel.savePageAsPDF()
+            } label: {
+                Label("Save Page as PDF", systemImage: "doc.richtext")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.body.weight(.medium))
+                .frame(width: 28, height: 30)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("More actions")
     }
 }
 
