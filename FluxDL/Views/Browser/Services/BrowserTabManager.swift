@@ -7,7 +7,7 @@ public final class BrowserTabManager: ObservableObject {
     public static let shared = BrowserTabManager()
     
     @Published public var tabs: [BrowserTabModel] = []
-    @Published public var activeTabId: UUID
+    @Published public var activeTabId: UUID = UUID()
     @Published public var recentlyClosedTabs: [BrowserTabModel] = []
     @Published public var isTabGridPresented: Bool = false
     

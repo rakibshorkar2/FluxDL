@@ -78,7 +78,7 @@ public final class ProxyService: ObservableObject, ProxyProviding {
     private let keychainStore: ProxyKeychainStoring
     private let defaults: UserDefaults
     private let haptics: HapticServiceProtocol
-    private var activeTestTask: Task<Void, Never>?
+    private var activeTestTask: Task<Void, Never>? = nil
 
     // MARK: Persistence Keys
 
