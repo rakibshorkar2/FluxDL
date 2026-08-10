@@ -69,6 +69,7 @@ public final class AdBlockEngine {
     public let blockedRequestHandler = AdBlockMessageHandler()
 
     private var ruleList: WKContentRuleList?
+    private var customRuleList: WKContentRuleList?
     private var isCompiling = false
     private let lock = NSLock()
     private var blockedCounts: [String: Int] = [:]
@@ -79,6 +80,7 @@ public final class AdBlockEngine {
             self?.registerBlockedRequest(forHost: host)
         }
         compileRules()
+        reloadCustomRules()
     }
 
     /// Whether ad protection (rule list + request counting) should apply to a domain.
@@ -95,6 +97,65 @@ public final class AdBlockEngine {
         if let ruleList = ruleList {
             configuration.userContentController.add(ruleList)
         }
+        if let customRuleList = customRuleList {
+            configuration.userContentController.add(customRuleList)
+        }
+    }
+
+    /// Recompiles the user-defined block rules. Call whenever
+    /// `BrowserSettings.customBlockRules` changes.
+    public func reloadCustomRules() {
+        let rules = BrowserSettings.shared.customBlockRules
+        guard !rules.isEmpty else {
+            customRuleList = nil
+            return
+        }
+
+        let json = Self.customRulesJSON(from: rules)
+        guard let store = WKContentRuleListStore.default() else { return }
+        // WebKit rejects recompiling an identifier that already exists, so
+        // remove the previous version first, then compile the new one.
+        store.removeContentRuleList(forIdentifier: Self.customRulesListIdentifier) { [weak self] _ in
+            store.compileContentRuleList(
+                forIdentifier: Self.customRulesListIdentifier,
+                encodedContentRuleList: json
+            ) { list, error in
+                if let list = list {
+                    self?.customRuleList = list
+                    print("FluxDL AdBlockEngine: Compiled \(rules.count) custom block rules.")
+                } else if let error = error {
+                    print("FluxDL AdBlockEngine custom rules error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    /// Identifier for the compiled list of user-defined rules.
+    public static let customRulesListIdentifier = "FluxDLCustomBlockRules"
+
+    /// Builds a WKContentRuleList JSON array from user patterns. Each pattern
+    /// is matched anywhere in the URL; `*` acts as a wildcard and all other
+    /// regex metacharacters are escaped so invalid input can't break a page.
+    public static func customRulesJSON(from patterns: [String]) -> String {
+        var rules: [String] = []
+        for pattern in patterns {
+            let sanitized = sanitizedURLPattern(pattern)
+            guard !sanitized.isEmpty else { continue }
+            rules.append("""
+            {"trigger":{"url-filter":".*\(sanitized).*"},"action":{"type":"block"}}
+            """)
+        }
+        return "[" + rules.joined(separator: ",") + "]"
+    }
+
+    /// Escapes regex metacharacters (except the `*` wildcard, which becomes
+    /// `.*`) so a raw user pattern can be embedded safely in a rule filter.
+    public static func sanitizedURLPattern(_ pattern: String) -> String {
+        var escaped = pattern
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "*", with: "\u{1}WILD\u{1}")
+        escaped = NSRegularExpression.escapedPattern(for: escaped)
+        return escaped.replacingOccurrences(of: "\u{1}WILD\u{1}", with: ".*")
     }
 
     /// Records a blocked request for the given host and notifies observers.
@@ -132,15 +193,15 @@ public final class AdBlockEngine {
         let jsonRules = """
         [
             {
-                "trigger": { "url-filter": ".*(doubleclick|adservice|googlesyndication|adnxs|amazon-adsystem|popads|popcash|coinhive|coin-hive|outbrain|taboola|zergnet).*" },
+                "trigger": { "url-filter": ".*(doubleclick|googlesyndication|googletagservices|googleadservices|adservice|adnxs|amazon-adsystem|popads|popcash|coinhive|coin-hive|outbrain|taboola|zergnet).*" },
                 "action": { "type": "block" }
             },
             {
-                "trigger": { "url-filter": ".*(adserver|adtracker|analytics-engine|crypto-miner|malicious-redirect).*" },
+                "trigger": { "url-filter": ".*(adserver|adtracker|analytics-engine|crypto-miner|malicious-redirect|pubmatic|criteo|rubicon|casalemedia|moatads|adcolony|unityads|chartbeat|scorecardresearch).*" },
                 "action": { "type": "block" }
             },
             {
-                "trigger": { "url-filter": ".*", "if-domain": ["*ad.*", "*ads.*"] },
+                "trigger": { "url-filter": ".*", "if-domain": ["*ad.*", "*ads.*", "*advert.*", "*advertising.*"] },
                 "action": { "type": "block" }
             }
         ]

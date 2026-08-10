@@ -380,4 +380,57 @@ final class BrowserTests: XCTestCase {
         AdBlockEngine.shared.applyRuleList(to: config, domain: "fluxdl.example.com")
         XCTAssertEqual(config.userContentController.userScripts.count, 0)
     }
+    
+    @MainActor
+    func testCustomBlockRuleSanitization() {
+        // Plain domains: dots must be escaped so they can't match loosely.
+        let domain = AdBlockEngine.sanitizedURLPattern("ads.example.com")
+        XCTAssertEqual(domain, "ads\\.example\\.com")
+        
+        // Wildcards become `.*`, everything else stays escaped.
+        let wildcard = AdBlockEngine.sanitizedURLPattern("*tracker*.js")
+        XCTAssertEqual(wildcard, ".*tracker.*\\.js")
+        
+        // A user rule with regex metacharacters must not leak them raw.
+        let hostile = AdBlockEngine.sanitizedURLPattern("ad[0-9](net)|*")
+        XCTAssertFalse(hostile.contains("[0-9]"))
+        XCTAssertFalse(hostile.contains("|"))
+        
+        // JSON output must be well-formed and contain the escaped pattern.
+        let json = AdBlockEngine.customRulesJSON(from: ["doubleclick.net", ""])
+        XCTAssertTrue(json.contains("doubleclick\\.net"))
+        XCTAssertTrue(json.contains("\"type\":\"block\""))
+        XCTAssertTrue(json.hasPrefix("["), "JSON should be an array")
+        XCTAssertTrue(json.hasSuffix("]"))
+    }
+    
+    @MainActor
+    func testCustomBlockRulePersistence() {
+        let settings = BrowserSettings.shared
+        let saved = settings.customBlockRules
+        defer { settings.customBlockRules = saved }
+        
+        settings.customBlockRules = ["example-tracker.com", "*ads*.xyz"]
+        XCTAssertEqual(
+            UserDefaults.standard.stringArray(forKey: "browser_custom_block_rules"),
+            ["example-tracker.com", "*ads*.xyz"]
+        )
+        
+        settings.customBlockRules.removeAll()
+        XCTAssertEqual(settings.customBlockRules, [])
+    }
+    
+    @MainActor
+    func testPopupBlockingSettingDefaultsEnabled() {
+        let settings = BrowserSettings.shared
+        let saved = settings.isPopupBlockingEnabled
+        defer { settings.isPopupBlockingEnabled = saved }
+        
+        settings.isPopupBlockingEnabled = true
+        XCTAssertTrue(settings.isPopupBlockingEnabled)
+        XCTAssertTrue(UserDefaults.standard.bool(forKey: "browser_popup_blocking"))
+        
+        settings.isPopupBlockingEnabled = false
+        XCTAssertFalse(settings.isPopupBlockingEnabled)
+    }
 }

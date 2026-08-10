@@ -54,6 +54,12 @@ public final class BrowserSettings: ObservableObject {
         didSet { UserDefaults.standard.set(adBlockWhitelist, forKey: "browser_adblock_whitelist") }
     }
     
+    /// User-defined block rules ("ad blocking extensions"): simple patterns
+    /// such as `ads.example.com` or `*tracker*.js`. `*` acts as a wildcard.
+    @Published public var customBlockRules: [String] {
+        didSet { UserDefaults.standard.set(customBlockRules, forKey: "browser_custom_block_rules") }
+    }
+    
     @Published public var restoreTabsOnLaunch: Bool {
         didSet { UserDefaults.standard.set(restoreTabsOnLaunch, forKey: "browser_restore_tabs") }
     }
@@ -80,6 +86,8 @@ public final class BrowserSettings: ObservableObject {
         self.requestDesktopByDefault = UserDefaults.standard.bool(forKey: "browser_request_desktop_default")
         
         self.adBlockWhitelist = UserDefaults.standard.stringArray(forKey: "browser_adblock_whitelist") ?? []
+        
+        self.customBlockRules = UserDefaults.standard.stringArray(forKey: "browser_custom_block_rules") ?? []
         
         self.restoreTabsOnLaunch = UserDefaults.standard.object(forKey: "browser_restore_tabs") != nil
             ? UserDefaults.standard.bool(forKey: "browser_restore_tabs") : true

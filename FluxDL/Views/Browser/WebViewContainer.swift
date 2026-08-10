@@ -417,10 +417,17 @@ public struct WebViewContainer: UIViewRepresentable {
             for navigationAction: WKNavigationAction,
             windowFeatures: WKWindowFeatures
         ) -> WKWebView? {
-            // Open popups in a new tab unless popup blocking is enabled.
             guard let url = navigationAction.request.url else { return nil }
+            
+            // Popup blocking: refuse to create the window entirely (returning
+            // nil makes window.open() fail instead of opening a new tab).
+            if BrowserSettings.shared.isPopupBlockingEnabled {
+                BrowserTabManager.shared.hapticService.selectionChanged()
+                return nil
+            }
+            
+            // Popups open in a new tab, inheriting the parent tab's privacy state.
             Task { @MainActor in
-                // Popups inherit the parent tab's privacy state.
                 let isPrivate = self.viewModel.tabManager.activeTab?.isPrivate ?? false
                 _ = BrowserTabManager.shared.createNewTab(url: url, isPrivate: isPrivate)
             }

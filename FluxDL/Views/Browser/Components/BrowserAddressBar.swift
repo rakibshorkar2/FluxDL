@@ -5,6 +5,7 @@ import SwiftUI
 /// when the address field is focused.
 public struct BrowserAddressBar<MoreMenuContent: View>: View {
     @Binding var text: String
+    @Binding var isFieldFocused: Bool
     let isLoading: Bool
     let progress: Double
     let canGoBack: Bool
@@ -29,6 +30,7 @@ public struct BrowserAddressBar<MoreMenuContent: View>: View {
     
     public init(
         text: Binding<String>,
+        isFieldFocused: Binding<Bool> = .constant(false),
         isLoading: Bool,
         progress: Double,
         canGoBack: Bool,
@@ -50,6 +52,7 @@ public struct BrowserAddressBar<MoreMenuContent: View>: View {
         @ViewBuilder moreMenu: @escaping () -> MoreMenuContent
     ) {
         self._text = text
+        self._isFieldFocused = isFieldFocused
         self.isLoading = isLoading
         self.progress = progress
         self.canGoBack = canGoBack
@@ -202,7 +205,11 @@ public struct BrowserAddressBar<MoreMenuContent: View>: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .onChange(of: isFocused) { focused in
+                isFieldFocused = focused
                 onFocusChange(focused)
+            }
+            .onChange(of: isFieldFocused) { focused in
+                if !focused, isFocused { isFocused = false }
             }
             
             // Autocomplete suggestions panel (expanded + focused state)

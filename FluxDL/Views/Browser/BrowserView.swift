@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct BrowserView: View {
     @StateObject private var viewModel = BrowserViewModel()
+    @ObservedObject private var tabManager = BrowserTabManager.shared
     @State private var chromeHeight: CGFloat = 0
     private let onOpenDownloads: () -> Void
     
@@ -17,7 +18,7 @@ public struct BrowserView: View {
                 
                 // Web content — recreated per tab so each tab gets its own live WKWebView
                 WebViewContainer(viewModel: viewModel)
-                    .id(viewModel.tabManager.activeTabId)
+                    .id(tabManager.activeTabId)
                     .ignoresSafeArea(edges: .top)
                 
                 // Error / offline state overlay
@@ -33,12 +34,13 @@ public struct BrowserView: View {
                 VStack(spacing: 0) {
                     BrowserAddressBar(
                         text: $viewModel.inputURLText,
+                        isFieldFocused: $viewModel.isAddressFieldFocused,
                         isLoading: viewModel.isLoading,
                         progress: viewModel.estimatedProgress,
                         canGoBack: viewModel.canGoBack,
                         canGoForward: viewModel.canGoForward,
-                        tabCount: viewModel.tabManager.tabs.count,
-                        faviconURL: viewModel.tabManager.activeTab?.faviconURL,
+                        tabCount: tabManager.tabs.count,
+                        faviconURL: tabManager.activeTab?.faviconURL,
                         isSecure: viewModel.currentURL?.scheme == "https",
                         blockedCount: viewModel.blockedRequestCount,
                         suggestions: viewModel.suggestions,
@@ -47,7 +49,10 @@ public struct BrowserView: View {
                         onGoBack: { viewModel.goBack() },
                         onGoForward: { viewModel.goForward() },
                         onGoHome: { viewModel.goHome() },
-                        onOpenTabs: { viewModel.tabManager.isTabGridPresented = true },
+                        onOpenTabs: {
+                            viewModel.isAddressFieldFocused = false
+                            tabManager.isTabGridPresented = true
+                        },
                         onFocusChange: { focused in viewModel.isAddressFieldFocused = focused },
                         onSelectSuggestion: { viewModel.selectSuggestion($0) },
                         onClearSuggestions: { viewModel.dismissSuggestions() }
@@ -88,7 +93,7 @@ public struct BrowserView: View {
                 }
                 
                 // Tab grid — animated overlay (slides up like a sheet)
-                if viewModel.tabManager.isTabGridPresented {
+                if tabManager.isTabGridPresented {
                     BrowserTabGridView()
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                         .zIndex(20)
@@ -96,10 +101,10 @@ public struct BrowserView: View {
                 }
             }
             .onPreferenceChange(ChromeHeightKey.self) { chromeHeight = $0 }
-            .onChange(of: viewModel.tabManager.activeTabId) { _ in
+            .onChange(of: tabManager.activeTabId) { _ in
                 viewModel.isChromeCollapsed = false
             }
-            .animation(AppTheme.defaultSpring, value: viewModel.tabManager.isTabGridPresented)
+            .animation(AppTheme.defaultSpring, value: tabManager.isTabGridPresented)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $viewModel.isBookmarksPresented) {
@@ -188,7 +193,7 @@ public struct BrowserView: View {
             Button {
                 viewModel.toggleDesktopMode()
             } label: {
-                if viewModel.tabManager.activeTab?.isDesktopMode == true {
+                if tabManager.activeTab?.isDesktopMode == true {
                     Label("Request Mobile Website", systemImage: "iphone")
                 } else {
                     Label("Request Desktop Website", systemImage: "desktopcomputer")
@@ -205,6 +210,19 @@ public struct BrowserView: View {
                 viewModel.toggleReaderMode()
             } label: {
                 Label(viewModel.isReaderMode ? "Exit Reader Mode" : "Reader Mode", systemImage: "text.alignleft")
+            }
+            
+            if let host = viewModel.currentURL?.host, !host.isEmpty,
+               BrowserSettings.shared.isAdBlockerEnabled {
+                Button {
+                    BrowserSettings.shared.toggleWhitelist(domain: host)
+                } label: {
+                    if BrowserSettings.shared.isWhitelisted(domain: host) {
+                        Label("Enable Ad Blocking on This Site", systemImage: "shield")
+                    } else {
+                        Label("Disable Ad Blocking on This Site", systemImage: "shield.slash")
+                    }
+                }
             }
             
             Button {
