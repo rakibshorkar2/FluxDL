@@ -2,16 +2,43 @@ import SwiftUI
 import WebKit
 import Combine
 
+/// A single address-bar autocomplete suggestion, sourced from bookmarks or history.
+public struct URLSuggestion: Identifiable, Equatable {
+    public enum Kind: Equatable {
+        case bookmark
+        case history
+    }
+
+    public let id: UUID
+    public let title: String
+    public let urlString: String
+    public let kind: Kind
+
+    public var url: URL? { URL(string: urlString) }
+
+    public init(id: UUID = UUID(), title: String, urlString: String, kind: Kind) {
+        self.id = id
+        self.title = title
+        self.urlString = urlString
+        self.kind = kind
+    }
+}
+
 @MainActor
 public final class BrowserViewModel: ObservableObject {
-    @Published public var inputURLText: String = ""
+    @Published public var inputURLText: String = "" {
+        didSet { updateSuggestions() }
+    }
     @Published public var currentURL: URL? = URL(string: "https://google.com")
     @Published public var pageTitle: String = ""
     @Published public var isLoading: Bool = false
     @Published public var estimatedProgress: Double = 0.0
     @Published public var canGoBack: Bool = false
     @Published public var canGoForward: Bool = false
-    
+    @Published public var blockedRequestCount: Int = 0
+    @Published public var suggestions: [URLSuggestion] = []
+    @Published public var isReaderMode: Bool = false
+
     @Published public var detectedDownloadURL: URL? = nil
     @Published public var showDownloadPrompt: Bool = false
     @Published public var loadErrorMessage: String? = nil
@@ -20,6 +47,7 @@ public final class BrowserViewModel: ObservableObject {
     @Published public var isAddressFieldFocused: Bool = false {
         didSet {
             if isAddressFieldFocused { isChromeCollapsed = false }
+            if !isAddressFieldFocused { suggestions = [] }
         }
     }
     @Published public var isClearHistoryPresented: Bool = false
@@ -47,7 +75,7 @@ public final class BrowserViewModel: ObservableObject {
                 self?.syncActiveTabState()
             }
             .store(in: &cancellables)
-        
+
         NotificationCenter.default.publisher(for: BrowserConnectivityMonitor.connectivityDidChangeNotification)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] note in
@@ -62,7 +90,18 @@ public final class BrowserViewModel: ObservableObject {
                 }
             }
             .store(in: &cancellables)
-        
+
+        // Keep the blocked-request badge in sync while the page loads.
+        NotificationCenter.default.publisher(for: AdBlockEngine.blockedRequestCountDidChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] note in
+                guard let self,
+                      let host = note.userInfo?["host"] as? String,
+                      self.tabManager.activeTab?.url?.host == host else { return }
+                self.blockedRequestCount = AdBlockEngine.shared.blockedCount(forHost: host)
+            }
+            .store(in: &cancellables)
+
         syncActiveTabState()
     }
     
@@ -76,6 +115,8 @@ public final class BrowserViewModel: ObservableObject {
         self.canGoBack = activeTab.canGoBack
         self.canGoForward = activeTab.canGoForward
         self.isOffline = activeTab.isOffline || !connectivityMonitor.isConnected
+        self.isReaderMode = activeTab.isReaderMode
+        self.blockedRequestCount = AdBlockEngine.shared.blockedCount(forHost: activeTab.url?.host)
         if self.isOffline && loadErrorMessage == nil {
             self.loadErrorMessage = "Your device appears to be offline."
         } else if !self.isOffline && loadErrorMessage == "Your device appears to be offline." {
@@ -86,6 +127,7 @@ public final class BrowserViewModel: ObservableObject {
     public func handleSearchOrNavigate() {
         let trimmed = inputURLText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        suggestions = []
         
         let targetURL: URL
         if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") || trimmed.hasPrefix("file://") {
@@ -143,6 +185,100 @@ public final class BrowserViewModel: ObservableObject {
             inputURLText = homeURL.absoluteString
             handleSearchOrNavigate()
         }
+    }
+
+    // MARK: - Address-bar suggestions
+
+    /// Recomputes the autocomplete suggestions from bookmarks + history.
+    /// Prefix matches rank first; results are capped and deduplicated by URL.
+    private func updateSuggestions() {
+        let query = inputURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty,
+              query.lowercased() != (currentURL?.absoluteString ?? "").lowercased() else {
+            suggestions = []
+            return
+        }
+
+        let lowerQuery = query.lowercased()
+        var results: [URLSuggestion] = []
+        var seen = Set<String>()
+
+        func add(_ title: String, _ urlString: String, _ kind: URLSuggestion.Kind) {
+            let key = urlString.lowercased()
+            guard seen.insert(key).inserted else { return }
+            results.append(URLSuggestion(title: title, urlString: urlString, kind: kind))
+        }
+
+        func matchesPrefix(_ candidate: String) -> Bool {
+            candidate.lowercased().hasPrefix(lowerQuery)
+        }
+
+        let bookmarks = bookmarkManager.bookmarks
+        let history = historyManager.historyItems
+
+        // First pass: prefix matches (bookmarks take priority over history).
+        for item in bookmarks where results.count < 8 && (matchesPrefix(item.title) || matchesPrefix(item.urlString)) {
+            add(item.title, item.urlString, .bookmark)
+        }
+        for item in history where results.count < 8 && (matchesPrefix(item.title) || matchesPrefix(item.urlString)) {
+            add(item.title, item.urlString, .history)
+        }
+        // Second pass: substring matches.
+        for item in bookmarks where results.count < 8 &&
+            (item.title.localizedCaseInsensitiveContains(query) || item.urlString.localizedCaseInsensitiveContains(query)) {
+            add(item.title, item.urlString, .bookmark)
+        }
+        for item in history where results.count < 8 &&
+            (item.title.localizedCaseInsensitiveContains(query) || item.urlString.localizedCaseInsensitiveContains(query)) {
+            add(item.title, item.urlString, .history)
+        }
+
+        suggestions = Array(results.prefix(8))
+    }
+
+    public func selectSuggestion(_ suggestion: URLSuggestion) {
+        inputURLText = suggestion.urlString
+        suggestions = []
+        isAddressFieldFocused = false
+        hapticService.selectionChanged()
+        handleSearchOrNavigate()
+    }
+
+    public func dismissSuggestions() {
+        suggestions = []
+    }
+
+    // MARK: - Private browsing
+
+    public func createPrivateTab() {
+        _ = tabManager.createNewTab(isPrivate: true)
+        hapticService.selectionChanged()
+    }
+
+    // MARK: - Reader Mode
+
+    public func toggleReaderMode() {
+        guard let webView = tabManager.activeTab?.webView,
+              var activeTab = tabManager.activeTab else { return }
+        activeTab.isReaderMode.toggle()
+        tabManager.activeTab = activeTab
+        isReaderMode = activeTab.isReaderMode
+        hapticService.selectionChanged()
+        if activeTab.isReaderMode {
+            webView.evaluateJavaScript(ReaderModeScript.applySource, completionHandler: nil)
+        } else {
+            // Exiting restores the original page.
+            webView.reload()
+        }
+    }
+
+    // MARK: - Keyboard
+
+    /// Resigns first responder and collapses the chrome + suggestions.
+    public func dismissKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        isAddressFieldFocused = false
+        suggestions = []
     }
     
     public func toggleDesktopMode() {

@@ -1,6 +1,64 @@
 import SwiftUI
 import WebKit
 
+/// JavaScript used by Reader Mode. Extracts the main article content and
+/// presents it in a clean reading view. Exiting reader mode reloads the page.
+public enum ReaderModeScript {
+    public static let applySource = """
+    (function () {
+        if (document.documentElement.getAttribute("data-fluxdl-reader") === "1") { return; }
+        function score(el) {
+            var paragraphs = el.querySelectorAll("p").length;
+            var length = (el.innerText || "").length;
+            return paragraphs * 4 + Math.min(length / 300, 25);
+        }
+        var candidates = [];
+        var selectors = ["article", "main", '[role="main"]', ".article", ".post", ".entry-content", ".content"];
+        var found = document.querySelectorAll(selectors.join(","));
+        for (var i = 0; i < found.length; i++) { candidates.push(found[i]); }
+        var divs = document.querySelectorAll("body div");
+        for (var i = 0; i < divs.length && i < 400; i++) {
+            if (divs[i].querySelectorAll("p").length >= 3) { candidates.push(divs[i]); }
+        }
+        var best = null, bestScore = 8;
+        for (var i = 0; i < candidates.length; i++) {
+            var s = score(candidates[i]);
+            if (s > bestScore) { bestScore = s; best = candidates[i]; }
+        }
+        if (!best) { return; }
+        var clone = best.cloneNode(true);
+        var remove = clone.querySelectorAll("script,style,noscript,iframe,nav,aside,form,button,.ad,.ads,.advert,.advertisement,.banner,.social,.share,.comments,.related,.promo,.footer,.header,.sidebar,[class*='advert'],[id*='advert']");
+        for (var i = 0; i < remove.length; i++) {
+            if (remove[i].parentNode) { remove[i].parentNode.removeChild(remove[i]); }
+        }
+        var links = clone.querySelectorAll("a");
+        for (var i = 0; i < links.length; i++) {
+            var plain = document.createTextNode(links[i].innerText || "");
+            if (links[i].parentNode) { links[i].parentNode.replaceChild(plain, links[i]); }
+        }
+        var images = clone.querySelectorAll("img");
+        for (var i = 0; i < images.length; i++) {
+            if (!images[i].getAttribute("src")) { images[i].removeAttribute("src"); }
+        }
+        var container = document.createElement("div");
+        container.id = "fluxdl-reader-container";
+        container.appendChild(clone);
+        var style = document.createElement("style");
+        style.id = "fluxdl-reader-style";
+        style.textContent = "#fluxdl-reader-container{max-width:46rem;margin:0 auto;padding:2.5rem 1.5rem;line-height:1.7;font-size:1.05rem;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}" +
+            "#fluxdl-reader-container h1,h2,h3{line-height:1.3;margin:1.2em 0 0.5em;}" +
+            "#fluxdl-reader-container p{margin:0 0 1em;}" +
+            "#fluxdl-reader-container img{max-width:100%;height:auto;border-radius:8px;}" +
+            "#fluxdl-reader-container a{color:#0a66c2;}" +
+            "@media (prefers-color-scheme:dark){#fluxdl-reader-container{color:#e8e8e8;}}";
+        document.body.innerHTML = "";
+        document.body.appendChild(style);
+        document.body.appendChild(container);
+        document.documentElement.setAttribute("data-fluxdl-reader", "1");
+    })();
+    """
+}
+
 public struct WebViewContainer: UIViewRepresentable {
     @ObservedObject var viewModel: BrowserViewModel
     
@@ -26,9 +84,31 @@ public struct WebViewContainer: UIViewRepresentable {
         configuration.processPool = viewModel.tabManager.sharedProcessPool
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
-        
+
+        // Private tabs use an in-memory, non-persistent data store so all
+        // cookies/cache die with the web view — nothing touches disk.
+        if activeTab?.isPrivate == true {
+            configuration.websiteDataStore = WKWebsiteDataStore.nonPersistent()
+        }
+
         // Apply native Ad Blocker rules
         AdBlockEngine.shared.applyRuleList(to: configuration, domain: activeTab?.url?.host)
+
+        // Install the passive request-counting script alongside the rule list
+        // so the UI can surface a per-page blocked-request badge.
+        if AdBlockEngine.shared.shouldApplyProtection(domain: activeTab?.url?.host) {
+            configuration.userContentController.addUserScript(
+                WKUserScript(
+                    source: AdBlockEngine.countingScriptSource,
+                    injectionTime: .atDocumentStart,
+                    forMainFrameOnly: false
+                )
+            )
+            configuration.userContentController.add(
+                AdBlockEngine.shared.blockedRequestHandler,
+                name: AdBlockEngine.counterScriptMessageName
+            )
+        }
         
         // Configure preferences
         let preferences = WKWebpagePreferences()
@@ -154,6 +234,10 @@ public struct WebViewContainer: UIViewRepresentable {
         public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
             isDragging = true
             lastScrollOffsetY = scrollView.contentOffset.y
+            // Dismiss the keyboard + suggestions when the user scrolls the page.
+            if viewModel.isAddressFieldFocused {
+                viewModel.dismissKeyboard()
+            }
         }
         
         public func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -187,6 +271,13 @@ public struct WebViewContainer: UIViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
+            // Haptic feedback for swipe/chevron back-forward navigation.
+            if navigationAction.navigationType == .backForward {
+                Task { @MainActor in
+                    self.viewModel.hapticService.impactOccurred(.light)
+                }
+            }
+
             if let url = navigationAction.request.url {
                 let ext = url.pathExtension.lowercased()
                 let downloadableExtensions = [
@@ -236,11 +327,17 @@ public struct WebViewContainer: UIViewRepresentable {
             Task { @MainActor in
                 self.viewModel.isLoading = true
                 self.viewModel.loadErrorMessage = nil
+                self.viewModel.blockedRequestCount = 0
+                if let host = webView.url?.host {
+                    AdBlockEngine.shared.resetCount(forHost: host)
+                }
                 if var activeTab = self.viewModel.tabManager.activeTab {
                     activeTab.isLoading = true
                     activeTab.isOffline = false
+                    activeTab.isReaderMode = false
                     self.viewModel.tabManager.activeTab = activeTab
                 }
+                self.viewModel.isReaderMode = false
             }
         }
         
@@ -253,7 +350,9 @@ public struct WebViewContainer: UIViewRepresentable {
                     activeTab.isOffline = false
                     self.viewModel.tabManager.activeTab = activeTab
                 }
-                if let url = webView.url {
+                // Incognito tabs never write to browsing history.
+                let isPrivate = self.viewModel.tabManager.activeTab?.isPrivate ?? false
+                if !isPrivate, let url = webView.url {
                     BrowserHistoryManager.shared.addHistory(
                         title: webView.title ?? url.host ?? url.absoluteString,
                         urlString: url.absoluteString
@@ -321,7 +420,9 @@ public struct WebViewContainer: UIViewRepresentable {
             // Open popups in a new tab unless popup blocking is enabled.
             guard let url = navigationAction.request.url else { return nil }
             Task { @MainActor in
-                _ = BrowserTabManager.shared.createNewTab(url: url)
+                // Popups inherit the parent tab's privacy state.
+                let isPrivate = self.viewModel.tabManager.activeTab?.isPrivate ?? false
+                _ = BrowserTabManager.shared.createNewTab(url: url, isPrivate: isPrivate)
             }
             return nil
         }
@@ -394,14 +495,24 @@ public struct WebViewContainer: UIViewRepresentable {
             completionHandler: @escaping (UIContextMenuConfiguration?) -> Void
         ) {
             let targetURL = elementInfo.linkURL
-            
+
             let config = UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+                // Light haptic as the long-press link menu appears.
+                Task { @MainActor in
+                    self?.viewModel.hapticService.selectionChanged()
+                }
+
                 var actions: [UIAction] = []
-                
+
                 if let url = targetURL {
                     let openNewTabAction = UIAction(title: "Open in New Tab", image: UIImage(systemName: "plus.square")) { _ in
                         Task { @MainActor in
                             _ = BrowserTabManager.shared.createNewTab(url: url)
+                        }
+                    }
+                    let openPrivateTabAction = UIAction(title: "Open in Private Tab", image: UIImage(systemName: "eye.slash")) { _ in
+                        Task { @MainActor in
+                            _ = BrowserTabManager.shared.createNewTab(url: url, isPrivate: true)
                         }
                     }
                     let copyLinkAction = UIAction(title: "Copy Link", image: UIImage(systemName: "doc.on.doc")) { _ in
@@ -417,7 +528,7 @@ public struct WebViewContainer: UIViewRepresentable {
                             ServiceContainer.shared.fileManagementService.shareFile(url: url, from: nil)
                         }
                     }
-                    actions.append(contentsOf: [openNewTabAction, copyLinkAction, downloadAction, shareAction])
+                    actions.append(contentsOf: [openNewTabAction, openPrivateTabAction, copyLinkAction, downloadAction, shareAction])
                 }
                 return UIMenu(title: targetURL?.host ?? "", children: actions)
             }

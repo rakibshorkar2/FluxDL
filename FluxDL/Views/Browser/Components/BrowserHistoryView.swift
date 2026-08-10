@@ -34,8 +34,7 @@ public struct BrowserHistoryView: View {
                     List {
                         ForEach(filteredHistory) { item in
                             HStack(spacing: 12) {
-                                Image(systemName: "globe")
-                                    .foregroundStyle(Color.secondary)
+                                BrowserFaviconView(url: URL(string: item.urlString), fallbackText: item.title, size: 20)
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.title)

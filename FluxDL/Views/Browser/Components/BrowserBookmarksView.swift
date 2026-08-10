@@ -55,8 +55,13 @@ public struct BrowserBookmarksView: View {
                     List {
                         ForEach(filteredBookmarks) { item in
                             HStack(spacing: 12) {
-                                Image(systemName: item.isFavorite ? "star.fill" : "bookmark.fill")
-                                    .foregroundStyle(item.isFavorite ? Color.orange : Color.accentColor)
+                                BrowserFaviconView(url: URL(string: item.urlString), fallbackText: item.title, size: 20)
+                                
+                                if item.isFavorite {
+                                    Image(systemName: "star.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(Color.orange)
+                                }
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(item.title)

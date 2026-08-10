@@ -2,7 +2,6 @@ import SwiftUI
 
 public struct BrowserTabGridView: View {
     @ObservedObject var tabManager: BrowserTabManager = BrowserTabManager.shared
-    @Environment(\.dismiss) private var dismiss
     @State private var isCloseAllAlertPresented = false
     
     private let columns = [
@@ -26,7 +25,7 @@ public struct BrowserTabGridView: View {
                             .font(.headline)
                         Button("New Tab") {
                             _ = tabManager.createNewTab()
-                            dismiss()
+                            tabManager.isTabGridPresented = false
                         }
                         Spacer()
                     }
@@ -41,7 +40,7 @@ public struct BrowserTabGridView: View {
                                     isSelected: isSelected,
                                     onSelect: {
                                         tabManager.selectTab(id: tab.id)
-                                        dismiss()
+                                        tabManager.isTabGridPresented = false
                                     },
                                     onClose: { tabManager.closeTab(id: tab.id) }
                                 )
@@ -67,6 +66,11 @@ public struct BrowserTabGridView: View {
                                 .contextMenu {
                                     Button(action: { tabManager.duplicateTab(id: tab.id) }) {
                                         Label("Duplicate Tab", systemImage: "plus.square.on.square")
+                                    }
+                                    if tabManager.tabs.count > 1 {
+                                        Button(action: { tabManager.closeOtherTabs(keeping: tab.id) }) {
+                                            Label("Close Other Tabs", systemImage: "rectangle.stack.badge.minus")
+                                        }
                                     }
                                     Button(role: .destructive, action: { tabManager.closeTab(id: tab.id) }) {
                                         Label("Close Tab", systemImage: "xmark.circle")
@@ -99,10 +103,24 @@ public struct BrowserTabGridView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: {
                         _ = tabManager.createNewTab()
-                        dismiss()
+                        tabManager.isTabGridPresented = false
                     }) {
                         Image(systemName: "plus")
                             .font(.body.bold())
+                    }
+                    .contextMenu {
+                        Button {
+                            _ = tabManager.createNewTab()
+                            tabManager.isTabGridPresented = false
+                        } label: {
+                            Label("New Tab", systemImage: "plus")
+                        }
+                        Button {
+                            _ = tabManager.createNewTab(isPrivate: true)
+                            tabManager.isTabGridPresented = false
+                        } label: {
+                            Label("New Private Tab", systemImage: "eye.slash")
+                        }
                     }
                 }
             }

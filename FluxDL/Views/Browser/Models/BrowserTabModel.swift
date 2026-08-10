@@ -15,6 +15,9 @@ public struct BrowserTabModel: Identifiable, Equatable {
     public var faviconURL: URL?
     public var lastActiveDate: Date
     public var isOffline: Bool = false
+    /// Transient UI state: whether the page is showing the reader-mode view.
+    /// Deliberately excluded from `Snapshot` and `==` (per-page, never persisted).
+    public var isReaderMode: Bool = false
     
     // Lazy web view instance reference
     public var webView: WKWebView?

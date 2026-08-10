@@ -38,13 +38,19 @@ public struct BrowserView: View {
                         canGoBack: viewModel.canGoBack,
                         canGoForward: viewModel.canGoForward,
                         tabCount: viewModel.tabManager.tabs.count,
+                        faviconURL: viewModel.tabManager.activeTab?.faviconURL,
+                        isSecure: viewModel.currentURL?.scheme == "https",
+                        blockedCount: viewModel.blockedRequestCount,
+                        suggestions: viewModel.suggestions,
                         onCommit: { viewModel.handleSearchOrNavigate() },
                         onReload: { viewModel.reloadOrStop() },
                         onGoBack: { viewModel.goBack() },
                         onGoForward: { viewModel.goForward() },
                         onGoHome: { viewModel.goHome() },
                         onOpenTabs: { viewModel.tabManager.isTabGridPresented = true },
-                        onFocusChange: { focused in viewModel.isAddressFieldFocused = focused }
+                        onFocusChange: { focused in viewModel.isAddressFieldFocused = focused },
+                        onSelectSuggestion: { viewModel.selectSuggestion($0) },
+                        onClearSuggestions: { viewModel.dismissSuggestions() }
                     ) {
                         moreMenu
                     }
@@ -80,16 +86,22 @@ public struct BrowserView: View {
                     .padding(.trailing, 12)
                     .allowsHitTesting(false)
                 }
+                
+                // Tab grid — animated overlay (slides up like a sheet)
+                if viewModel.tabManager.isTabGridPresented {
+                    BrowserTabGridView()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(20)
+                        .ignoresSafeArea()
+                }
             }
             .onPreferenceChange(ChromeHeightKey.self) { chromeHeight = $0 }
             .onChange(of: viewModel.tabManager.activeTabId) { _ in
                 viewModel.isChromeCollapsed = false
             }
+            .animation(AppTheme.defaultSpring, value: viewModel.tabManager.isTabGridPresented)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .sheet(isPresented: $viewModel.tabManager.isTabGridPresented) {
-            BrowserTabGridView()
-        }
         .sheet(isPresented: $viewModel.isBookmarksPresented) {
             BrowserBookmarksView { url in
                 viewModel.inputURLText = url.absoluteString
@@ -187,6 +199,18 @@ public struct BrowserView: View {
                 viewModel.toggleBookmarkCurrentPage()
             } label: {
                 Label("Add Bookmark", systemImage: "bookmark")
+            }
+            
+            Button {
+                viewModel.toggleReaderMode()
+            } label: {
+                Label(viewModel.isReaderMode ? "Exit Reader Mode" : "Reader Mode", systemImage: "text.alignleft")
+            }
+            
+            Button {
+                viewModel.createPrivateTab()
+            } label: {
+                Label("New Private Tab", systemImage: "eye.slash")
             }
             
             Divider()

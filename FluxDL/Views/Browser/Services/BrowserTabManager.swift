@@ -60,15 +60,21 @@ public final class BrowserTabManager: ObservableObject {
     public func closeTab(id: UUID) {
         guard let idx = tabs.firstIndex(where: { $0.id == id }) else { return }
         let tabToClose = tabs[idx]
-        
-        // Save to recently closed (keep last 10)
-        recentlyClosedTabs.insert(tabToClose, at: 0)
-        if recentlyClosedTabs.count > 10 {
-            recentlyClosedTabs.removeLast()
+
+        if tabToClose.isPrivate {
+            // Incognito tabs never land in "recently closed" and their
+            // website data is wiped immediately.
+            wipePrivateWebData(of: tabToClose)
+        } else {
+            // Save to recently closed (keep last 10)
+            recentlyClosedTabs.insert(tabToClose, at: 0)
+            if recentlyClosedTabs.count > 10 {
+                recentlyClosedTabs.removeLast()
+            }
         }
-        
+
         tabs.remove(at: idx)
-        
+
         if tabs.isEmpty {
             let fallback = BrowserTabModel(title: "Google", url: URL(string: "https://google.com"))
             tabs = [fallback]
@@ -77,7 +83,7 @@ public final class BrowserTabManager: ObservableObject {
             let nextIndex = min(idx, tabs.count - 1)
             activeTabId = tabs[nextIndex].id
         }
-        
+
         persistSession()
     }
     
@@ -125,7 +131,11 @@ public final class BrowserTabManager: ObservableObject {
     
     /// Removes all tabs and starts fresh with a single home tab.
     public func closeAllTabs() {
-        recentlyClosedTabs.append(contentsOf: tabs)
+        for tab in tabs where tab.isPrivate {
+            wipePrivateWebData(of: tab)
+        }
+        let restorable = tabs.filter { !$0.isPrivate }
+        recentlyClosedTabs.append(contentsOf: restorable)
         if recentlyClosedTabs.count > 10 {
             recentlyClosedTabs = Array(recentlyClosedTabs.prefix(10))
         }
@@ -135,10 +145,43 @@ public final class BrowserTabManager: ObservableObject {
         hapticService.impactOccurred(.medium)
         persistSession()
     }
-    
+
+    /// Closes every tab except the one with `id`.
+    public func closeOtherTabs(keeping id: UUID) {
+        guard tabs.contains(where: { $0.id == id }) else { return }
+        for tab in tabs where tab.id != id {
+            if tab.isPrivate {
+                wipePrivateWebData(of: tab)
+            }
+        }
+        let kept = tabs.filter { $0.id == id }
+        let restorable = tabs.filter { $0.id != id && !$0.isPrivate }
+        recentlyClosedTabs.insert(contentsOf: restorable, at: 0)
+        if recentlyClosedTabs.count > 10 {
+            recentlyClosedTabs = Array(recentlyClosedTabs.prefix(10))
+        }
+        tabs = kept
+        activeTabId = id
+        hapticService.impactOccurred(.medium)
+        persistSession()
+    }
+
+    /// Immediately clears cookies/cache for a closed private tab's web view.
+    private func wipePrivateWebData(of tab: BrowserTabModel) {
+        guard let store = tab.webView?.configuration.websiteDataStore else { return }
+        store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) {}
+    }
+
     /// Persists the current tab list so it can be restored on next launch.
+    /// Private tabs are never persisted — they only exist for this session.
     private func persistSession() {
-        BrowserTabPersistence.shared.save(tabs: tabs, activeTabId: activeTabId)
+        let restorable = tabs.filter { !$0.isPrivate }
+        guard !restorable.isEmpty else {
+            BrowserTabPersistence.shared.clear()
+            return
+        }
+        let activeID = restorable.contains(where: { $0.id == activeTabId }) ? activeTabId : restorable[0].id
+        BrowserTabPersistence.shared.save(tabs: restorable, activeTabId: activeID)
     }
     
     /// Memory optimization: suspend web views for inactive tabs when tab count > 5
