@@ -86,13 +86,9 @@ public enum ProxyYAMLParser {
         return .scalar(String(describing: value))
     }
 
-    /// Loads a YAML document (single or multi) with Yams.
+    /// Loads a YAML document with Yams.
     private static func loadYams(_ input: String) throws -> Any? {
-        if let single = try? Yams.load(yaml: input) {
-            return single
-        }
-        let documents = try Yams.loadMultiple(yaml: input)
-        return documents.first { $0 != nil } ?? nil
+        try Yams.load(yaml: input)
     }
 
     /// Tabs are never valid YAML indentation. Rejecting them up front (a

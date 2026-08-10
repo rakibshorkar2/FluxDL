@@ -180,8 +180,8 @@ public final class BrowserViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
-                for tab in self.tabManager.tabs where tab.webView.url != nil {
-                    tab.webView.reload()
+                for tab in self.tabManager.tabs where tab.webView?.url != nil {
+                    tab.webView?.reload()
                 }
             }
             .store(in: &cancellables)

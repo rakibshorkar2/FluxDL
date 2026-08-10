@@ -284,7 +284,11 @@ public final class ProxyService: ObservableObject, ProxyProviding {
     // MARK: - Enable / disable
 
     public func toggleEnabled() {
-        if isEnabled { disable() } else { enable() }
+        if isEnabled {
+            disable()
+        } else {
+            Task { await enable() }
+        }
     }
 
     /// Enables the proxy: the selected profile is probed with a REAL

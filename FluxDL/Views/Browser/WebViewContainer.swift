@@ -211,6 +211,25 @@ public struct WebViewContainer: UIViewRepresentable {
             viewModel.findInPageManager.setWebView(uiView)
         }
     }
+
+    // MARK: - Webpage appearance
+
+    /// Applies the user's webpage appearance preference. `.system` follows
+    /// the OS appearance, `.light`/`.dark` force the interface style, and
+    /// `.automatic` leaves the color-scheme to each website so its own
+    /// native dark theme (per `prefers-color-scheme`) is used.
+    private func applyWebpageAppearance(to webView: WKWebView) {
+        switch BrowserSettings.shared.webpageAppearance {
+        case .system:
+            webView.overrideUserInterfaceStyle = .unspecified
+        case .light:
+            webView.overrideUserInterfaceStyle = .light
+        case .dark:
+            webView.overrideUserInterfaceStyle = .dark
+        case .automatic:
+            webView.overrideUserInterfaceStyle = .unspecified
+        }
+    }
     
     // MARK: - Coordinator
     

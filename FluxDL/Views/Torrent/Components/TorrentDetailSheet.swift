@@ -164,7 +164,7 @@ public struct TorrentDetailSheet: View {
         Section("Seeding") {
             LabeledContent("Uploaded", value: TorrentByteFormatter.string(torrent.totalUpload))
             if let ratio = torrent.ratio {
-                LabeledContent("Ratio", value: "\(ratio, specifier: "%.2f")")
+                LabeledContent("Ratio", value: String(format: "%.2f", ratio))
             } else {
                 LabeledContent("Ratio", value: "—")
             }

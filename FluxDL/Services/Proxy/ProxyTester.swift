@@ -303,7 +303,10 @@ public enum ProxyEffectivenessChecker {
         timeout: TimeInterval = 15,
         directIP: String? = nil
     ) async -> Result {
-        let direct = directIP ?? await fetchIP(configuration: nil, url: url, timeout: timeout)
+        var direct = directIP
+        if direct == nil {
+            direct = await fetchIP(configuration: nil, url: url, timeout: timeout)
+        }
         if sessionConfiguration.proxyConfigurations.isEmpty {
             return Result(directIP: direct, proxyIP: direct)
         }

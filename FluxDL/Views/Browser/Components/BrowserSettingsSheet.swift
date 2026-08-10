@@ -31,13 +31,15 @@ public struct BrowserSettingsSheet: View {
                     Toggle("Restore Tabs on Launch", isOn: $settings.restoreTabsOnLaunch)
                 }
                 
-                Section("Webpage Appearance") {
+                Section {
                     Picker("Webpage Appearance", selection: $settings.webpageAppearance) {
                         ForEach(WebpageAppearance.allCases) { appearance in
                             Text(appearance.rawValue).tag(appearance)
                         }
                     }
                     .pickerStyle(.menu)
+                } header: {
+                    Text("Webpage Appearance")
                 } footer: {
                     Text("System follows the OS appearance. Dark/Light request that rendering for every page. Automatic lets each website use its own native dark theme without forced styling.")
                 }

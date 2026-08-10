@@ -104,29 +104,14 @@ public struct BrowserView: View {
                 // triggered the download. Falls back to a tab-bar-adjacent
                 // position for programmatic (non-element) download triggers.
                 if viewModel.showDownloadPrompt, let request = viewModel.pendingDownload {
-                    let anchor = viewModel.downloadAnchorPoint
-                    let edgeInset: CGFloat = 160
-                    let halfWidth = max(edgeInset, geo.size.width - edgeInset)
-                    let localX: CGFloat
-                    var localY: CGFloat
-                    if let anchor {
-                        localX = min(max(anchor.x - viewModel.browserWindowOrigin.x, edgeInset), halfWidth)
-                        localY = anchor.y - viewModel.browserWindowOrigin.y
-                    } else {
-                        // Programmatic trigger (no DOM element): deterministic
-                        // fallback next to the bottom chrome, never fixed center.
-                        localX = min(max(geo.size.width / 2, edgeInset), halfWidth)
-                        localY = geo.size.height - 140
-                    }
-                    let placeBelow = localY < 150
-                    
+                    let position = downloadPopupPosition(in: geo.size)
                     BrowserDownloadPromptView(
                         request: request,
                         onDownload: { viewModel.startDetectedDownload() },
                         onCancel: { viewModel.cancelDetectedDownload() }
                     )
-                    .position(x: localX, y: localY)
-                    .offset(y: placeBelow ? 96 : -86)
+                    .position(x: position.x, y: position.y)
+                    .offset(y: position.y < 150 ? 96 : -86)
                     .zIndex(30)
                     .transition(.opacity.combined(with: .scale(scale: 0.92)))
                     .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.downloadAnchorPoint)
@@ -189,7 +174,28 @@ public struct BrowserView: View {
             Text(viewModel.javascriptExecutionMessage ?? "")
         }
     }
-    
+
+    // MARK: - Download popup positioning
+
+    /// Position of the "Download File?" popup: anchored to the DOM element
+    /// that triggered the download (clamped inside the safe inset), falling
+    /// back to the tab-bar-adjacent slot for programmatic triggers.
+    private func downloadPopupPosition(in size: CGSize) -> CGPoint {
+        let edgeInset: CGFloat = 160
+        let halfWidth = max(edgeInset, size.width - edgeInset)
+        let origin = viewModel.browserWindowOrigin
+        if let anchor = viewModel.downloadAnchorPoint {
+            return CGPoint(
+                x: min(max(anchor.x - origin.x, edgeInset), halfWidth),
+                y: anchor.y - origin.y
+            )
+        }
+        return CGPoint(
+            x: min(max(size.width / 2, edgeInset), halfWidth),
+            y: size.height - 140
+        )
+    }
+
     // MARK: - More menu
     
     @ViewBuilder

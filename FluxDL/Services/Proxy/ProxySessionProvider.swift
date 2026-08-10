@@ -47,9 +47,9 @@ public enum ProxyNetworkConfigurationBuilder {
         }
 
         if let username, let password, !username.isEmpty, !password.isEmpty {
-            // Credentials belong to the proxy connection only. They are never
-            // forwarded to the destination by the transport layer.
-            proxy.applyCredential(URLCredential(user: username, password: password, persistence: .forSession))
+            // NOTE: Apple's native proxy APIs do not carry credentials on the
+            // ProxyConfiguration itself; authenticated SOCKS5/HTTP proxies are
+            // therefore only routed by Transport (raw), not by these sessions.
         }
         return [proxy]
     }
@@ -63,7 +63,6 @@ public enum ProxyNetworkConfigurationBuilder {
         to sessionConfiguration: URLSessionConfiguration
     ) {
         sessionConfiguration.proxyConfigurations = configurations
-        sessionConfiguration.allowFailover = false
     }
 }
 
@@ -97,12 +96,13 @@ public final class ProxySessionProvider: ObservableObject {
         if let configuration {
             if configuration.type == .socks4 {
                 if let endpoint = adapter.start(upstream: configuration) {
-                    let proxy = Network.ProxyConfiguration(socksv5Proxy: endpoint)
+                    let proxy = Network.ProxyConfiguration(
+                        socksv5Proxy: NWEndpoint.hostPort(host: "127.0.0.1", port: endpoint)
+                    )
                     ProxyNetworkConfigurationBuilder.apply([proxy], to: sessionConfiguration)
                     return nil
                 }
                 sessionConfiguration.proxyConfigurations = []
-                sessionConfiguration.allowFailover = false
                 return .proxyUnavailable
             }
             if let native = ProxyNetworkConfigurationBuilder.nativeProxyConfigurations(for: configuration), !native.isEmpty {
@@ -110,11 +110,9 @@ public final class ProxySessionProvider: ObservableObject {
                 return nil
             }
             sessionConfiguration.proxyConfigurations = []
-            sessionConfiguration.allowFailover = false
             return .invalidConfiguration("Proxy could not be represented for this session")
         }
         sessionConfiguration.proxyConfigurations = []
-        sessionConfiguration.allowFailover = false
         return nil
     }
 
@@ -211,7 +209,7 @@ public final class LocalSOCKS5Adapter {
 // upstream SOCKS4/4a server, then relays bytes in both directions.
 
 private final class AdapterTunnel {
-    let id = ObjectIdentifier(self)
+    private let id: ObjectIdentifier
     private let inbound: NWConnection
     private let upstreamEndpoint: NWEndpoint
     private let userID: String
@@ -226,6 +224,7 @@ private final class AdapterTunnel {
         queue: DispatchQueue,
         onFinish: @escaping (AdapterTunnel) -> Void
     ) {
+        self.id = ObjectIdentifier(self)
         self.inbound = inbound
         self.upstreamEndpoint = upstreamEndpoint
         self.userID = userID

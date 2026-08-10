@@ -669,7 +669,7 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
                     message: tracker.message?.isEmpty == false ? tracker.message : nil
                 )
             },
-            magnetLink: snapshot.magnetLink?.isEmpty == false ? snapshot.magnetLink : nil,
+            magnetLink: snapshot.magnetLink.isEmpty ? nil : snapshot.magnetLink,
             comment: snapshot.comment?.isEmpty == false ? snapshot.comment : nil,
             creator: snapshot.creator?.isEmpty == false ? snapshot.creator : nil,
             creationDate: metadataDate,

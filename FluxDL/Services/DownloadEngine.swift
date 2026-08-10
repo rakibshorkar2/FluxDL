@@ -186,7 +186,7 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
             )
         }
 
-        tasks[0].sessionTaskIdentifier = sessionKey
+        tasks[0].sessionTaskIdentifier = dlTask.taskIdentifier
         repository.saveTasks(tasks)
         dlTask.resume()
         hapticService.impactOccurred(.light)
