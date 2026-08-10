@@ -1,5 +1,12 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
+
+/// The `.torrent` file type. Declared in Info.plist as an imported UTI so the
+/// system document picker recognises and allows selecting BitTorrent files.
+extension UTType {
+    static let torrentMetadata = UTType(filenameExtension: "torrent") ?? .data
+}
 
 public struct AddTorrentSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -17,13 +24,13 @@ public struct AddTorrentSheet: View {
     @State private var downloadLimit = TorrentSpeedPreset.unlimited
     @State private var uploadLimit = TorrentSpeedPreset.unlimited
 
-    public let onAddMagnet: (String, AddTorrentOptions) -> Bool
-    public let onAddTorrentFile: (URL, AddTorrentOptions) -> Bool
+    public let onAddMagnet: (String, AddTorrentOptions) -> String?
+    public let onAddTorrentFile: (URL, AddTorrentOptions) -> String?
     public let onAddRemoteTorrent: (URL, AddTorrentOptions) -> Void
 
     public init(
-        onAddMagnet: @escaping (String, AddTorrentOptions) -> Bool,
-        onAddTorrentFile: @escaping (URL, AddTorrentOptions) -> Bool,
+        onAddMagnet: @escaping (String, AddTorrentOptions) -> String?,
+        onAddTorrentFile: @escaping (URL, AddTorrentOptions) -> String?,
         onAddRemoteTorrent: @escaping (URL, AddTorrentOptions) -> Void
     ) {
         self.onAddMagnet = onAddMagnet
@@ -128,24 +135,29 @@ public struct AddTorrentSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .fileImporter(
-                isPresented: $isFileImporterPresented,
-                allowedContentTypes: [.item],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    if onAddTorrentFile(url, options) { dismiss() }
-                case .failure(let error):
-                    validationError = error.localizedDescription
-                }
+            .sheet(isPresented: $isFileImporterPresented) {
+                TorrentFilePickerView(
+                    onPicked: { url in
+                        isFileImporterPresented = false
+                        if let error = onAddTorrentFile(url, options) {
+                            validationError = error
+                        } else {
+                            dismiss()
+                        }
+                    },
+                    onCancel: { isFileImporterPresented = false }
+                )
+                .ignoresSafeArea()
             }
         }
     }
 
     private func handleMagnet() {
-        if onAddMagnet(magnetInput, options) { dismiss() }
+        if let error = onAddMagnet(magnetInput, options) {
+            validationError = error
+        } else {
+            dismiss()
+        }
     }
 
     private func handleRemoteURL() {
@@ -161,5 +173,45 @@ public struct AddTorrentSheet: View {
         validationError = nil
         onAddRemoteTorrent(url, options)
         dismiss()
+    }
+}
+
+/// UIKit document picker wrapper. SwiftUI's `.fileImporter` is unreliable on
+/// real devices (files can't be selected or the callback never fires), so the
+/// torrent file is picked through `UIDocumentPickerViewController` directly.
+private struct TorrentFilePickerView: UIViewControllerRepresentable {
+    var onPicked: (URL) -> Void
+    var onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(
+            forOpeningContentTypes: [.torrentMetadata, .data]
+        )
+        picker.allowsMultipleSelection = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        private let parent: TorrentFilePickerView
+
+        init(_ parent: TorrentFilePickerView) {
+            self.parent = parent
+        }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            parent.onPicked(url)
+        }
+
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            parent.onCancel()
+        }
     }
 }

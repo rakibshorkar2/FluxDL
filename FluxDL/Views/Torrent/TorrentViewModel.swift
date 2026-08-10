@@ -144,17 +144,20 @@ public final class TorrentViewModel: ObservableObject {
 
     // MARK: ── Add actions ─────────────────────────────────────────────────
 
-    public func addMagnet(_ string: String, options: AddTorrentOptions = AddTorrentOptions()) -> Bool {
+    /// Adds a magnet link. Returns an error message on failure, nil on success.
+    public func addMagnet(_ string: String, options: AddTorrentOptions = AddTorrentOptions()) -> String? {
         switch service.addMagnet(string, options: options) {
-        case .success: return true
-        case .failure(let error): presentError(error.localizedDescription); return false
+        case .success: return nil
+        case .failure(let error): return error.localizedDescription
         }
     }
 
-    public func addTorrentFile(at url: URL, options: AddTorrentOptions = AddTorrentOptions()) -> Bool {
+    /// Adds a `.torrent` file picked from the document picker. Returns an
+    /// error message on failure, nil on success.
+    public func addTorrentFile(at url: URL, options: AddTorrentOptions = AddTorrentOptions()) -> String? {
         switch service.addTorrentFile(at: url, options: options) {
-        case .success: return true
-        case .failure(let error): presentError(error.localizedDescription); return false
+        case .success: return nil
+        case .failure(let error): return error.localizedDescription
         }
     }
 
