@@ -23,7 +23,7 @@ typedef NS_ENUM(NSUInteger, ErrorCode) {
 } NS_SWIFT_NAME(ErrorCode);
 
 @class Session, TorrentHandle;
-@protocol SessionDelegate
+@protocol SessionDelegate <NSObject>
 - (void)torrentManager:(Session *)manager didAddTorrent:(TorrentHandle *)torrent;
 - (void)torrentManager:(Session *)manager didRemoveTorrentWithHash:(TorrentHashes *)hashesData;
 - (void)torrentManager:(Session *)manager didReceiveUpdateForTorrent:(TorrentHandle *)torrent;
