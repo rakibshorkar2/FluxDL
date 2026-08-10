@@ -209,7 +209,7 @@ public final class LocalSOCKS5Adapter {
 // upstream SOCKS4/4a server, then relays bytes in both directions.
 
 private final class AdapterTunnel {
-    private let id: ObjectIdentifier
+    let id: ObjectIdentifier
     private let inbound: NWConnection
     private let upstreamEndpoint: NWEndpoint
     private let userID: String
