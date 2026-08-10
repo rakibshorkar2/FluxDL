@@ -48,14 +48,14 @@ jobs:
         id: sim
         run: |
           RUNTIME=$(xcrun simctl list runtimes available -j | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for rt in data.get('runtimes', []):
-    if rt.get('isAvailable') and 'iOS' in rt.get('identifier', ''):
-        print(rt['identifier'])
-        sys.exit(0)
-sys.exit(1)
-")
+          import json, sys
+          data = json.load(sys.stdin)
+          for rt in data.get('runtimes', []):
+              if rt.get('isAvailable') and 'iOS' in rt.get('identifier', ''):
+                  print(rt['identifier'])
+                  sys.exit(0)
+          sys.exit(1)
+          ")
           if [ -z "$RUNTIME" ]; then
             echo "No installed iOS runtime found"
             exit 1
