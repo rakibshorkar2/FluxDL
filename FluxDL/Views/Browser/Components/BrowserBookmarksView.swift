@@ -9,6 +9,7 @@ public struct BrowserBookmarksView: View {
     @State private var selectedFolder = "All"
     @State private var isAddFolderAlertPresented = false
     @State private var newFolderName = ""
+    @State private var itemToEdit: BookmarkItem?
     
     public var filteredBookmarks: [BookmarkItem] {
         bookmarkManager.bookmarks.filter { item in
@@ -84,6 +85,9 @@ public struct BrowserBookmarksView: View {
                                 }) {
                                     Label("Open in New Tab", systemImage: "plus.square")
                                 }
+                                Button(action: { itemToEdit = item }) {
+                                    Label("Edit", systemImage: "pencil")
+                                }
                                 Button(action: { bookmarkManager.toggleFavorite(id: item.id) }) {
                                     Label(item.isFavorite ? "Unfavorite" : "Favorite", systemImage: item.isFavorite ? "star.slash" : "star")
                                 }
@@ -119,6 +123,9 @@ public struct BrowserBookmarksView: View {
                     newFolderName = ""
                 }
                 Button("Cancel", role: .cancel) {}
+            }
+            .sheet(item: $itemToEdit) { item in
+                BrowserEditBookmarkSheet(item: item)
             }
         }
     }

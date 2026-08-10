@@ -19,6 +19,9 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     // MARK: - Published State
 
     @Published public private(set) var torrents: [TorrentTaskModel] = []
+    /// Placeholder models for torrents whose files are being deleted from disk.
+    /// Kept alive until libtorrent reports that the deletion finished.
+    @Published public private(set) var deletingTorrents: [TorrentTaskModel] = []
     @Published public private(set) var isSessionActive = false
     @Published public private(set) var lastErrorMessage: String?
 
@@ -39,6 +42,7 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     private var stopSeedingByHash: Set<String> = []
     private var updateTimer: Timer?
     private var refreshInFlight = false
+    private var refreshPending = false
     private var notifiedCompletedHashes: Set<String> = []
     private var hasEstablishedCompletionBaseline = false
     private let snapshotQueue = DispatchQueue(label: "FluxDL.TorrentService.snapshot", qos: .userInteractive)
@@ -191,9 +195,15 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
 
     // MARK: - Torrent Actions
 
-    public func pauseTorrent(_ id: String) { handle(id)?.pause() }
+    public func pauseTorrent(_ id: String) {
+        handle(id)?.pause()
+        requestRefresh()
+    }
 
-    public func resumeTorrent(_ id: String) { handle(id)?.resume() }
+    public func resumeTorrent(_ id: String) {
+        handle(id)?.resume()
+        requestRefresh()
+    }
 
     public func rehashTorrent(_ id: String) { handle(id)?.rehash() }
 
@@ -201,6 +211,9 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
 
     public func removeTorrent(_ id: String, deleteFiles: Bool) {
         guard let session = session, let torrent = handle(id) else { return }
+        if deleteFiles, let model = torrents.first(where: { $0.id == id }) {
+            deletingTorrents.append(model)
+        }
         session.removeTorrent(torrent, deleteFiles: deleteFiles)
         handlesByHash.removeValue(forKey: id)
         stopSeedingByHash.remove(id)
@@ -295,10 +308,12 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
 
     public func pauseAll() {
         handlesByHash.values.forEach { $0.pause() }
+        requestRefresh()
     }
 
     public func resumeAll() {
         handlesByHash.values.forEach { $0.resume() }
+        requestRefresh()
     }
 
     // MARK: - SessionDelegate
@@ -313,6 +328,14 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     public func torrentManager(_ manager: Session, didRemoveTorrentWithHash hashesData: TorrentHashes) {
         DispatchQueue.main.async { [weak self] in
             self?.handlesByHash.removeValue(forKey: hashesData.best.hex)
+            self?.requestRefresh()
+        }
+    }
+
+    public func torrentManager(_ manager: Session, didDeleteTorrentFilesForTorrentWithHash hashesData: TorrentHashes) {
+        DispatchQueue.main.async { [weak self] in
+            let id = hashesData.best.hex
+            self?.deletingTorrents.removeAll { $0.id == id }
             self?.requestRefresh()
         }
     }
@@ -333,9 +356,15 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     // MARK: - Snapshot Publishing
 
     /// Coalesced refresh: snapshot collection runs on a background queue,
-    /// only the final model array is published on the main thread.
+    /// only the final model array is published on the main thread. A refresh
+    /// requested while one is in flight is re-run afterwards instead of being
+    /// dropped, so user actions are never lost.
     private func requestRefresh() {
-        guard let session = session, !refreshInFlight else { return }
+        guard let session = session else { return }
+        guard !refreshInFlight else {
+            refreshPending = true
+            return
+        }
         refreshInFlight = true
 
         var currentHashes: Set<String> = []
@@ -370,6 +399,10 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
                 self.torrents = sorted
                 self.refreshInFlight = false
                 self.checkForCompletions(sorted)
+                if self.refreshPending {
+                    self.refreshPending = false
+                    self.requestRefresh()
+                }
             }
         }
     }
@@ -382,10 +415,11 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         let eta: TimeInterval? = remaining > 0 && snapshot.downloadRate > 0
             ? TimeInterval(remaining) / TimeInterval(snapshot.downloadRate)
             : nil
+        let currentState: TorrentHandle.State = snapshot.isPaused ? .paused : snapshot.state
         return TorrentTaskModel(
             id: id,
             name: snapshot.name.isEmpty ? "Unknown Torrent" : snapshot.name,
-            state: snapshot.state,
+            state: currentState,
             progress: snapshot.progress,
             downloadRate: Int64(snapshot.downloadRate),
             uploadRate: Int64(snapshot.uploadRate),

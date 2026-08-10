@@ -14,6 +14,9 @@ public final class BrowserViewModel: ObservableObject {
     
     @Published public var detectedDownloadURL: URL? = nil
     @Published public var showDownloadPrompt: Bool = false
+    @Published public var loadErrorMessage: String? = nil
+    @Published public var isOffline: Bool = false
+    @Published public var isChromeCollapsed: Bool = false
     
     // Sub-view presentation flags
     @Published public var isBookmarksPresented: Bool = false
@@ -27,6 +30,9 @@ public final class BrowserViewModel: ObservableObject {
     public let historyManager = BrowserHistoryManager.shared
     public let settings = BrowserSettings.shared
     public let findInPageManager = FindInPageManager()
+    public let connectivityMonitor = BrowserConnectivityMonitor.shared
+    public let proxySession = BrowserProxySession.shared
+    public let hapticService: HapticServiceProtocol = ServiceContainer.shared.hapticService
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -36,7 +42,22 @@ public final class BrowserViewModel: ObservableObject {
                 self?.syncActiveTabState()
             }
             .store(in: &cancellables)
-            
+        
+        NotificationCenter.default.publisher(for: BrowserConnectivityMonitor.connectivityDidChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] note in
+                let isConnected = (note.userInfo?["isConnected"] as? Bool) ?? true
+                self?.isOffline = !isConnected
+                self?.syncActiveTabState()
+                // Auto-reload the page when connectivity returns.
+                if isConnected, let webView = self?.tabManager.activeTab?.webView,
+                   self?.loadErrorMessage != nil {
+                    self?.loadErrorMessage = nil
+                    webView.reload()
+                }
+            }
+            .store(in: &cancellables)
+        
         syncActiveTabState()
     }
     
@@ -49,6 +70,12 @@ public final class BrowserViewModel: ObservableObject {
         self.estimatedProgress = activeTab.estimatedProgress
         self.canGoBack = activeTab.canGoBack
         self.canGoForward = activeTab.canGoForward
+        self.isOffline = activeTab.isOffline || !connectivityMonitor.isConnected
+        if self.isOffline && loadErrorMessage == nil {
+            self.loadErrorMessage = "Your device appears to be offline."
+        } else if !self.isOffline && loadErrorMessage == "Your device appears to be offline." {
+            self.loadErrorMessage = nil
+        }
     }
     
     public func handleSearchOrNavigate() {
@@ -65,9 +92,11 @@ public final class BrowserViewModel: ObservableObject {
         }
         
         currentURL = targetURL
+        loadErrorMessage = nil
         if var activeTab = tabManager.activeTab {
             activeTab.url = targetURL
             activeTab.inputURLText = targetURL.absoluteString
+            activeTab.isOffline = false
             tabManager.activeTab = activeTab
             activeTab.webView?.load(URLRequest(url: targetURL))
         }
@@ -86,6 +115,7 @@ public final class BrowserViewModel: ObservableObject {
             tabManager.activeTab?.webView?.stopLoading()
             isLoading = false
         } else {
+            loadErrorMessage = nil
             tabManager.activeTab?.webView?.reload()
         }
     }
@@ -133,10 +163,24 @@ public final class BrowserViewModel: ObservableObject {
         if bookmarkManager.isBookmarked(urlString: urlStr) {
             if let item = bookmarkManager.bookmarks.first(where: { $0.urlString == urlStr }) {
                 bookmarkManager.removeBookmark(id: item.id)
+                hapticService.impactOccurred(.light)
             }
         } else {
             bookmarkManager.addBookmark(title: pageTitle.isEmpty ? urlStr : pageTitle, urlString: urlStr)
+            hapticService.notificationOccurred(.success)
         }
+    }
+    
+    public func copyCurrentURL() {
+        guard let url = currentURL else { return }
+        UIPasteboard.general.string = url.absoluteString
+        hapticService.selectionChanged()
+    }
+    
+    public func shareCurrentPage() {
+        guard let url = currentURL else { return }
+        ServiceContainer.shared.fileManagementService.shareFile(url: url, from: nil)
+        hapticService.selectionChanged()
     }
     
     public func openInSafari() {

@@ -3,7 +3,7 @@ import SwiftUI
 public enum AppTab: Int, CaseIterable, Identifiable {
     case downloads = 0
     case browser = 1
-    case history = 2
+    case proxy = 2
     case settings = 3
     case torrent = 4
     
@@ -13,7 +13,7 @@ public enum AppTab: Int, CaseIterable, Identifiable {
         switch self {
         case .downloads: return "Downloads"
         case .browser: return "Browser"
-        case .history: return "History"
+        case .proxy: return "Proxy"
         case .settings: return "Settings"
         case .torrent: return "Torrent"
         }
@@ -23,7 +23,7 @@ public enum AppTab: Int, CaseIterable, Identifiable {
         switch self {
         case .downloads: return "arrow.down.circle.fill"
         case .browser: return "globe"
-        case .history: return "clock.fill"
+        case .proxy: return "arrow.left.arrow.right"
         case .settings: return "gearshape.fill"
         case .torrent: return "network"
         }
@@ -62,11 +62,11 @@ public struct MainTabView: View {
                     }
                     .tag(AppTab.browser)
                 
-                HistoryView()
+                ProxyView()
                     .tabItem {
-                        Label(AppTab.history.title, systemImage: AppTab.history.iconName)
+                        Label(AppTab.proxy.title, systemImage: AppTab.proxy.iconName)
                     }
-                    .tag(AppTab.history)
+                    .tag(AppTab.proxy)
                 
                 SettingsView()
                     .tabItem {

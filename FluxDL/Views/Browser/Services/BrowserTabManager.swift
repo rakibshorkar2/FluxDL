@@ -13,8 +13,23 @@ public final class BrowserTabManager: ObservableObject {
     
     // Shared WKProcessPool for memory efficiency & session sharing
     public let sharedProcessPool = WKProcessPool()
+    public let hapticService: HapticServiceProtocol = ServiceContainer.shared.hapticService
     
     private init() {
+        // Restore previous session when enabled and available.
+        if BrowserTabPersistence.shared.isRestoreEnabled,
+           let persisted = BrowserTabPersistence.shared.load(),
+           !persisted.tabs.isEmpty {
+            self.tabs = persisted.tabs.map { BrowserTabModel(snapshot: $0) }
+            let restoredID = persisted.activeTabId
+            if self.tabs.contains(where: { $0.id == restoredID }) {
+                self.activeTabId = restoredID
+            } else {
+                self.activeTabId = self.tabs[0].id
+            }
+            return
+        }
+        
         let initialTab = BrowserTabModel(title: "Google", url: URL(string: "https://google.com"))
         self.tabs = [initialTab]
         self.activeTabId = initialTab.id
@@ -36,6 +51,8 @@ public final class BrowserTabManager: ObservableObject {
         tabs.append(newTab)
         activeTabId = newTab.id
         
+        hapticService.impactOccurred(.light)
+        persistSession()
         pruneInactiveTabsIfNeeded()
         return newTab.id
     }
@@ -60,6 +77,14 @@ public final class BrowserTabManager: ObservableObject {
             let nextIndex = min(idx, tabs.count - 1)
             activeTabId = tabs[nextIndex].id
         }
+        
+        persistSession()
+    }
+    
+    /// Closes the tab owning the given web view instance (e.g. window.close()).
+    public func closeTab(webView: WKWebView) {
+        guard let tab = tabs.first(where: { $0.webView === webView }) else { return }
+        closeTab(id: tab.id)
     }
     
     public func duplicateTab(id: UUID) {
@@ -74,6 +99,8 @@ public final class BrowserTabManager: ObservableObject {
         newTab.inputURLText = restored.inputURLText
         tabs.append(newTab)
         activeTabId = newTab.id
+        hapticService.impactOccurred(.medium)
+        persistSession()
     }
     
     public func selectTab(id: UUID) {
@@ -82,6 +109,36 @@ public final class BrowserTabManager: ObservableObject {
         if let idx = tabs.firstIndex(where: { $0.id == id }) {
             tabs[idx].lastActiveDate = Date()
         }
+        hapticService.selectionChanged()
+        persistSession()
+    }
+    
+    /// Reorders tabs via a drag-and-drop move operation from `source` to `destination`.
+    public func moveTab(from source: IndexSet, to destination: Int) {
+        guard let sourceIndex = source.first, sourceIndex != destination else { return }
+        let movedTab = tabs.remove(at: sourceIndex)
+        let adjustedDestination = destination > sourceIndex ? destination - 1 : destination
+        tabs.insert(movedTab, at: adjustedDestination)
+        hapticService.selectionChanged()
+        persistSession()
+    }
+    
+    /// Removes all tabs and starts fresh with a single home tab.
+    public func closeAllTabs() {
+        recentlyClosedTabs.append(contentsOf: tabs)
+        if recentlyClosedTabs.count > 10 {
+            recentlyClosedTabs = Array(recentlyClosedTabs.prefix(10))
+        }
+        let fallback = BrowserTabModel(title: "Google", url: URL(string: "https://google.com"))
+        tabs = [fallback]
+        activeTabId = fallback.id
+        hapticService.impactOccurred(.medium)
+        persistSession()
+    }
+    
+    /// Persists the current tab list so it can be restored on next launch.
+    private func persistSession() {
+        BrowserTabPersistence.shared.save(tabs: tabs, activeTabId: activeTabId)
     }
     
     /// Memory optimization: suspend web views for inactive tabs when tab count > 5

@@ -59,6 +59,7 @@ public final class TorrentViewModel: ObservableObject {
 
     // ── Published state ───────────────────────────────────────────────────
     @Published public private(set) var torrents: [TorrentTaskModel] = []
+    @Published public private(set) var deletingTorrents: [TorrentTaskModel] = []
     @Published public private(set) var isSessionActive = false
     @Published public private(set) var totalDownloadRate: Int64 = 0
     @Published public private(set) var totalUploadRate: Int64 = 0
@@ -79,6 +80,16 @@ public final class TorrentViewModel: ObservableObject {
         return result
     }
 
+    /// Everything shown in the list: live torrents first, then the ones whose
+    /// files are still being deleted from disk.
+    public var displayedTorrents: [TorrentTaskModel] {
+        visibleTorrents + deletingTorrents
+    }
+
+    public func isDeleting(_ id: String) -> Bool {
+        deletingTorrents.contains { $0.id == id }
+    }
+
     // ── Sheet presentation ────────────────────────────────────────────────
     @Published public var isAddSheetPresented = false
     @Published public var taskForDetail: TorrentTaskModel?
@@ -87,6 +98,10 @@ public final class TorrentViewModel: ObservableObject {
     @Published public var alertMessage: String?
     @Published public var isAlertPresented = false
 
+    // ── Undo removal ──────────────────────────────────────────────────────
+    @Published public var undoToast: TorrentUndoToast?
+
+    private var undoToastTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     public init(service: TorrentService = TorrentService()) {
@@ -99,6 +114,13 @@ public final class TorrentViewModel: ObservableObject {
                 self.torrents = torrents
                 self.totalDownloadRate = torrents.reduce(0) { $0 + $1.downloadRate }
                 self.totalUploadRate = torrents.reduce(0) { $0 + $1.uploadRate }
+            }
+            .store(in: &cancellables)
+
+        service.$deletingTorrents
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] deleting in
+                self?.deletingTorrents = deleting
             }
             .store(in: &cancellables)
 
@@ -159,8 +181,41 @@ public final class TorrentViewModel: ObservableObject {
     public func rehash(_ id: String) { service.rehashTorrent(id) }
 
     public func remove(_ id: String, deleteFiles: Bool) {
+        let removedModel = liveModel(for: id)
         service.removeTorrent(id, deleteFiles: deleteFiles)
         if taskForDetail?.id == id { taskForDetail = nil }
+
+        // Removal that keeps files is reversible: offer a short undo window.
+        // Deleting files is not undoable, so it only shows the deleting state.
+        guard !deleteFiles, let model = removedModel else { return }
+        presentUndoToast(for: model)
+    }
+
+    /// Re-adds the last keep-files removal from its saved magnet link.
+    public func undoRemoval() {
+        guard let toast = undoToast else { return }
+        undoToast = nil
+        undoToastTask?.cancel()
+        guard let magnet = toast.magnetLink else {
+            presentError("This torrent could not be restored automatically.")
+            return
+        }
+        _ = addMagnet(magnet)
+    }
+
+    public func dismissUndoToast() {
+        undoToast = nil
+        undoToastTask?.cancel()
+    }
+
+    private func presentUndoToast(for model: TorrentTaskModel) {
+        undoToastTask?.cancel()
+        undoToast = TorrentUndoToast(id: model.id, name: model.name, magnetLink: model.magnetLink)
+        undoToastTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.undoToast = nil
+        }
     }
 
     public func pauseAll() { service.pauseAll() }
@@ -241,4 +296,12 @@ public final class TorrentViewModel: ObservableObject {
         alertMessage = message
         isAlertPresented = true
     }
+}
+
+// MARK: - Undo Removal Toast
+
+public struct TorrentUndoToast: Equatable, Identifiable {
+    public let id: String
+    public let name: String
+    public let magnetLink: String?
 }

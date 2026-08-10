@@ -54,6 +54,10 @@ public final class BrowserSettings: ObservableObject {
         didSet { UserDefaults.standard.set(adBlockWhitelist, forKey: "browser_adblock_whitelist") }
     }
     
+    @Published public var restoreTabsOnLaunch: Bool {
+        didSet { UserDefaults.standard.set(restoreTabsOnLaunch, forKey: "browser_restore_tabs") }
+    }
+    
     private init() {
         self.homepage = UserDefaults.standard.string(forKey: "browser_homepage") ?? "https://google.com"
         
@@ -76,6 +80,9 @@ public final class BrowserSettings: ObservableObject {
         self.requestDesktopByDefault = UserDefaults.standard.bool(forKey: "browser_request_desktop_default")
         
         self.adBlockWhitelist = UserDefaults.standard.stringArray(forKey: "browser_adblock_whitelist") ?? []
+        
+        self.restoreTabsOnLaunch = UserDefaults.standard.object(forKey: "browser_restore_tabs") != nil
+            ? UserDefaults.standard.bool(forKey: "browser_restore_tabs") : true
     }
     
     public func isWhitelisted(domain: String) -> Bool {

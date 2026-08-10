@@ -34,11 +34,13 @@ public struct WebViewContainer: UIViewRepresentable {
         let preferences = WKWebpagePreferences()
         preferences.allowsContentJavaScript = BrowserSettings.shared.isJavaScriptEnabled
         configuration.defaultWebpagePreferences = preferences
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = !BrowserSettings.shared.isPopupBlockingEnabled
         
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
+        webView.scrollView.delegate = context.coordinator
         
         if let isDesktop = activeTab?.isDesktopMode, isDesktop {
             webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
@@ -66,9 +68,6 @@ public struct WebViewContainer: UIViewRepresentable {
 
         if uiView.customUserAgent != expectedUA {
             uiView.customUserAgent = expectedUA
-            // Do NOT call uiView.reload() here — desktop/mobile reload is now
-            // triggered explicitly by the user via toggleDesktopMode() → updateUIView
-            // will be called again by SwiftUI after the tab model change.
         }
 
         // Only update the findInPage web-view reference when the WKWebView instance itself changes.
@@ -79,9 +78,11 @@ public struct WebViewContainer: UIViewRepresentable {
     
     // MARK: - Coordinator
     
-    public class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    public class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, UIScrollViewDelegate {
         var viewModel: BrowserViewModel
         weak var observedWebView: WKWebView?
+        private var lastScrollOffsetY: CGFloat = 0
+        private var isDragging = false
         
         init(viewModel: BrowserViewModel) {
             self.viewModel = viewModel
@@ -100,6 +101,7 @@ public struct WebViewContainer: UIViewRepresentable {
                 webView.removeObserver(self, forKeyPath: "estimatedProgress")
                 webView.removeObserver(self, forKeyPath: "title")
                 webView.removeObserver(self, forKeyPath: "URL")
+                webView.scrollView.delegate = nil
                 self.observedWebView = nil
             }
         }
@@ -114,6 +116,10 @@ public struct WebViewContainer: UIViewRepresentable {
             Task { @MainActor in
                 if keyPath == "estimatedProgress" {
                     self.viewModel.estimatedProgress = webView.estimatedProgress
+                    if var activeTab = self.viewModel.tabManager.activeTab {
+                        activeTab.estimatedProgress = webView.estimatedProgress
+                        self.viewModel.tabManager.activeTab = activeTab
+                    }
                 } else if keyPath == "title" {
                     let title = webView.title ?? ""
                     self.viewModel.pageTitle = title
@@ -131,11 +137,47 @@ public struct WebViewContainer: UIViewRepresentable {
                         if var activeTab = self.viewModel.tabManager.activeTab {
                             activeTab.url = url
                             activeTab.inputURLText = url.absoluteString
+                            activeTab.canGoBack = webView.canGoBack
+                            activeTab.canGoForward = webView.canGoForward
+                            if url.scheme == "https" || url.scheme == "http" {
+                                activeTab.faviconURL = URL(string: "https://www.google.com/s2/favicons?domain=\(url.host ?? "")&sz=64")
+                            }
                             self.viewModel.tabManager.activeTab = activeTab
                         }
                     }
                 }
             }
+        }
+        
+        // MARK: - Toolbar scroll collapse (UIScrollViewDelegate)
+        
+        public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            isDragging = true
+            lastScrollOffsetY = scrollView.contentOffset.y
+        }
+        
+        public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            guard isDragging else { return }
+            let y = scrollView.contentOffset.y
+            let isScrollingDown = y > lastScrollOffsetY
+            lastScrollOffsetY = y
+            
+            // Collapse the top chrome when scrolling down past a threshold;
+            // expand again when nearing the top of the page.
+            let collapsed = viewModel.isChromeCollapsed
+            if isScrollingDown && y > 64 && !collapsed {
+                viewModel.isChromeCollapsed = true
+            } else if !isScrollingDown && y < 24 && collapsed {
+                viewModel.isChromeCollapsed = false
+            }
+        }
+        
+        public func scrollViewWillEndDragging(
+            _ scrollView: UIScrollView,
+            withVelocity velocity: CGPoint,
+            targetContentOffset: UnsafeMutablePointer<CGPoint>
+        ) {
+            isDragging = false
         }
         
         // MARK: - WKNavigationDelegate
@@ -190,9 +232,27 @@ public struct WebViewContainer: UIViewRepresentable {
             decisionHandler(.allow)
         }
         
+        public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            Task { @MainActor in
+                self.viewModel.isLoading = true
+                self.viewModel.loadErrorMessage = nil
+                if var activeTab = self.viewModel.tabManager.activeTab {
+                    activeTab.isLoading = true
+                    activeTab.isOffline = false
+                    self.viewModel.tabManager.activeTab = activeTab
+                }
+            }
+        }
+        
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             Task { @MainActor in
                 self.viewModel.isLoading = false
+                self.viewModel.loadErrorMessage = nil
+                if var activeTab = self.viewModel.tabManager.activeTab {
+                    activeTab.isLoading = false
+                    activeTab.isOffline = false
+                    self.viewModel.tabManager.activeTab = activeTab
+                }
                 if let url = webView.url {
                     BrowserHistoryManager.shared.addHistory(
                         title: webView.title ?? url.host ?? url.absoluteString,
@@ -202,9 +262,127 @@ public struct WebViewContainer: UIViewRepresentable {
             }
         }
         
-        public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             Task { @MainActor in
-                self.viewModel.isLoading = true
+                self.viewModel.isLoading = false
+                if var activeTab = self.viewModel.tabManager.activeTab {
+                    activeTab.isLoading = false
+                    self.viewModel.tabManager.activeTab = activeTab
+                }
+                self.setLoadError(error)
+            }
+        }
+        
+        public func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            Task { @MainActor in
+                self.viewModel.isLoading = false
+                if var activeTab = self.viewModel.tabManager.activeTab {
+                    activeTab.isLoading = false
+                    activeTab.isOffline = (error as NSError).code == NSURLErrorNotConnectedToInternet
+                    self.viewModel.tabManager.activeTab = activeTab
+                }
+                self.setLoadError(error)
+            }
+        }
+        
+        @MainActor
+        private func setLoadError(_ error: Error) {
+            let nsError = error as NSError
+            if nsError.code == NSURLErrorCancelled { return }
+            
+            switch nsError.code {
+            case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost:
+                viewModel.loadErrorMessage = "No internet connection. Check your network and try again."
+            case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
+                viewModel.loadErrorMessage = "The server for this page could not be found."
+            case NSURLErrorTimedOut:
+                viewModel.loadErrorMessage = "The connection to the server timed out."
+            case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateUntrusted, NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateHasUnknownRoot, NSURLErrorServerCertificateNotYetValid:
+                viewModel.loadErrorMessage = "The connection couldn't be secured (SSL error)."
+            case NSURLErrorUnsupportedURL:
+                viewModel.loadErrorMessage = "This URL type isn't supported."
+            default:
+                viewModel.loadErrorMessage = error.localizedDescription
+            }
+        }
+        
+        // MARK: - Popup Windows (WKUIDelegate)
+        
+        public func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            // Open popups in a new tab unless popup blocking is enabled.
+            guard let url = navigationAction.request.url else { return nil }
+            Task { @MainActor in
+                _ = BrowserTabManager.shared.createNewTab(url: url)
+            }
+            return nil
+        }
+        
+        public func webViewDidClose(_ webView: WKWebView) {
+            Task { @MainActor in
+                BrowserTabManager.shared.closeTab(webView: webView)
+            }
+        }
+        
+        // MARK: - JavaScript Dialogs (WKUIDelegate)
+        
+        public func webView(
+            _ webView: WKWebView,
+            runJavaScriptAlertPanelWithMessage message: String,
+            initiatedByFrame frame: WKFrameInfo,
+            completionHandler: @escaping () -> Void
+        ) {
+            let controller = UIAlertController(title: webView.title ?? "Message", message: message, preferredStyle: .alert)
+            controller.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+            present(controller)
+        }
+        
+        public func webView(
+            _ webView: WKWebView,
+            runJavaScriptConfirmPanelWithMessage message: String,
+            initiatedByFrame frame: WKFrameInfo,
+            completionHandler: @escaping (Bool) -> Void
+        ) {
+            let controller = UIAlertController(title: webView.title ?? "Message", message: message, preferredStyle: .alert)
+            controller.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
+            controller.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+            present(controller)
+        }
+        
+        public func webView(
+            _ webView: WKWebView,
+            runJavaScriptTextInputPanelWithPrompt prompt: String,
+            defaultText: String?,
+            initiatedByFrame frame: WKFrameInfo,
+            completionHandler: @escaping (String?) -> Void
+        ) {
+            let controller = UIAlertController(title: webView.title ?? "Message", message: prompt, preferredStyle: .alert)
+            controller.addTextField { $0.text = defaultText }
+            controller.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(nil) })
+            controller.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+                completionHandler(controller.textFields?.first?.text)
+            })
+            present(controller)
+        }
+        
+        private func present(_ controller: UIAlertController) {
+            Task { @MainActor in
+                guard let root = UIApplication.shared.connectedScenes
+                    .compactMap({ ($0 as? UIWindowScene)?.keyWindow })
+                    .first?.rootViewController else { return }
+                var presenter = root
+                while let presented = presenter.presentedViewController {
+                    presenter = presented
+                }
+                presenter.present(controller, animated: true)
             }
         }
         

@@ -22,14 +22,15 @@ public struct TorrentView: View {
                         sessionStatsCard
                         filterChips
 
-                        if viewModel.torrents.isEmpty {
+                        if viewModel.torrents.isEmpty && viewModel.deletingTorrents.isEmpty {
                             emptyState
-                        } else if viewModel.visibleTorrents.isEmpty {
+                        } else if viewModel.visibleTorrents.isEmpty && viewModel.deletingTorrents.isEmpty {
                             noResultsState
                         } else {
-                            ForEach(viewModel.visibleTorrents) { torrent in
+                            ForEach(viewModel.displayedTorrents) { torrent in
                                 TorrentItemCard(
                                     torrent: torrent,
+                                    isDeleting: viewModel.isDeleting(torrent.id),
                                     onPause: { viewModel.pause(torrent.id) },
                                     onResume: { viewModel.resume(torrent.id) },
                                     onRemove: { deleteFiles in
@@ -45,6 +46,16 @@ public struct TorrentView: View {
                     .padding(.bottom, 24)
                 }
                 .searchable(text: $viewModel.searchText, prompt: "Search torrents")
+                // ── Undo removal toast ─────────────────────────────────────
+                .overlay(alignment: .bottom) {
+                    if let toast = viewModel.undoToast {
+                        undoToastView(toast)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 10)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: viewModel.undoToast)
             }
             .navigationTitle("Torrent")
             .toolbar { navigationToolbar }
@@ -64,7 +75,7 @@ public struct TorrentView: View {
             }
             // ── Confirmations ─────────────────────────────────────────────
             .confirmationDialog(
-                "Remove Torrent",
+                removeDialogTitle,
                 isPresented: $isRemoveConfirmationPresented,
                 titleVisibility: .visible
             ) {
@@ -78,7 +89,7 @@ public struct TorrentView: View {
                 }
                 Button("Cancel", role: .cancel) { pendingRemoveID = nil }
             } message: {
-                Text("Downloaded files will be deleted if you choose the delete option.")
+                Text("Remove '\(pendingTorrentName)' from the session. Downloaded files will be deleted if you choose the delete option.")
             }
             .confirmationDialog(
                 "Pause All Torrents",
@@ -226,6 +237,61 @@ public struct TorrentView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(.top, 20)
+    }
+
+    // MARK: - Undo Removal Toast
+
+    private var pendingTorrentName: String {
+        guard let id = pendingRemoveID else { return "this torrent" }
+        return viewModel.liveModel(for: id)?.name ?? "this torrent"
+    }
+
+    private var removeDialogTitle: String {
+        pendingRemoveID == nil ? "Remove Torrent" : "Remove '\(pendingTorrentName)'"
+    }
+
+    private func undoToastView(_ toast: TorrentUndoToast) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Torrent Removed")
+                    .font(.subheadline.weight(.semibold))
+
+                Text(toast.name)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+                viewModel.undoRemoval()
+            } label: {
+                Text("Undo")
+                    .font(.subheadline.weight(.bold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(Color.accentColor)
+                    .foregroundStyle(Color.white)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(toast.magnetLink == nil)
+
+            Button {
+                viewModel.dismissUndoToast()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusMedium))
+        .shadow(color: Color.black.opacity(0.15), radius: 12, y: 4)
     }
 
     // MARK: - Navigation Toolbar

@@ -55,7 +55,7 @@ public struct TorrentDetailSheet: View {
                 }
             }
             .confirmationDialog(
-                "Remove Torrent",
+                "Remove '\(torrent?.name ?? "Torrent")'",
                 isPresented: $isRemoveConfirmationPresented,
                 titleVisibility: .visible
             ) {
@@ -69,7 +69,7 @@ public struct TorrentDetailSheet: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Downloaded files will be deleted if you choose the delete option.")
+                Text("The torrent will be removed from the session. Downloaded files will be deleted if you choose the delete option.")
             }
         }
     }

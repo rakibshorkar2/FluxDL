@@ -397,6 +397,12 @@ std::unordered_map<lt::sha1_hash, std::unordered_map<std::string, std::unordered
                         } break;
 
                         case lt::torrent_deleted_alert::alert_type: {
+                            [self torrentDeletedAlert:(lt::torrent_deleted_alert *)alert];
+                            continue;
+                        } break;
+
+                        case lt::torrent_delete_failed_alert::alert_type: {
+                            [self torrentDeleteFailedAlert:(lt::torrent_delete_failed_alert *)alert];
                             continue;
                         } break;
 
@@ -524,6 +530,30 @@ std::unordered_map<lt::sha1_hash, std::unordered_map<std::string, std::unordered
     for (id<SessionDelegate>delegate in self.delegates) {
         [delegate torrentManager:self didRemoveTorrentWithHash:hashesData];
     }
+}
+
+- (void)torrentDeletedAlert:(lt::torrent_deleted_alert *)alert {
+    TorrentHashes *hashes = [[TorrentHashes alloc] initWith:alert->info_hashes];
+    for (id<SessionDelegate>delegate in self.delegates) {
+        if ([delegate respondsToSelector:@selector(torrentManager:didDeleteTorrentFilesForTorrentWithHash:)]) {
+            [delegate torrentManager:self didDeleteTorrentFilesForTorrentWithHash:hashes];
+        }
+    }
+}
+
+- (void)torrentDeleteFailedAlert:(lt::torrent_delete_failed_alert *)alert {
+    // Files could not be deleted; still drop the "deleting" placeholder and
+    // surface the underlying error.
+    TorrentHashes *hashes = [[TorrentHashes alloc] initWith:alert->info_hashes];
+    for (id<SessionDelegate>delegate in self.delegates) {
+        if ([delegate respondsToSelector:@selector(torrentManager:didDeleteTorrentFilesForTorrentWithHash:)]) {
+            [delegate torrentManager:self didDeleteTorrentFilesForTorrentWithHash:hashes];
+        }
+    }
+    NSString *message = [NSString stringWithUTF8String:alert->error.message().c_str()];
+    [self reportErrorWithCode:ErrorCodeLibtorrentOperationFailed
+                    operation:@"deleteFiles"
+                      message:message.length > 0 ? message : @"Unknown deletion error"];
 }
 
 - (void)notifyDelegatesWithUpdate:(lt::torrent_handle)th {

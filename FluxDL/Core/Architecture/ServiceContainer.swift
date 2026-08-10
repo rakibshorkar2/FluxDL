@@ -20,6 +20,7 @@ public final class ServiceContainer: ObservableObject {
     public let liveActivityManager: LiveActivityManagerProtocol
     public let backgroundKeepAliveService: BackgroundKeepAliveServiceProtocol
     public let downloadEngine: DownloadEngineProtocol
+    public let proxyService: ProxyProviding
     
     public init(
         settingsService: SettingsServiceProtocol = MainActor.assumeIsolated { SettingsService() },
@@ -53,6 +54,8 @@ public final class ServiceContainer: ObservableObject {
             notificationService: notifService
         )
         self.downloadEngine = engine
+        
+        self.proxyService = ProxyService()
         
         powerMon.startMonitoring(engine: engine)
     }

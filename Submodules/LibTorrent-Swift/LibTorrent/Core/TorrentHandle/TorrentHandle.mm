@@ -174,13 +174,20 @@ static std::vector<lt::download_priority_t> piecePrioritiesForFiles(
         handle.clear_error();
         handle.unset_flags(lt::torrent_flags::auto_managed);
         handle.resume();
+        // Push a fresh status so the UI reflects the change immediately
+        // instead of waiting for the next polling tick.
+        handle.post_status();
     }];
 }
 
 - (void)pause {
     [self performOperation:@"pause" action:^(lt::torrent_handle const &handle) {
+        // Take the torrent out of the queue manager's control first: an
+        // auto-managed torrent can be restarted by the session's queue
+        // manager even after pause() was called.
         handle.unset_flags(lt::torrent_flags::auto_managed);
         handle.pause();
+        handle.post_status();
     }];
 }
 

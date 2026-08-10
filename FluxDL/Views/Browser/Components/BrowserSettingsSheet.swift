@@ -26,6 +26,7 @@ public struct BrowserSettingsSheet: View {
                     }
                     
                     Toggle("Request Desktop Website by Default", isOn: $settings.requestDesktopByDefault)
+                    Toggle("Restore Tabs on Launch", isOn: $settings.restoreTabsOnLaunch)
                 }
                 
                 Section("Privacy & Protection") {
