@@ -24,6 +24,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Sources checked out here get mtimes NEWER than the cached build
+      # products restored later (which carry the previous build's mtimes).
+      # Xcode's up-to-date check compares mtimes, so without normalization
+      # every Swift target would recompile on every push. Pin source mtimes
+      # to a fixed past date; cached products are touched to "now" after
+      # restore, guaranteeing products are always newer than sources.
+      - name: Normalize source mtimes
+        run: |
+          find FluxDL FluxDL.xcodeproj Submodules -type f -exec touch -t 201001010000 {} +
+
       - name: Show Runner macOS and Xcode Versions
         run: |
           echo "Runner image: ${{ runner.os }}"
@@ -122,11 +132,6 @@ jobs:
       # this cache valid (incremental build), native torrent edits or Xcode
       # changes invalidate it.
       # ───────────────────────────────────────────────────────────────────────
-      - name: Resolve Swift packages
-        run: |
-          echo "[CI] Resolve Swift packages"
-          xcodebuild -resolvePackageDependencies -project FluxDL.xcodeproj -scheme FluxDL
-
       - name: Cache Xcode DerivedData (build intermediates)
         id: cache-dd
         uses: actions/cache@v4
@@ -148,6 +153,19 @@ jobs:
           key: spm-${{ runner.os }}-${{ hashFiles('Submodules/LibTorrent-Swift/LibTorrent.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: |
             spm-${{ runner.os }}-
+
+      # Cached build products must be NEWER than the pinned (2010) source
+      # mtimes or Xcode recompiles every Swift target on every push.
+      - name: Refresh restored build product mtimes
+        if: steps.cache-dd.outputs.cache-hit == 'true'
+        run: |
+          find build/DerivedData -type f -exec touch {} +
+          echo "[CI] Build product mtimes refreshed"
+
+      - name: Resolve Swift packages
+        run: |
+          echo "[CI] Resolve Swift packages"
+          xcodebuild -resolvePackageDependencies -project FluxDL.xcodeproj -scheme FluxDL
 
       - name: Build FluxDL iOS App
         run: |
