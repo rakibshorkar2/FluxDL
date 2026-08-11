@@ -10,6 +10,11 @@ on:
 permissions:
   contents: write
 
+env:
+  # brew install must never trigger a full Homebrew auto-update on CI.
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+
 jobs:
   build:
     name: Build Unsigned IPA for iOS 18
@@ -28,8 +33,6 @@ jobs:
           echo "--- Installed Xcode list (system) ---"
           xcode-select -p
           xcodebuild -version
-          echo "--- Available labels ---"
-          curl -s https://api.github.com/repos/actions/runner-images/branches/main | grep -o '"name"' | head -1
 
       - name: Select Xcode Version
         run: |
@@ -48,19 +51,108 @@ jobs:
           fi
           xcodebuild -version
 
+      # ───────────────────────────────────────────────────────────────────────
+      # Native torrent fingerprint. Hashes ONLY the files that can affect the
+      # libtorrent/LibTorrent native build: make.sh, the C++/Swift sources of
+      # the LibTorrent-Swift stack, its Xcode project, the cmake-generated
+      # project wiring, and the FluxDL project file (target/linker config).
+      # Normal application Swift sources (Downloads/, Browser/, Proxy/,
+      # Settings/, etc.) are deliberately NOT part of this fingerprint, so
+      # editing them never invalidates the native caches below.
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Compute Native Torrent Fingerprint
+        id: native-fp
+        run: |
+          set -euo pipefail
+          XCODE_VER=$(xcodebuild -version | awk 'NR==1{print $2}')
+          SDK_VER=$(xcrun --sdk iphoneos --show-sdk-version)
+          FILES_HASH=$(git ls-files \
+              Submodules/LibTorrent-Swift/make.sh \
+              Submodules/LibTorrent-Swift/LibTorrent \
+              Submodules/LibTorrent-Swift/Thirdparty \
+              Submodules/LibTorrent-Swift/LibTorrent.xcodeproj \
+              FluxDL.xcodeproj/project.pbxproj \
+              | sort -u | git hash-object --stdin-paths | shasum -a 256 | cut -c1-16)
+          echo "libtorrent-files=${FILES_HASH}" >> "$GITHUB_OUTPUT"
+          echo "xcode=${XCODE_VER}" >> "$GITHUB_OUTPUT"
+          echo "sdk=${SDK_VER}" >> "$GITHUB_OUTPUT"
+          echo "[CI] Native torrent fingerprint: Xcode ${XCODE_VER} / SDK ${SDK_VER} / files ${FILES_HASH}"
+
+      - name: Cache Homebrew bottles (boost)
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: brew-${{ runner.os }}
+          restore-keys: |
+            brew-${{ runner.os }}-
+
       - name: Install Boost (libtorrent dependency)
         run: brew install boost
 
-      - name: Build libtorrent Static Library (LibTorrent-Swift dependency)
+      # ───────────────────────────────────────────────────────────────────────
+      # libtorrent cmake project (make.sh output). Skipped entirely on cache
+      # hit. Incomplete restores are detected and healed by re-running make.sh.
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Cache libtorrent cmake project (libtorrent-build)
+        id: cache-lt
+        uses: actions/cache@v4
+        with:
+          path: Submodules/LibTorrent-Swift/libtorrent-build
+          key: lt-${{ runner.os }}-${{ steps.native-fp.outputs.xcode }}-${{ steps.native-fp.outputs.sdk }}-${{ steps.native-fp.outputs.libtorrent-files }}
+          restore-keys: |
+            lt-${{ runner.os }}-${{ steps.native-fp.outputs.xcode }}-${{ steps.native-fp.outputs.sdk }}-
+
+      - name: Build libtorrent cmake project (make.sh)
         run: |
-          cd Submodules/LibTorrent-Swift
-          bash make.sh
-          ls -la libtorrent-build/libtorrent.xcodeproj
+          if [[ "${{ steps.cache-lt.outputs.cache-hit }}" == "true" && -d Submodules/LibTorrent-Swift/libtorrent-build/libtorrent.xcodeproj ]]; then
+            echo "[CI] libtorrent: CACHE HIT - SKIPPED make.sh"
+          else
+            echo "[CI] libtorrent: CACHE MISS - REBUILDING (running make.sh)"
+            cd Submodules/LibTorrent-Swift
+            bash make.sh
+            ls -la libtorrent-build/libtorrent.xcodeproj
+            test -d libtorrent-build/libtorrent.xcodeproj
+            echo "[CI] make.sh completed successfully"
+          fi
+
+      # ───────────────────────────────────────────────────────────────────────
+      # Xcode build intermediates (DerivedData). Reuses compiled C++/Swift
+      # products across pushes so xcodebuild compiles only what changed.
+      # Keyed on the native fingerprint + toolchain — app Swift edits keep
+      # this cache valid (incremental build), native torrent edits or Xcode
+      # changes invalidate it.
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Cache Xcode DerivedData (build intermediates)
+        id: cache-dd
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/DerivedData/Build
+            build/DerivedData/SourcePackages
+            build/DerivedData/ModuleCache.noindex
+          key: dd-${{ runner.os }}-${{ steps.native-fp.outputs.xcode }}-${{ steps.native-fp.outputs.sdk }}-${{ steps.native-fp.outputs.libtorrent-files }}
+          restore-keys: |
+            dd-${{ runner.os }}-${{ steps.native-fp.outputs.xcode }}-${{ steps.native-fp.outputs.sdk }}-
+
+      - name: Cache Swift Package Manager data (OpenSSL)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('Submodules/LibTorrent-Swift/LibTorrent.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
 
       - name: Build FluxDL iOS App
         run: |
+          echo "[CI] libtorrent cmake project: ${{ steps.cache-lt.outputs.cache-hit == 'true' && 'CACHE HIT - SKIPPED' || 'CACHE MISS - REBUILDING' }}"
+          echo "[CI] Xcode DerivedData:         ${{ steps.cache-dd.outputs.cache-hit == 'true' && 'CACHE HIT - INCREMENTAL BUILD' || 'CACHE MISS - FULL BUILD' }}"
           BUILD_NUMBER=${{ github.run_number }}
+          START=$(date +%s)
+          echo "[CI] Resolve Swift packages"
           xcodebuild -resolvePackageDependencies -project FluxDL.xcodeproj -scheme FluxDL
+          echo "[CI] Build FluxDL ($(( $(date +%s) - START ))s elapsed before xcodebuild)"
           xcodebuild -project FluxDL.xcodeproj \
                      -scheme FluxDL \
                      -sdk iphoneos \
@@ -70,18 +162,20 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
-                     clean build
+                     build
+          echo "[CI] FluxDL build finished in $(( $(date +%s) - START ))s"
 
       - name: Create Unsigned IPA Package
         run: |
           BUILD_NUMBER=${{ github.run_number }}
-          mkdir -p Payload
           APP_PATH=$(find ./build/DerivedData -name "FluxDL.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: FluxDL.app not found in build directory!"
             exit 1
           fi
           echo "Found app at: $APP_PATH"
+          rm -rf Payload
+          mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           OPENSSL_FW=$(find ./build/DerivedData/Build/Products -name "OpenSSL.framework" -type d | head -n 1)
           if [ -n "$OPENSSL_FW" ]; then
@@ -90,8 +184,14 @@ jobs:
           else
             echo "Warning: OpenSSL.framework not found in build products"
           fi
-          zip -r "FluxDL-v1.0.0.${BUILD_NUMBER}.ipa" Payload
-          echo "Successfully created FluxDL-v1.0.0.${BUILD_NUMBER}.ipa"
+          IPA="FluxDL-v1.0.0.${BUILD_NUMBER}.ipa"
+          zip -r "$IPA" Payload
+          if [ ! -s "$IPA" ]; then
+            echo "Error: IPA is missing or empty — refusing to upload a stale package!"
+            exit 1
+          fi
+          ls -lh "$IPA"
+          echo "Successfully created ${IPA}"
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
