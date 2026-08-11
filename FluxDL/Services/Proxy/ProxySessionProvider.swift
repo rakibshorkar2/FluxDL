@@ -141,7 +141,7 @@ public final class LocalSOCKS5Adapter {
     private var activePort: UInt16?
     private var upstreamKey: String?
     private let queue = DispatchQueue(label: "com.rakib.FluxDL.socks4.adapter")
-    private var tunnels: [ObjectIdentifier: AdapterTunnel] = [:]
+    private var tunnels: [UUID: AdapterTunnel] = [:]
 
     public init() {}
 
@@ -253,7 +253,10 @@ public final class LocalSOCKS5Adapter {
 // upstream SOCKS4/4a server, then relays bytes in both directions.
 
 private final class AdapterTunnel {
-    let id: ObjectIdentifier
+    // UUID rather than ObjectIdentifier(self): the identifier must be usable
+    // as a dictionary key, but self cannot be referenced before every stored
+    // property is initialized.
+    let id: UUID = UUID()
     private let inbound: NWConnection
     private let upstreamEndpoint: NWEndpoint
     private let userID: String
@@ -268,7 +271,6 @@ private final class AdapterTunnel {
         queue: DispatchQueue,
         onFinish: @escaping (AdapterTunnel) -> Void
     ) {
-        self.id = ObjectIdentifier(self)
         self.inbound = inbound
         self.upstreamEndpoint = upstreamEndpoint
         self.userID = userID
