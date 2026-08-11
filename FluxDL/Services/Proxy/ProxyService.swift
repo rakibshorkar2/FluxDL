@@ -101,6 +101,11 @@ public final class ProxyService: ObservableObject, ProxyProviding {
     private let sessionProvider = ProxySessionProvider()
     private var bulkTask: Task<Void, Never>?
     private var activeEnableTask: Task<ProxyTestResult, Error>?
+    /// Monotonic token: bumped by every `enable()`/`disable()` so a stale
+    /// probe continuation (whose `Task` handle cannot be identity-compared —
+    /// `Task` is a struct) can never apply the outcome of a cancelled or
+    /// superseded probe.
+    private var enableEpoch: UInt64 = 0
     /// Optional hook for consumers that must rebuild their networking when
     /// the effective routing state changes (DownloadEngine, Browser).
     public var onProxyStateChange: (() -> Void)?
@@ -300,6 +305,8 @@ public final class ProxyService: ObservableObject, ProxyProviding {
         isTesting = true
         connectionState = .connecting
 
+        let epoch = enableEpoch + 1
+        enableEpoch = epoch
         let task = Task { @MainActor [weak self] in
             guard let self else { return ProxyTestResult.failure(.connectionFailed) }
             let result = await ProxyTester.test(self.resolveConfiguration(profile), timeout: self.testTimeout)
@@ -317,10 +324,10 @@ public final class ProxyService: ObservableObject, ProxyProviding {
             // Cancelled by disable() — state already reflects .disabled.
             return
         }
-        // A disable(), or a newer enable() replacing `activeEnableTask`,
-        // invalidates this stale continuation: never apply the outcome of a
-        // probe the user already cancelled or superseded.
-        guard activeEnableTask === task, !Task.isCancelled else { return }
+        // A disable(), or a newer enable() bumping `enableEpoch`, invalidates
+        // this stale continuation: never apply the outcome of a probe the
+        // user already cancelled or superseded.
+        guard enableEpoch == epoch, !Task.isCancelled else { return }
         isTesting = false
         applyTestResult(result, to: profile.id)
 
@@ -334,6 +341,7 @@ public final class ProxyService: ObservableObject, ProxyProviding {
 
     /// Disables the proxy immediately and cancels any in-flight bulk test.
     public func disable() {
+        enableEpoch += 1
         bulkTask?.cancel()
         activeEnableTask?.cancel()
         activeEnableTask = nil
