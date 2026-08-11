@@ -122,6 +122,11 @@ jobs:
       # this cache valid (incremental build), native torrent edits or Xcode
       # changes invalidate it.
       # ───────────────────────────────────────────────────────────────────────
+      - name: Resolve Swift packages
+        run: |
+          echo "[CI] Resolve Swift packages"
+          xcodebuild -resolvePackageDependencies -project FluxDL.xcodeproj -scheme FluxDL
+
       - name: Cache Xcode DerivedData (build intermediates)
         id: cache-dd
         uses: actions/cache@v4
@@ -150,9 +155,6 @@ jobs:
           echo "[CI] Xcode DerivedData:         ${{ steps.cache-dd.outputs.cache-hit == 'true' && 'CACHE HIT - INCREMENTAL BUILD' || 'CACHE MISS - FULL BUILD' }}"
           BUILD_NUMBER=${{ github.run_number }}
           START=$(date +%s)
-          echo "[CI] Resolve Swift packages"
-          xcodebuild -resolvePackageDependencies -project FluxDL.xcodeproj -scheme FluxDL
-          echo "[CI] Build FluxDL ($(( $(date +%s) - START ))s elapsed before xcodebuild)"
           xcodebuild -project FluxDL.xcodeproj \
                      -scheme FluxDL \
                      -sdk iphoneos \
@@ -162,6 +164,7 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
+                     -disableAutomaticPackageResolution \
                      build
           echo "[CI] FluxDL build finished in $(( $(date +%s) - START ))s"
 
