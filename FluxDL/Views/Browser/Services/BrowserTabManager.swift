@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import WebKit
 import Combine
 
@@ -15,7 +16,22 @@ public final class BrowserTabManager: ObservableObject {
     public let sharedProcessPool = WKProcessPool()
     public let hapticService: HapticServiceProtocol = ServiceContainer.shared.hapticService
     
+    private var cancellables = Set<AnyCancellable>()
+    
     private init() {
+        // ── Browser Live Activity ──────────────────────────────────────────
+        // Reflects the active tab in the Dynamic Island / Lock Screen while
+        // backgrounded. The timer polls because the tab model is value
+        // semantic — page load progress has no Combine signal. update*()
+        // self-ends when the app is foregrounded or the toggle is off.
+        $activeTabId
+            .sink { [weak self] _ in self?.pushBrowserLiveActivity() }
+            .store(in: &cancellables)
+        Timer.publish(every: 2.0, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.pushBrowserLiveActivity() }
+            .store(in: &cancellables)
+
         // Restore previous session when enabled and available.
         if BrowserTabPersistence.shared.isRestoreEnabled,
            let persisted = BrowserTabPersistence.shared.load(),
@@ -196,5 +212,28 @@ public final class BrowserTabManager: ObservableObject {
                 tabs[index].webView = nil
             }
         }
+    }
+
+    // MARK: - Browser Live Activity
+
+    /// Pushes the active tab's state to the Live Activity while the app is
+    /// backgrounded; ends the activity in every other case.
+    private func pushBrowserLiveActivity() {
+        guard UIApplication.shared.applicationState == .background else {
+            ServiceContainer.shared.liveActivityManager.endBrowserActivity()
+            return
+        }
+        guard let tab = activeTab else {
+            ServiceContainer.shared.liveActivityManager.endBrowserActivity()
+            return
+        }
+        ServiceContainer.shared.liveActivityManager.updateBrowserActivity(snapshot: BrowserActivitySnapshot(
+            title: tab.title.isEmpty ? (tab.url?.host ?? "Browser") : tab.title,
+            urlString: tab.url?.absoluteString ?? tab.inputURLText,
+            progress: tab.estimatedProgress,
+            tabCount: tabs.count,
+            isPrivate: tab.isPrivate,
+            status: tab.isLoading ? "Loading" : "Idle"
+        ))
     }
 }

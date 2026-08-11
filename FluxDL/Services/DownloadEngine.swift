@@ -72,6 +72,19 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     nonisolated(unsafe) private var taskIDBySessionID: [String: UUID] = [:]       // delegate queue only
     nonisolated(unsafe) private var progressByID:      [UUID: ProgressSnapshot] = [:] // delegate queue only
 
+    // ── Bandwidth throttle (delegate queue only) ─────────────────────────────
+    // URLSession has no bandwidth-limit API, so the limit is enforced by
+    // suspending a task for the remainder of its 1s window when it exceeds
+    // `fluxdl_bandwidth_limit` KB/s, then resuming it. All state below is
+    // touched exclusively on `delegateQueue` (serial) — including the
+    // deferred resume, which is re-queued onto the same queue.
+    private struct ThrottleWindow {
+        var windowStart: CFAbsoluteTime
+        var windowBytes: Int64
+    }
+    nonisolated(unsafe) private var throttleWindows:      [UUID: ThrottleWindow] = [:] // delegate queue only
+    nonisolated(unsafe) private var throttleLastTotalBytes: [UUID: Int64]       = [:] // delegate queue only
+
     // URLSessionDownloadTask reference (for cancel/pause) – MainActor only
     private var urlTaskByID: [UUID: URLSessionDownloadTask] = [:]
 
@@ -497,6 +510,8 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
             // Remove by value search (only runs on status change, not hot path)
             self.taskIDBySessionID = self.taskIDBySessionID.filter { $0.value != id }
             self.progressByID.removeValue(forKey: id)
+            self.throttleWindows.removeValue(forKey: id)
+            self.throttleLastTotalBytes.removeValue(forKey: id)
         }
     }
 
@@ -634,6 +649,39 @@ extension DownloadEngine: URLSessionDownloadDelegate {
         }
 
         progressByID[id] = snap
+
+        // ── Optional bandwidth limit (Settings → Speed) ────────────────────
+        // 0 / missing = unlimited. Otherwise hold the task to ~limit KB/s by
+        // suspending it for the remainder of the current 1s window. The
+        // deferred resume runs on the delegate queue, so all throttle state
+        // stays serialised and lock-free.
+        let limitKBps = UserDefaults.standard.integer(forKey: "fluxdl_bandwidth_limit")
+        if limitKBps > 0 {
+            let now       = CFAbsoluteTimeGetCurrent()
+            let limitBytes = Int64(limitKBps) * 1024
+
+            let previousTotal = throttleLastTotalBytes[id] ?? totalBytesWritten
+            let delta         = totalBytesWritten - previousTotal
+            throttleLastTotalBytes[id] = totalBytesWritten
+
+            let window = throttleWindows[id] ?? ThrottleWindow(windowStart: now, windowBytes: 0)
+            let start  = now - window.windowStart >= 1.0 ? now : window.windowStart
+            let bytes  = now - window.windowStart >= 1.0 ? delta : window.windowBytes + delta
+            throttleWindows[id] = ThrottleWindow(windowStart: start, windowBytes: bytes)
+
+            if bytes >= limitBytes {
+                downloadTask.suspend()
+                let resumeIn = max(0.0, 1.0 - (now - start))
+                delegateQueue.addOperation { [weak self] in
+                    guard let self else { return }
+                    // Account for anything the server pushed while suspended,
+                    // then release the task. No-op if it was cancelled first.
+                    self.throttleLastTotalBytes[id] = downloadTask.countOfBytesReceived
+                    self.throttleWindows.removeValue(forKey: id)
+                    downloadTask.resume()
+                }
+            }
+        }
 
         // Throttle MainActor dispatch to once per kUIUpdateInterval
         guard elapsedSinceLastUI >= kUIUpdateInterval else { return }
