@@ -61,16 +61,22 @@ public final class ProxyStream: Sendable {
     }
 
     /// Sends a full data payload (content-processed semantics).
+    /// Cancellation-aware: cancelling the task closes the connection so the
+    /// send completion always fires and the await returns.
     public func send(_ data: Data) async throws {
         do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                connection.send(content: data, completion: .contentProcessed { error in
-                    if let error {
-                        continuation.resume(throwing: ProxyNetworkErrorMapper.map(error))
-                    } else {
-                        continuation.resume()
-                    }
-                })
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    connection.send(content: data, completion: .contentProcessed { error in
+                        if let error {
+                            continuation.resume(throwing: ProxyNetworkErrorMapper.map(error))
+                        } else {
+                            continuation.resume()
+                        }
+                    })
+                }
+            } onCancel: {
+                connection.cancel()
             }
         } catch {
             if Task.isCancelled { throw CancellationError() }
@@ -105,18 +111,22 @@ public final class ProxyStream: Sendable {
 
     private func receiveChunk(maximumLength: Int) async throws -> Data {
         do {
-            return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
-                connection.receive(minimumIncompleteLength: 1, maximumLength: maximumLength) { data, _, isComplete, error in
-                    if let error {
-                        continuation.resume(throwing: ProxyNetworkErrorMapper.map(error))
-                    } else if let data, !data.isEmpty {
-                        continuation.resume(returning: data)
-                    } else if isComplete {
-                        continuation.resume(throwing: ProxyTestFailure.connectionFailed)
-                    } else {
-                        continuation.resume(throwing: ProxyTestFailure.connectionFailed)
+            return try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+                    connection.receive(minimumIncompleteLength: 1, maximumLength: maximumLength) { data, _, isComplete, error in
+                        if let error {
+                            continuation.resume(throwing: ProxyNetworkErrorMapper.map(error))
+                        } else if let data, !data.isEmpty {
+                            continuation.resume(returning: data)
+                        } else if isComplete {
+                            continuation.resume(throwing: ProxyTestFailure.connectionFailed)
+                        } else {
+                            continuation.resume(throwing: ProxyTestFailure.connectionFailed)
+                        }
                     }
                 }
+            } onCancel: {
+                connection.cancel()
             }
         } catch {
             if Task.isCancelled { throw CancellationError() }
@@ -205,13 +215,19 @@ public enum ProxyTunnel {
         }
         let tcpMs = max(1, Int((Date().timeIntervalSince(tcpStart) * 1000).rounded()))
 
-        let handshakeStart = Date()
-        try await withTimeout(timeout) {
-            try await performHandshake(in: configuration, targetHost: targetHost, targetPort: targetPort, on: stream)
-        }
-        let handshakeMs = max(1, Int((Date().timeIntervalSince(handshakeStart) * 1000).rounded()))
+        do {
+            let handshakeStart = Date()
+            try await withTimeout(timeout) {
+                try await performHandshake(in: configuration, targetHost: targetHost, targetPort: targetPort, on: stream)
+            }
+            let handshakeMs = max(1, Int((Date().timeIntervalSince(handshakeStart) * 1000).rounded()))
 
-        return Tunnel(handshake: ProxyTunnelHandshake(tcpMs: tcpMs, handshakeMs: handshakeMs), stream: stream)
+            return Tunnel(handshake: ProxyTunnelHandshake(tcpMs: tcpMs, handshakeMs: handshakeMs), stream: stream)
+        } catch {
+            // Never leave the TCP connection behind when the handshake fails.
+            stream.close()
+            throw error
+        }
     }
 
     // MARK: - Handshake dispatch
@@ -253,7 +269,10 @@ public enum ProxyTunnel {
 
     // MARK: - Timeout helper
 
-    private static func withTimeout<T: Sendable>(_ timeout: TimeInterval, operation: @Sendable @escaping () async throws -> T) async throws -> T {
+    /// Runs `operation` with a hard `timeout`, cancelling it on expiry.
+    /// Timeouts and task cancellation both tear the underlying connection
+    /// down through `ProxyStream`'s cancellation handlers.
+    static func withTimeout<T: Sendable>(_ timeout: TimeInterval, operation: @Sendable @escaping () async throws -> T) async throws -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask {
                 let timeoutNanoseconds = UInt64(max(timeout, 0.1) * 1_000_000_000)

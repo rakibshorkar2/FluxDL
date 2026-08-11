@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import Combine
+import Network
 
 public protocol PowerNetworkMonitorProtocol: AnyObject {
     var isLowBattery: Bool { get }
@@ -25,6 +26,13 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
     private var cancellables = Set<AnyCancellable>()
     private weak var engine: DownloadEngineProtocol?
 
+    /// Tasks auto-paused by this monitor (low battery / LPM / cellular with
+    /// WiFi-only). They are restored automatically once the condition clears;
+    /// tasks the user paused manually are never touched.
+    private var autoPausedTaskIDs: Set<UUID> = []
+
+    private var pathMonitor: NWPathMonitor?
+
     public init() {
         self.isWiFiOnlyEnabled    = UserDefaults.standard.bool(forKey: "fluxdl_wifi_only")
         self.bandwidthLimitKBps   = UserDefaults.standard.integer(forKey: "fluxdl_bandwidth_limit")
@@ -47,13 +55,26 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
 
     public func startMonitoring(engine: DownloadEngineProtocol) {
         self.engine = engine
+        startPathMonitoring()
+    }
+
+    private func startPathMonitoring() {
+        guard pathMonitor == nil else { return }
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                self?.updatePathState(path)
+            }
+        }
+        pathMonitor = monitor
+        monitor.start(queue: DispatchQueue(label: "com.rakib.FluxDL.power.path"))
     }
 
     private func updateBatteryState() {
         let level    = UIDevice.current.batteryLevel
         let state    = UIDevice.current.batteryState
         let lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
-        
+
         // Read user-configurable threshold (stored as Int percent, e.g. 20 means 20%)
         let thresholdPercent = UserDefaults.standard.integer(forKey: "fluxdl_battery_threshold")
         let threshold: Float = thresholdPercent > 0 ? Float(thresholdPercent) / 100.0 : 0.20
@@ -62,11 +83,44 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
         isLowBattery  = lowBat
         isLowPowerMode = lowPower
 
-        // Auto-pause if low battery or Low Power Mode is on
+        // Auto-pause if low battery or Low Power Mode is on — and reliably
+        // auto-resume the exact tasks this monitor paused once it clears.
         let shouldAutoPause = UserDefaults.standard.bool(forKey: "fluxdl_low_battery_pause")
-        if shouldAutoPause, (lowBat || lowPower), let engine {
-            for task in engine.tasks where task.status == .downloading {
-                engine.pauseDownload(id: task.id)
+        if shouldAutoPause, (lowBat || lowPower) {
+            pauseAllDownloading()
+        } else if !lowBat && !lowPower {
+            resumeAutoPausedTasks()
+        }
+    }
+
+    private func updatePathState(_ path: NWPath) {
+        guard isWiFiOnlyEnabled else {
+            // Setting switched off while paused by it: restore what we paused.
+            resumeAutoPausedTasks()
+            return
+        }
+        if path.usesInterfaceType(.cellular), path.status == .satisfied || path.status == .requiresConnection {
+            pauseAllDownloading()
+        } else if !path.usesInterfaceType(.cellular) {
+            resumeAutoPausedTasks()
+        }
+    }
+
+    private func pauseAllDownloading() {
+        guard let engine else { return }
+        for task in engine.tasks where task.status == .downloading {
+            autoPausedTaskIDs.insert(task.id)
+            engine.pauseDownload(id: task.id)
+        }
+    }
+
+    private func resumeAutoPausedTasks() {
+        guard let engine, !autoPausedTaskIDs.isEmpty else { return }
+        let ids = autoPausedTaskIDs
+        autoPausedTaskIDs.removeAll()
+        for id in ids {
+            if engine.tasks.first(where: { $0.id == id })?.status == .paused {
+                engine.resumeDownload(id: id)
             }
         }
     }

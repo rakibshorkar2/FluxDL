@@ -86,9 +86,14 @@ public enum ProxyTester {
 
             let request = Self.httpRequest(method: "GET", host: host, port: port, path: path)
             let requestStart = Date()
-            try await stream.send(Data(request.utf8))
-
-            let response = try await Self.readResponse(on: stream)
+            // The proxy may accept the TCP connection and stall the HTTP
+            // exchange forever — the whole request phase shares `timeout`.
+            try await ProxyTunnel.withTimeout(timeout) {
+                try await stream.send(Data(request.utf8))
+            }
+            let response = try await ProxyTunnel.withTimeout(timeout) {
+                try await Self.readResponse(on: stream)
+            }
             let requestMs = max(1, Int((Date().timeIntervalSince(requestStart) * 1000).rounded()))
 
             guard let status = response.statusCode else {

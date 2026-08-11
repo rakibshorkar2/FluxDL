@@ -46,10 +46,10 @@ public final class ProxyViewModel: ObservableObject {
     public func testProfile(_ profile: ProxyProfile) {
         profileForTest = profile
         Task {
-            let result = await runTest(profile.configuration)
-            if let result = result {
-                presentTestResult(result)
-            }
+            // Goes through the service so the Keychain password is restored —
+            // a test on a saved profile must reflect its stored credentials.
+            let result = await service.testProfile(profile)
+            presentTestResult(result)
             profileForTest = nil
         }
     }

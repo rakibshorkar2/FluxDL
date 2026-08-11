@@ -245,11 +245,19 @@ public struct AddEditProxySheet: View {
 
         // SOCKS4 has no challenge mechanism — credentials are meaningless.
         let effectiveAuth = authenticationEnabled && selectedType != .socks4
+        // Editing a profile with a password already in the Keychain: an empty
+        // password field means "keep the stored value", so it must not fail.
+        let keepExistingPassword: Bool
+        if let profile, password.isEmpty {
+            keepExistingPassword = viewModel.service.password(forProfileID: profile.id) != nil
+        } else {
+            keepExistingPassword = false
+        }
         if effectiveAuth {
             if username.trimmingCharacters(in: .whitespaces).isEmpty {
                 errors["username"] = "Username is required"
             }
-            if password.isEmpty {
+            if password.isEmpty && !keepExistingPassword {
                 errors["password"] = "Password is required"
             }
         }

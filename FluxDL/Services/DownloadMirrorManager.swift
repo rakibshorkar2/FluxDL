@@ -45,17 +45,31 @@ public final class DownloadMirrorManager {
         let maxIdx = engine.tasks[idx].mirrors.count  // 0…count: 0=primary, 1…count=mirrors
         guard index >= 0 && index <= maxIdx else { return }
 
-        let wasPausedOrFailed: Bool
-        let activeURL: URL
-        engine.mutateTask(id: taskID) { task in
-            task.currentMirrorIndex = index
-        }
-        wasPausedOrFailed = engine.tasks[idx].status == .paused || engine.tasks[idx].status == .failed
-        activeURL = engine.tasks[idx].activeURL
+        let wasPausedOrFailed = engine.tasks[idx].status == .paused || engine.tasks[idx].status == .failed
+
+        // Compute the target URL on a copy BEFORE `updateURL` resets
+        // `currentMirrorIndex` (the new URL owns a fresh mirror state).
+        var candidate = engine.tasks[idx]
+        candidate.currentMirrorIndex = index
+        let activeURL = candidate.activeURL
 
         // If the task is paused or failed, restart with the new URL
         if wasPausedOrFailed {
             engine.updateURL(activeURL, for: taskID)
+            // Re-apply the chosen mirror after the reset, then restart
+            // immediately on it instead of leaving the task paused.
+            engine.mutateTask(id: taskID) { task in
+                task.currentMirrorIndex = index
+            }
+            if engine.tasks.firstIndex(where: { $0.id == taskID }) != nil {
+                engine.resumeDownload(id: taskID)
+            }
+        } else {
+            // Live task: only the active mirror changes; the in-flight
+            // download keeps running until its next failure.
+            engine.mutateTask(id: taskID) { task in
+                task.currentMirrorIndex = index
+            }
         }
         consecutiveFailures[taskID] = 0
     }
@@ -85,14 +99,23 @@ public final class DownloadMirrorManager {
             return false
         }
 
+        // Resolve the target URL on a copy BEFORE `updateURL` resets
+        // `currentMirrorIndex` (the new URL owns a fresh mirror state).
+        var nextTask = task
+        nextTask.currentMirrorIndex = nextIndex
+        let newURL = nextTask.activeURL
+
+        engine.updateURL(newURL, for: taskID)
         engine.mutateTask(id: taskID) { task in
             task.currentMirrorIndex = nextIndex
             task.mirrorSwitchCount += 1
         }
         consecutiveFailures[taskID] = 0
-
-        let newURL = engine.tasks[idx].activeURL
-        engine.updateURL(newURL, for: taskID)
+        // updateURL leaves the task paused — the switch must bring it back
+        // up immediately or every failed download silently stalls forever.
+        if engine.tasks.firstIndex(where: { $0.id == taskID }) != nil {
+            engine.resumeDownload(id: taskID)
+        }
 
         print("FluxDL: Auto-switched task \(taskID) to mirror \(nextIndex) → \(newURL)")
         return true

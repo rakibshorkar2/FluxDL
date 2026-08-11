@@ -9,9 +9,11 @@ public final class BookmarkManager: ObservableObject {
     @Published public private(set) var folders: [String] = ["Bookmarks", "Favorites", "Work", "Personal"]
     
     private let storageKey = "fluxdl_browser_bookmarks"
+    private let foldersKey = "fluxdl_browser_folders"
     
     private init() {
         loadBookmarks()
+        loadFolders()
         if bookmarks.isEmpty {
             addDefaultBookmarks()
         }
@@ -50,6 +52,35 @@ public final class BookmarkManager: ObservableObject {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !folders.contains(trimmed) else { return }
         folders.append(trimmed)
+        saveFolders()
+    }
+    
+    public func removeFolder(_ name: String) {
+        guard folders.contains(name), name != "Bookmarks" else { return }
+        folders.removeAll { $0 == name }
+        // Bookmark items pointing at the deleted folder fall back to the root.
+        for idx in bookmarks.indices where bookmarks[idx].folder == name {
+            bookmarks[idx].folder = "Bookmarks"
+        }
+        saveBookmarks()
+        saveFolders()
+    }
+    
+    private func saveFolders() {
+        if let data = try? JSONEncoder().encode(folders) {
+            UserDefaults.standard.set(data, forKey: foldersKey)
+        }
+    }
+    
+    private func loadFolders() {
+        if let data = UserDefaults.standard.data(forKey: foldersKey),
+           let stored = try? JSONDecoder().decode([String].self, from: data),
+           !stored.isEmpty {
+            self.folders = Array(Set(stored)).sorted()
+        } else {
+            // Persist the defaults once so user-created folders layer on top.
+            saveFolders()
+        }
     }
     
     private func saveBookmarks() {

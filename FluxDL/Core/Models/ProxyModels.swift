@@ -544,13 +544,20 @@ public enum ProxyURIParser {
         if let explicitPort = url.port {
             port = explicitPort
         } else {
-            port = type == .http || type == .https ? 8080 : 1080
+            switch type {
+            case .http:  port = 8080
+            case .https: port = 443
+            default:     port = 1080
+            }
         }
         guard ProxyConfigurationValidator.validatePort(port) == nil else { return nil }
 
         let username = url.user?.removingPercentEncoding ?? ""
         let password = url.password?.removingPercentEncoding
-        let hasCredentials = !username.isEmpty
+        // A username alone cannot be sent as credentials (SOCKS5/HTTP auth
+        // always includes a password) — treat it as no auth instead of
+        // creating a profile that fails every authenticated handshake.
+        let hasCredentials = !username.isEmpty && !(password ?? "").isEmpty
 
         let authenticationEnabled: Bool
         if type == .socks4 {

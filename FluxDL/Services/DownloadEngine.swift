@@ -75,6 +75,10 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     // URLSessionDownloadTask reference (for cancel/pause) – MainActor only
     private var urlTaskByID: [UUID: URLSessionDownloadTask] = [:]
 
+    // Pending auto-retry tasks (MainActor only) — cancelled when the user
+    // cancels/pauses/deletes a download during the retry delay.
+    private var autoRetryTaskByID: [UUID: Task<Void, Never>] = [:]
+
     // Redirect count tracking – MainActor only
     private var redirectCountByID: [UUID: Int] = [:]
 
@@ -163,9 +167,23 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
     @discardableResult
     public func startDownload(url: URL, filename: String? = nil) -> UUID {
-        var model = DownloadTaskModel(url: url, filename: filename, status: .downloading)
+        // Honor the concurrency settings: at capacity a new task starts as
+        // `.pending` and is picked up by `QueueManager.scheduleNextTasks`
+        // as soon as an active slot frees up.
+        let queueManager = ServiceContainer.shared.queueManager
+        let activeCount = tasks.filter { $0.status == .downloading }.count
+        let allowed = queueManager.queueMode == .sequential ? 1 : queueManager.maxConcurrentDownloads
+        let canStartNow = activeCount < allowed
+
+        var model = DownloadTaskModel(url: url, filename: filename, status: canStartNow ? .downloading : .pending)
         model.startedAt = Date()
+        model.queuePosition = tasks.count
         tasks.insert(model, at: 0)
+
+        guard canStartNow else {
+            repository.saveTasks(tasks)
+            return model.id
+        }
 
         let usedSession = activeSession()
         let dlTask = usedSession.downloadTask(with: url)
@@ -197,13 +215,20 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
     public func pauseDownload(id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        autoRetryTaskByID[id]?.cancel()
+        autoRetryTaskByID.removeValue(forKey: id)
 
         if let dlTask = urlTaskByID[id] {
-            dlTask.cancel { [weak self] resumeData in
+            dlTask.cancel { [weak self, capturedTask = dlTask] resumeData in
                 // This closure runs on delegateQueue
                 guard let self else { return }
                 Task { @MainActor in
                     guard let idx = self.tasks.firstIndex(where: { $0.id == id }) else { return }
+                    // If the task was resumed/deleted/retried while the cancel
+                    // was in flight, the URLSessionDownloadTask is no longer
+                    // the current one — applying this completion would
+                    // resurrect a stale pause over a running download.
+                    guard self.urlTaskByID[id] === capturedTask else { return }
                     self.tasks[idx].resumeData         = resumeData
                     self.tasks[idx].status             = .paused
                     self.tasks[idx].speedBytesPerSec   = 0
@@ -276,6 +301,8 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
     public func cancelDownload(id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        autoRetryTaskByID[id]?.cancel()
+        autoRetryTaskByID.removeValue(forKey: id)
         urlTaskByID[id]?.cancel()
         urlTaskByID.removeValue(forKey: id)
         cleanupDelegateTracking(id: id)
@@ -304,6 +331,8 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
             httpStatus: oldTask.lastHTTPStatusCode
         )
 
+        autoRetryTaskByID[id]?.cancel()
+        autoRetryTaskByID.removeValue(forKey: id)
         urlTaskByID[id]?.cancel()
         urlTaskByID.removeValue(forKey: id)
         cleanupDelegateTracking(id: id)
@@ -350,6 +379,8 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
 
         // Cancel any active session task
+        autoRetryTaskByID[id]?.cancel()
+        autoRetryTaskByID.removeValue(forKey: id)
         urlTaskByID[id]?.cancel()
         urlTaskByID.removeValue(forKey: id)
         cleanupDelegateTracking(id: id)
@@ -358,6 +389,9 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         tasks[index].url                  = newURL
         tasks[index].status               = .paused   // caller can resume after
         tasks[index].resumeData           = nil        // can't resume with new URL
+        tasks[index].downloadedBytes      = 0          // bytes belong to the old URL
+        tasks[index].totalBytes           = 0
+        tasks[index].currentMirrorIndex   = 0          // mirrors belong to the old URL
         tasks[index].errorMessage         = nil
         tasks[index].lastHTTPStatusCode   = nil
         tasks[index].speedBytesPerSec     = 0
@@ -401,6 +435,8 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     public func deleteDownload(id: UUID, deleteFile: Bool) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
         let model = tasks[index]
+        autoRetryTaskByID[id]?.cancel()
+        autoRetryTaskByID.removeValue(forKey: id)
         urlTaskByID[id]?.cancel()
         urlTaskByID.removeValue(forKey: id)
         cleanupDelegateTracking(id: id)
@@ -533,6 +569,10 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
             if snap.totalTimeAccumulated > 1.0 {
                 self.tasks[idx].averageSpeedBytesPerSec = snap.totalBytesAccumulated / snap.totalTimeAccumulated
             }
+            // Keep the Dynamic Island / Lock Screen activity live while the
+            // app is backgrounded (updateActivity self-throttles to 1 Hz and
+            // self-ends for non-downloading states).
+            ServiceContainer.shared.liveActivityManager.updateActivity(for: self.tasks[idx])
         }
     }
 
@@ -816,12 +856,23 @@ extension DownloadEngine: URLSessionDownloadDelegate {
             if qm.autoRetryEnabled && self.tasks[idx].retryCount < maxRetries {
                 print("FluxDL: Auto-retrying task \(self.tasks[idx].id) in \(delaySeconds) seconds...")
 
-                // Record the failure before retry
-                let record = RetryRecord(date: Date(), errorMessage: error.localizedDescription, httpStatus: nil)
-                self.tasks[idx].retryHistory.append(record)
+                let taskID = id
+                // Record the failure before retry (single record — the retry
+                // itself appends its own history entry).
+                self.tasks[idx].errorMessage = error.localizedDescription
 
-                try? await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
-                self.retryDownload(id: id)
+                let retryTask = Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    do {
+                        try await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                    } catch {
+                        return // cancelled during the delay — never resurrect
+                    }
+                    guard !Task.isCancelled else { return }
+                    self.autoRetryTaskByID.removeValue(forKey: taskID)
+                    self.retryDownload(id: taskID)
+                }
+                self.autoRetryTaskByID[taskID] = retryTask
                 return
             }
 

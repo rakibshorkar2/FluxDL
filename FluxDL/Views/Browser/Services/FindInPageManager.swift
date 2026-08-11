@@ -23,6 +23,16 @@ public final class FindInPageManager: ObservableObject {
             return
         }
         
+        // Escape the query both as a regex (literal matching) and as a JS
+        // string literal so metacharacters like `\`, `(`, `[` can never
+        // break the RegExp or inject script.
+        let escaped = NSRegularExpression.escapedPattern(for: searchText)
+        let jsLiteral = escaped
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+        
         let js = """
         (function(text) {
             window.findInPageMatches = window.findInPageMatches || [];
@@ -59,7 +69,7 @@ public final class FindInPageManager: ObservableObject {
             }
             highlightNode(body);
             return matches;
-        })("\(searchText.replacingOccurrences(of: "\"", with: "\\\""))");
+        })("\(jsLiteral)");
         """
         
         webView.evaluateJavaScript(js) { [weak self] result, error in

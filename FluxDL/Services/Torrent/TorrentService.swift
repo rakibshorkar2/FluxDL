@@ -225,6 +225,19 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         updateTimer = timer
     }
 
+    /// Tears the 1 Hz refresh timer down. Safe to call multiple times.
+    public func stopSession() {
+        refreshInFlight = false
+        refreshPending = false
+        updateTimer?.invalidate()
+        updateTimer = nil
+    }
+
+    deinit {
+        updateTimer?.invalidate()
+        updateTimer = nil
+    }
+
     /// Builds a `Session.Settings` from the current persisted configuration.
     private func buildSessionSettings() -> Session.Settings {
         let connection = connectionSettings
@@ -398,12 +411,19 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         guard let session = session, let torrent = handle(id) else { return }
         if deleteFiles, let model = torrents.first(where: { $0.id == id }) {
             deletingTorrents.append(model)
+            // Take the model out of the live list synchronously — otherwise
+            // the same id briefly exists in both arrays and the list renders
+            // duplicate-identity rows until the next refresh publishes.
+            torrents.removeAll { $0.id == id }
         }
         session.removeTorrent(torrent, deleteFiles: deleteFiles)
         handlesByHash.removeValue(forKey: id)
         stopSeedingByHash.remove(id)
         stalledSinceByID.removeValue(forKey: id)
         recordStore.removeRecord(for: id)
+        // A re-added torrent with the same info-hash must produce a fresh
+        // completion notification even if its predecessor already fired.
+        notifiedCompletedHashes.remove(id)
         requestRefresh()
     }
 

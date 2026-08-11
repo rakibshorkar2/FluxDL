@@ -117,7 +117,12 @@ public final class BrowserSettings: ObservableObject {
     
     public func isWhitelisted(domain: String) -> Bool {
         let clean = domain.lowercased()
-        return adBlockWhitelist.contains { clean.contains($0.lowercased()) }
+        return adBlockWhitelist.contains { entry in
+            let entry = entry.lowercased()
+            // Exact match or subdomain match only — `google.com` must never
+            // whitelist `google.com.evil.org`.
+            return clean == entry || clean.hasSuffix("." + entry)
+        }
     }
     
     public func toggleWhitelist(domain: String) {

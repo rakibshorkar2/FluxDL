@@ -73,5 +73,9 @@ public final class DownloadRestorationService: DownloadRestorationServiceProtoco
             print("FluxDL Restore: Cancelling orphaned session task \(liveTask.taskIdentifier).")
             liveTask.cancel()
         }
+
+        // Kick the queue: persisted `.pending` tasks must start as soon as
+        // slots free up after relaunch (nothing else will trigger this).
+        ServiceContainer.shared.queueManager.scheduleNextTasks(in: engine)
     }
 }

@@ -317,6 +317,10 @@ public final class ProxyService: ObservableObject, ProxyProviding {
             // Cancelled by disable() — state already reflects .disabled.
             return
         }
+        // A disable(), or a newer enable() replacing `activeEnableTask`,
+        // invalidates this stale continuation: never apply the outcome of a
+        // probe the user already cancelled or superseded.
+        guard activeEnableTask === task, !Task.isCancelled else { return }
         isTesting = false
         applyTestResult(result, to: profile.id)
 
@@ -332,6 +336,7 @@ public final class ProxyService: ObservableObject, ProxyProviding {
     public func disable() {
         bulkTask?.cancel()
         activeEnableTask?.cancel()
+        activeEnableTask = nil
         isEnabled = false
         connectionState = .disabled
         activeConfiguration = nil

@@ -31,7 +31,9 @@ public enum TorrentFilter: String, CaseIterable, Identifiable {
         case .paused:
             return torrent.state == .paused
         case .completed:
-            return torrent.state == .finished
+            // A seeding torrent has finished downloading — it is complete and
+            // must show under "Completed" as well as under "Seeding".
+            return torrent.state == .finished || torrent.state == .seeding
         case .stalled:
             return torrent.isStalled
         case .error:

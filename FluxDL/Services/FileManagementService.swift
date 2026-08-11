@@ -87,8 +87,10 @@ public final class FileManagementService: FileManagementServiceProtocol {
     
     @MainActor
     public func shareFile(url: URL, from viewController: UIViewController? = nil) {
-        guard fileExists(at: url) else { return }
-        let activityVC = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        // Non-local or missing URLs (e.g. sharing a web page) fall back to
+        // sharing the URL itself instead of silently doing nothing.
+        let activityItems: [Any] = fileExists(at: url) ? [url] : [url.absoluteString]
+        let activityVC = UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
         
         if let topController = viewController ?? UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController })

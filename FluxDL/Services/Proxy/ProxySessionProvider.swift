@@ -149,8 +149,10 @@ public final class LocalSOCKS5Adapter {
     /// Returns the loopback endpoint to put in the client configuration.
     public func start(upstream: ProxyConfiguration) -> NWEndpoint.Port? {
         let key = upstream.fingerprint
-        if let listener, upstreamKey == key {
-            return NWEndpoint.Port(rawValue: activePort ?? 0)
+        if let listener, upstreamKey == key,
+           let activePort,
+           let endpoint = NWEndpoint.Port(rawValue: activePort) {
+            return endpoint
         }
         stop()
 
@@ -160,9 +162,15 @@ public final class LocalSOCKS5Adapter {
             port: port
         )
 
+        // Bind to a concrete free port: an ephemeral listener (port 0) only
+        // reports its assigned port asynchronously after `.ready`, which is
+        // useless to the caller (and to a reused adapter) here.
+        guard let localPort = Self.findFreeTCPPort(),
+              let localEndpoint = NWEndpoint.Port(rawValue: localPort) else { return nil }
+
         let listener: NWListener
         do {
-            listener = try NWListener(using: .tcp, on: NWEndpoint.Port(rawValue: 0)!)
+            listener = try NWListener(using: .tcp, on: localEndpoint)
         } catch {
             return nil
         }
@@ -170,12 +178,17 @@ public final class LocalSOCKS5Adapter {
         listener.newConnectionHandler = { [weak self] connection in
             self?.handleInbound(connection, upstreamEndpoint: upstreamEndpoint, userID: upstream.username)
         }
+        listener.stateUpdateHandler = { [weak self] state in
+            if case .failed = state {
+                self?.stop()
+            }
+        }
         listener.start(queue: queue)
 
         self.listener = listener
-        self.activePort = listener.port?.rawValue
+        self.activePort = localPort
         self.upstreamKey = key
-        return listener.port
+        return localEndpoint
     }
 
     public func stop() {
@@ -185,6 +198,37 @@ public final class LocalSOCKS5Adapter {
         upstreamKey = nil
         for tunnel in tunnels.values { tunnel.cancel() }
         tunnels.removeAll()
+    }
+
+    /// Picks a free TCP port on loopback by binding a throwaway socket.
+    /// The socket is released before `NWListener` binds, so the result is
+    /// advisory (tiny TOCTOU window) — the listener's `.failed` handler
+    /// clears the adapter if the bind races.
+    private static func findFreeTCPPort() -> UInt16? {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { return nil }
+        defer { close(fd) }
+
+        var addr = sockaddr_in()
+        addr.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = 0
+        addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+
+        let bound = withUnsafePointer(to: &addr) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                bind(fd, sa, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0
+            }
+        }
+        guard bound else { return nil }
+
+        var boundAddr = addr
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        guard getsockname(fd, withUnsafeMutablePointer(to: &boundAddr) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { $0 }
+        }, &length) == 0 else { return nil }
+
+        return UInt16(bigEndian: boundAddr.sin_port)
     }
 
     // MARK: - Inbound

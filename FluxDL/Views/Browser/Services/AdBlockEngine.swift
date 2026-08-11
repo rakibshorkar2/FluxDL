@@ -199,10 +199,6 @@ public final class AdBlockEngine {
             {
                 "trigger": { "url-filter": ".*(adserver|adtracker|analytics-engine|crypto-miner|malicious-redirect|pubmatic|criteo|rubicon|casalemedia|moatads|adcolony|unityads|chartbeat|scorecardresearch).*" },
                 "action": { "type": "block" }
-            },
-            {
-                "trigger": { "url-filter": ".*", "if-domain": ["*ad.*", "*ads.*", "*advert.*", "*advertising.*"] },
-                "action": { "type": "block" }
             }
         ]
         """

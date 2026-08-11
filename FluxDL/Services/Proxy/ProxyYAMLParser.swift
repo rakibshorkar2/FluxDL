@@ -201,6 +201,10 @@ public enum ProxyYAMLParser {
         let portValue = dict["port"]?.asInt
         let username = nonEmpty(dict["username"]?.asString)
         let password = nonEmpty(dict["password"]?.asString)
+        // Metadata keys used by common proxy-list formats; folded into the
+        // generated name so imported entries keep their provenance.
+        let country = nonEmpty(dict["country"]?.asString) ?? nonEmpty(dict["region"]?.asString)
+        let note = nonEmpty(dict["note"]?.asString) ?? nonEmpty(dict["remarks"]?.asString)
 
         // ── Type mapping (socks5h / socks4a alias onto the base protocols) ──
         let type: ProxyType
@@ -248,7 +252,12 @@ public enum ProxyYAMLParser {
             authenticationEnabled = false
         }
 
-        let finalName = name ?? "\(ProxyConfigurationValidator.bracketedHost(server)):\(portValue)"
+        let finalName = name ?? {
+            var composed = "\(ProxyConfigurationValidator.bracketedHost(server)):\(portValue)"
+            if let country { composed += " \u{00B7} \(country)" }
+            if let note { composed += " (\(note))" }
+            return composed
+        }()
         return (
             ProxyConfiguration(
                 name: finalName,

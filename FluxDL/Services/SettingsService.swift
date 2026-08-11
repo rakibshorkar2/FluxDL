@@ -30,15 +30,23 @@ public final class SettingsService: SettingsServiceProtocol {
     public let privacyURL: URL? = URL(string: "https://github.com/rakibshorkar2/FluxDL/blob/main/PRIVACY.md")
     public let termsURL: URL? = URL(string: "https://github.com/rakibshorkar2/FluxDL/blob/main/TERMS.md")
     
-    private let themeKey = "fluxdl_app_theme_mode"
-    
+    private let themeKey = "fluxdl_theme_preference"
+    /// Legacy key written by older builds — read as a fallback only.
+    private let legacyThemeKey = "fluxdl_app_theme_mode"
+
     public var themeMode: AppThemeMode {
         get {
-            guard let rawValue = UserDefaults.standard.string(forKey: themeKey),
-                  let mode = AppThemeMode(rawValue: rawValue) else {
-                return .system
+            if let rawValue = UserDefaults.standard.string(forKey: themeKey),
+               let mode = AppThemeMode(rawValue: rawValue) {
+                return mode
             }
-            return mode
+            // Migrate the old key so previously chosen themes survive.
+            if let rawValue = UserDefaults.standard.string(forKey: legacyThemeKey),
+               let mode = AppThemeMode(rawValue: rawValue) {
+                UserDefaults.standard.set(rawValue, forKey: themeKey)
+                return mode
+            }
+            return .system
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: themeKey)
