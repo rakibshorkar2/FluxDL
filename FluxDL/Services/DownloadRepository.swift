@@ -3,17 +3,21 @@ import Foundation
 public protocol DownloadRepositoryProtocol: AnyObject {
     func loadTasks() -> [DownloadTaskModel]
     func saveTasks(_ tasks: [DownloadTaskModel])
+    func loadHistory() -> [DownloadHistoryEntry]
+    func saveHistory(_ entries: [DownloadHistoryEntry])
 }
 
 public final class DownloadRepository: DownloadRepositoryProtocol {
     private let fileManager = FileManager.default
     private let metadataDirectoryURL: URL
     private let tasksFileURL: URL
+    private let historyFileURL: URL
     
     public init() {
         let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first ?? fileManager.temporaryDirectory
         self.metadataDirectoryURL = documents.appendingPathComponent("FluxDL_Metadata", isDirectory: true)
         self.tasksFileURL = metadataDirectoryURL.appendingPathComponent("downloads.json")
+        self.historyFileURL = metadataDirectoryURL.appendingPathComponent("downloadHistory.json")
         ensureDirectoryExists()
     }
     
@@ -39,6 +43,25 @@ public final class DownloadRepository: DownloadRepositoryProtocol {
             try data.write(to: tasksFileURL, options: .atomic)
         } catch {
             print("Failed to save download tasks metadata: \(error)")
+        }
+    }
+    
+    public func loadHistory() -> [DownloadHistoryEntry] {
+        guard fileManager.fileExists(atPath: historyFileURL.path),
+              let data = try? Data(contentsOf: historyFileURL),
+              let entries = try? JSONDecoder().decode([DownloadHistoryEntry].self, from: data) else {
+            return []
+        }
+        return entries
+    }
+    
+    public func saveHistory(_ entries: [DownloadHistoryEntry]) {
+        ensureDirectoryExists()
+        do {
+            let data = try JSONEncoder().encode(entries)
+            try data.write(to: historyFileURL, options: .atomic)
+        } catch {
+            print("Failed to save download history metadata: \(error)")
         }
     }
 }

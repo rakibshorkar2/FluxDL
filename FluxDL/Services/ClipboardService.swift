@@ -6,6 +6,9 @@ public protocol ClipboardServiceProtocol: AnyObject {
     var detectedURLPublisher: AnyPublisher<URL?, Never> { get }
     func checkClipboardOnAppActive()
     func dismissDetectedURL()
+    /// Marks a URL as already handled so the next foreground check ignores it.
+    /// Used after copying a link from Download History to prevent feedback loops.
+    func markPasteboardAsChecked(_ string: String)
 }
 
 public final class ClipboardService: ObservableObject, ClipboardServiceProtocol {
@@ -31,28 +34,40 @@ public final class ClipboardService: ObservableObject, ClipboardServiceProtocol 
     /// Event-driven clipboard check on app foreground — no battery-draining timer loop.
     public func checkClipboardOnAppActive() {
         guard UIPasteboard.general.hasURLs || UIPasteboard.general.hasStrings else { return }
-        
-        var targetURL: URL? = UIPasteboard.general.url
-        if targetURL == nil, let string = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines) {
-            if string != lastCheckedString, (string.hasPrefix("http://") || string.hasPrefix("https://")), let url = URL(string: string) {
-                targetURL = url
-                lastCheckedString = string
+
+        // Normalise both URL and string pasteboard flavours to one candidate.
+        let candidate: String = {
+            if let url = UIPasteboard.general.url {
+                return url.absoluteString
             }
-        }
-        
-        guard let url = targetURL else { return }
+            return UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        }()
+
+        // Feedback-loop guard: never re-detect a link the user already acted
+        // on (dismissed the banner or copied it from Download History).
+        guard !candidate.isEmpty, candidate != lastCheckedString else { return }
+        guard candidate.hasPrefix("http://") || candidate.hasPrefix("https://"),
+              let url = URL(string: candidate) else { return }
+
         let ext = url.pathExtension.lowercased()
-        
+
         // Smart recognition by supported extension or direct media download link
         if supportedExtensions.contains(ext) || isLikelyDirectDownloadURL(url) {
+            lastCheckedString = candidate
             Task { @MainActor in
                 self.detectedURL = url
             }
         }
     }
-    
+
     public func dismissDetectedURL() {
         detectedURL = nil
+    }
+
+    /// Prevents the clipboard-detection banner from re-appearing for a URL
+    /// that was just copied from Download History (avoids feedback loops).
+    public func markPasteboardAsChecked(_ string: String) {
+        lastCheckedString = string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func isLikelyDirectDownloadURL(_ url: URL) -> Bool {

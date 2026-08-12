@@ -15,21 +15,51 @@ public final class BrowserTabManager: ObservableObject {
     // Shared WKProcessPool for memory efficiency & session sharing
     public let sharedProcessPool = WKProcessPool()
     public let hapticService: HapticServiceProtocol = ServiceContainer.shared.hapticService
-    
+
     private var cancellables = Set<AnyCancellable>()
-    
+    private var liveActivityTimer: AnyCancellable?
+
     private init() {
         // ── Browser Live Activity ──────────────────────────────────────────
-        // Reflects the active tab in the Dynamic Island / Lock Screen while
-        // backgrounded. The timer polls because the tab model is value
-        // semantic — page load progress has no Combine signal. update*()
-        // self-ends when the app is foregrounded or the toggle is off.
+        // Reflects the ACTIVE tab in the Dynamic Island / Lock Screen while
+        // backgrounded. Driven by real events, not an always-on timer:
+        //   • tab switch → immediate push
+        //   • didEnterBackground → push + start a 2s refresher timer
+        //   • didBecomeActive → end the activity + stop the timer
+        //   • setting toggled off (or foreground) → activity ends immediately
+        // update*() self-ends whenever the app is foregrounded or the toggle
+        // is off, and there is never more than one browser activity.
         $activeTabId
+            .dropFirst()
             .sink { [weak self] _ in self?.pushBrowserLiveActivity() }
             .store(in: &cancellables)
-        Timer.publish(every: 2.0, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in self?.pushBrowserLiveActivity() }
+
+        // ── App lifecycle ───────────────────────────────────────────────────
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.handleDidEnterBackground() }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.handleDidBecomeActive() }
+            .store(in: &cancellables)
+
+        // Settings toggles are plain UserDefaults keys; react to any change
+        // so keep-alive / Live Activity follow the toggle without restart.
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.handleUserDefaultsChange() }
+            .store(in: &cancellables)
+
+        // ── Background keep-alive ───────────────────────────────────────────
+        // Only tab-list presence matters (the service applies the user's
+        // toggle itself); deduplicated so per-progress-tick tab mutations
+        // never spam the keep-alive service.
+        $tabs
+            .map { !$0.isEmpty }
+            .removeDuplicates()
+            .sink { [weak self] _ in self?.refreshBackgroundKeepAlive() }
             .store(in: &cancellables)
 
         // Restore previous session when enabled and available.
@@ -45,7 +75,7 @@ public final class BrowserTabManager: ObservableObject {
             }
             return
         }
-        
+
         let initialTab = BrowserTabModel(title: "Google", url: URL(string: "https://google.com"))
         self.tabs = [initialTab]
         self.activeTabId = initialTab.id
@@ -235,5 +265,67 @@ public final class BrowserTabManager: ObservableObject {
             isPrivate: tab.isPrivate,
             status: tab.isLoading ? "Loading" : "Idle"
         ))
+    }
+
+    // MARK: - Background keep-alive & Live Activity lifecycle
+
+    private var isBrowserLiveActivityEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "fluxdl_live_activity_browser")
+    }
+
+    func handleDidEnterBackground() {
+        refreshBackgroundKeepAlive()
+        if isBrowserLiveActivityEnabled {
+            pushBrowserLiveActivity()
+            startLiveActivityTimer()
+        } else {
+            stopLiveActivityTimer()
+            ServiceContainer.shared.liveActivityManager.endBrowserActivity()
+        }
+    }
+
+    func handleDidBecomeActive() {
+        stopLiveActivityTimer()
+        ServiceContainer.shared.liveActivityManager.endBrowserActivity()
+        refreshBackgroundKeepAlive()
+    }
+
+    func handleUserDefaultsChange() {
+        refreshBackgroundKeepAlive()
+        guard UIApplication.shared.applicationState == .background else {
+            stopLiveActivityTimer()
+            ServiceContainer.shared.liveActivityManager.endBrowserActivity()
+            return
+        }
+        if isBrowserLiveActivityEnabled {
+            pushBrowserLiveActivity()
+            startLiveActivityTimer()
+        } else {
+            stopLiveActivityTimer()
+            ServiceContainer.shared.liveActivityManager.endBrowserActivity()
+        }
+    }
+
+    /// The browser claims its own keep-alive slot (tabs present); the
+    /// downloads engine and torrent service own the other slots. The service
+    /// keeps slots independent, so the browser can never cancel a download or
+    /// torrent keep-alive and vice versa.
+    func refreshBackgroundKeepAlive() {
+        ServiceContainer.shared.backgroundKeepAliveService
+            .updateBrowserKeepAlive(!tabs.isEmpty)
+    }
+
+    /// 2s refresher — created ONLY while backgrounded with the toggle on,
+    /// cancelled on foregrounding or when the toggle turns off.
+    private func startLiveActivityTimer() {
+        guard liveActivityTimer == nil else { return }
+        liveActivityTimer = Timer.publish(every: 2.0, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.pushBrowserLiveActivity() }
+    }
+
+    private func stopLiveActivityTimer() {
+        liveActivityTimer?.cancel()
+        liveActivityTimer = nil
     }
 }

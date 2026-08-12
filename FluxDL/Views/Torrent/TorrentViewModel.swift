@@ -163,7 +163,7 @@ public final class TorrentViewModel: ObservableObject {
         static let sortDirection = "Torrent.SortDirection"
     }
 
-    public init(service: TorrentService = TorrentService()) {
+    public init(service: TorrentService = TorrentService.shared) {
         self.service = service
         let defaults = UserDefaults.standard
         self.sortOrder = TorrentSortOrder(rawValue: defaults.string(forKey: PreferencesKey.sortOrder) ?? "") ?? .name

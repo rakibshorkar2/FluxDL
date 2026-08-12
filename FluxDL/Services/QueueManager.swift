@@ -44,6 +44,8 @@ public final class QueueManager: ObservableObject, QueueManagerProtocol {
         didSet { UserDefaults.standard.set(duplicateDetectionEnabled, forKey: duplicateKey) }
     }
     
+    private var cancellables = Set<AnyCancellable>()
+    
     public init() {
         let storedMax = UserDefaults.standard.integer(forKey: maxConcurrentKey)
         self.maxConcurrentDownloads = storedMax > 0 ? storedMax : 3
@@ -57,7 +59,36 @@ public final class QueueManager: ObservableObject, QueueManagerProtocol {
         
         self.autoRetryEnabled = UserDefaults.standard.object(forKey: autoRetryKey) != nil ? UserDefaults.standard.bool(forKey: autoRetryKey) : true
         self.duplicateDetectionEnabled = UserDefaults.standard.object(forKey: duplicateKey) != nil ? UserDefaults.standard.bool(forKey: duplicateKey) : true
+
+        // Settings toggles are plain UserDefaults keys; react to any change so
+        // the concurrency/retry values follow the Settings tab without restart.
+        // (Same pattern as BrowserTabManager.handleUserDefaultsChange.)
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.handleUserDefaultsChange() }
+            .store(in: &cancellables)
     }
+    
+    /// Re-syncs values written directly to UserDefaults (e.g. by the Settings
+    /// tab's @AppStorage toggles) into the live in-memory properties the
+    /// engine actually reads. Equality guards prevent feedback loops, since
+    /// each property's didSet writes the same key back.
+    func handleUserDefaultsChange() {
+        let storedMax = UserDefaults.standard.integer(forKey: maxConcurrentKey)
+        let syncedMax = storedMax > 0 ? storedMax : 3
+        if syncedMax != maxConcurrentDownloads {
+            maxConcurrentDownloads = syncedMax
+            // A raised cap should start waiting tasks immediately.
+            scheduleNextTasks(in: ServiceContainer.shared.downloadEngine)
+        }
+
+        let storedRetry = UserDefaults.standard.object(forKey: autoRetryKey) != nil
+            ? UserDefaults.standard.bool(forKey: autoRetryKey) : true
+        if storedRetry != autoRetryEnabled {
+            autoRetryEnabled = storedRetry
+        }
+    }
+
     
     public func scheduleNextTasks(in engine: DownloadEngineProtocol) {
         guard let downloadEngine = engine as? DownloadEngine else { return }

@@ -292,7 +292,7 @@ public struct TorrentView: View {
     private var emptyState: some View {
         GlassCard(padding: 24) {
             VStack(spacing: 14) {
-                Image(systemName: "network")
+                Image(systemName: "magnet")
                     .font(.system(size: 44))
                     .foregroundStyle(.secondary)
 

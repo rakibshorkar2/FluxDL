@@ -71,8 +71,16 @@ public final class BrowserProxySession: ObservableObject {
     /// A URLSessionConfiguration with the active proxy applied through the
     /// native `Network.ProxyConfiguration` path. Favicon fetches and other
     /// browser-side URLSession traffic share this path with downloads.
-    public func sessionConfiguration() -> URLSessionConfiguration {
-        sessionProvider.sessionConfiguration(for: activeConfiguration)
+    ///
+    /// Returns nil when the browser route is requested but the proxy could
+    /// NOT be applied (e.g. the local adapter failed to bind): callers must
+    /// fail closed — a nil return is a blocked request, never a direct one.
+    public func sessionConfiguration() -> URLSessionConfiguration? {
+        let configuration = sessionProvider.sessionConfiguration(for: activeConfiguration)
+        if activeConfiguration != nil, sessionProvider.lastApplyFailure != nil {
+            return nil
+        }
+        return configuration
     }
 
     /// Always true for loopback: the local SOCKS4 adapter lives on

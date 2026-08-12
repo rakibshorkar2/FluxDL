@@ -63,6 +63,11 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     public weak var proxyProvider: ProxyProviding?
     private let proxySessionProvider = ProxySessionProvider()
     private var proxiedSession: URLSession?
+    /// Fingerprint of the configuration `proxiedSession` was built with.
+    /// When the active proxy configuration changes (profile switch/update),
+    /// the mismatch invalidates the session so tasks cannot keep routing
+    /// through a stale endpoint.
+    private var proxiedSessionFingerprint: String?
     /// Fired after the effective routing state changes.
     public var onRoutingStateChange: (() -> Void)?
 
@@ -104,6 +109,8 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     // Serial queue that URLSession uses for its delegate callbacks
     private let delegateQueue = OperationQueue()
 
+    private var cancellables = Set<AnyCancellable>()
+
     // MARK: init
 
     public init(
@@ -133,39 +140,83 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
         self.session = URLSession(configuration: config, delegate: self, delegateQueue: delegateQueue)
         self.tasks   = repository.loadTasks()
+
+        // The Settings tab writes `fluxdl_screen_awake_minutes` straight to
+        // UserDefaults; re-apply Keep Screen Awake immediately when it changes
+        // instead of waiting for the next task-status change. Same pattern as
+        // BrowserTabManager.handleUserDefaultsChange.
+        NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateScreenAwakeState() }
+            .store(in: &cancellables)
     }
 
     // MARK: ── Public API (all @MainActor) ───────────────────────────────────
+
+    /// True when the user explicitly requested the downloads proxy route.
+    private var downloadsRouteRequested: Bool {
+        proxyProvider?.isEnabled == true && proxyProvider?.downloadsProxyEnabled == true
+    }
+
+    /// The proxied route is only usable once the service reports CONNECTED,
+    /// an active configuration exists, AND the session provider confirmed it
+    /// can apply the proxy (adapter bind failure must never silently produce
+    /// a direct session). Any other combination — starting, failed, missing
+    /// config — must fail closed: never direct.
+    private var isProxiedRouteUsable: Bool {
+        guard downloadsRouteRequested else { return false }
+        return proxyProvider?.connectionState == .connected
+            && proxyProvider?.activeConfiguration != nil
+            && proxySessionProvider.lastApplyFailure == nil
+    }
 
     /// Session used for NEW download tasks. While the downloads proxy route
     /// is active, tasks are created on a foreground proxied session through
     /// `ProxySessionProvider` (SOCKS4 inbound traffic is bridged by the local
     /// adapter). Otherwise the background session is used as before.
-    private func activeSession() -> URLSession {
-        if let proxyProvider,
-           proxyProvider.isEnabled,
-           proxyProvider.downloadsProxyEnabled,
-           let configuration = proxyProvider.activeConfiguration {
-            if proxiedSession == nil {
+    ///
+    /// Returns nil when the proxy route is requested but not usable: callers
+    /// MUST fail closed (never fall back to direct networking).
+    private func activeSession() -> URLSession? {
+        if downloadsRouteRequested {
+            guard proxyProvider?.connectionState == .connected,
+                  let configuration = proxyProvider?.activeConfiguration else { return nil }
+
+            let fingerprint = configuration.fingerprint
+            if proxiedSession == nil || proxiedSessionFingerprint != fingerprint {
+                proxiedSession?.finishTasksAndInvalidate()
+                proxiedSession = nil
+                proxiedSessionFingerprint = nil
                 let config = proxySessionProvider.sessionConfiguration(for: configuration)
+                // Confirmed no adapter/native failure: an empty proxy list here
+                // would be a silent direct downgrade.
+                guard proxySessionProvider.lastApplyFailure == nil else { return nil }
                 config.waitsForConnectivity = true
                 config.timeoutIntervalForResource = 0
                 config.httpMaximumConnectionsPerHost = 4
                 proxiedSession = URLSession(configuration: config, delegate: self, delegateQueue: delegateQueue)
+                proxiedSessionFingerprint = fingerprint
             }
-            return proxiedSession ?? session
+            return proxiedSession
         }
         return session
     }
 
     /// Re-evaluates routing after the proxy state changes. In-flight proxied
     /// tasks are allowed to finish; the proxied session is dropped so new
-    /// tasks go direct. Consumers (browser) are notified through
-    /// `onRoutingStateChange`.
+    /// tasks never keep using a stale endpoint (profile switch/update) and
+    /// never go direct while the route is unavailable. Consumers (browser)
+    /// are notified through `onRoutingStateChange`.
     public func refreshProxyRouting() {
-        if proxyProvider?.isEnabled != true || proxyProvider?.downloadsProxyEnabled != true {
+        let configuration = proxyProvider?.activeConfiguration
+        let isUsable = proxyProvider?.connectionState == .connected
+            && (proxyProvider?.isEnabled == true)
+            && (proxyProvider?.downloadsProxyEnabled == true)
+            && configuration != nil
+        if !isUsable || proxiedSessionFingerprint != configuration?.fingerprint {
             proxiedSession?.finishTasksAndInvalidate()
             proxiedSession = nil
+            proxiedSessionFingerprint = nil
         }
         onRoutingStateChange?()
     }
@@ -180,6 +231,12 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
     @discardableResult
     public func startDownload(url: URL, filename: String? = nil) -> UUID {
+        // Fail-closed proxy routing: when the downloads route is requested
+        // but the proxy is not usable (starting, failed, adapter broken),
+        // the download FAILS with a proxy error instead of silently starting
+        // over a direct connection.
+        let proxyBlocked = downloadsRouteRequested && !isProxiedRouteUsable
+
         // Honor the concurrency settings: at capacity a new task starts as
         // `.pending` and is picked up by `QueueManager.scheduleNextTasks`
         // as soon as an active slot frees up.
@@ -188,17 +245,37 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         let allowed = queueManager.queueMode == .sequential ? 1 : queueManager.maxConcurrentDownloads
         let canStartNow = activeCount < allowed
 
-        var model = DownloadTaskModel(url: url, filename: filename, status: canStartNow ? .downloading : .pending)
+        var model = DownloadTaskModel(
+            url: url,
+            filename: filename,
+            status: proxyBlocked ? .failed : (canStartNow ? .downloading : .pending)
+        )
         model.startedAt = Date()
         model.queuePosition = tasks.count
+        if proxyBlocked {
+            model.errorMessage = "Proxy route is not ready (connecting or failed). Downloads require the proxy — no direct fallback."
+        }
         tasks.insert(model, at: 0)
+
+        guard !proxyBlocked else {
+            repository.saveTasks(tasks)
+            return model.id
+        }
 
         guard canStartNow else {
             repository.saveTasks(tasks)
             return model.id
         }
 
-        let usedSession = activeSession()
+        guard let usedSession = activeSession() else {
+            // Defensive: the route became unusable between the check above
+            // and the session build (both run on the MainActor, but the
+            // adapter can fail inside the build). Fail closed, never crash.
+            tasks[0].status = .failed
+            tasks[0].errorMessage = "Proxy route is not ready (connecting or failed). Downloads require the proxy — no direct fallback."
+            repository.saveTasks(tasks)
+            return model.id
+        }
         let dlTask = usedSession.downloadTask(with: url)
         urlTaskByID[model.id] = dlTask
 
@@ -275,11 +352,18 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
         let model = tasks[index]
 
+        // Fail-closed: a download whose route is requested must never resume
+        // over a direct connection. It stays paused/pending and starts as
+        // soon as the proxy route becomes usable again (routing state change
+        // triggers `scheduleNextTasks`).
+        if downloadsRouteRequested && !isProxiedRouteUsable { return }
+
+        guard let usedSession = activeSession() else { return }
+
         tasks[index].status       = .downloading
         tasks[index].errorMessage = nil
         if tasks[index].startedAt == nil { tasks[index].startedAt = Date() }
 
-        let usedSession = activeSession()
         let dlTask: URLSessionDownloadTask
         if let data = model.resumeData {
             dlTask = usedSession.downloadTask(withResumeData: data)
@@ -335,6 +419,14 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
     public func retryDownload(id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+
+        // Fail-closed: automatic and manual retries must never go direct
+        // while the proxy route is requested but unusable — including the
+        // auto-retry path fired right after a proxy-caused failure.
+        if downloadsRouteRequested && !isProxiedRouteUsable { return }
+
+        guard let usedSession = activeSession() else { return }
+
         let oldTask = tasks[index]
 
         // Record this retry attempt in history
@@ -359,7 +451,6 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         tasks[index].retryHistory.append(record)
         if tasks[index].startedAt == nil { tasks[index].startedAt = Date() }
 
-        let usedSession = activeSession()
         let dlTask = usedSession.downloadTask(with: tasks[index].activeURL)
         urlTaskByID[id] = dlTask
         tasks[index].sessionTaskIdentifier = dlTask.taskIdentifier
@@ -562,12 +653,13 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     }
 
     /// Tell BackgroundKeepAliveService whether any task is actively downloading.
+    /// Only the downloads slot belongs here — the service keeps the browser and
+    /// torrents slots untouched, so a download tick can never cancel another
+    /// subsystem's background keep-alive.
     private func notifyKeepAlive() {
         let hasActiveDownloads = tasks.contains { $0.status == .downloading }
-        let browserKeepAlive  = UserDefaults.standard.bool(forKey: "fluxdl_bg_keepalive_browser")
         ServiceContainer.shared.backgroundKeepAliveService
-            .updateKeepAliveState(hasActiveDownloads: hasActiveDownloads,
-                                  isBrowserActive: browserKeepAlive)
+            .updateDownloadsKeepAlive(hasActiveDownloads)
     }
 
     /// Push a throttled UI snapshot from delegate queue → MainActor.

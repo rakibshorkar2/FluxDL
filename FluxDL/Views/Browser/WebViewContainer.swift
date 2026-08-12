@@ -2,6 +2,24 @@ import SwiftUI
 import WebKit
 import Combine
 
+// MARK: - Networking reality (WKWebView + proxy)
+//
+// WKWebView does NOT route page-load traffic through URLSession proxy
+// configuration. There is no legitimate, non-VPN API to tunnel the
+// WKWebView's own networking. Page loads therefore always use the device's
+// normal network path.
+//
+// What the browser proxy DOES cover (via `BrowserProxySession` and
+// `ProxySessionProvider` — the same authoritative path the download engine
+// uses) is the app-level URLSession traffic the browser layer creates:
+// favicon fetching (`BrowserFaviconView`) and share/PDF plumbing. That
+// traffic uses `sessionConfiguration()` which is proxied (strict no-failover)
+// when Proxy Service is enabled AND browser routing is on, and is a plain
+// ephemeral configuration (direct connection) otherwise.
+//
+// No VPN and no system-wide proxy are installed, and no other app or
+// subsystem (including Torrent) is affected.
+
 /// Passive JS bridge that reports the DOM element behind a tapped download
 /// link. WebKit's navigation callbacks never expose the element's CGRect, so
 /// the click listener captures href / download-attribute / bounding rect and
@@ -119,6 +137,10 @@ public struct WebViewContainer: UIViewRepresentable {
         if let existingWebView = activeTab?.webView {
             existingWebView.navigationDelegate = context.coordinator
             existingWebView.uiDelegate = context.coordinator
+            // Critical: the previous tab's coordinator nils the scroll delegate
+            // when detaching; the reused web view must be re-assigned or the
+            // page will never report scroll state (download-prompt anchoring).
+            existingWebView.scrollView.delegate = context.coordinator
             context.coordinator.attachObservers(to: existingWebView)
             return existingWebView
         }
@@ -236,8 +258,6 @@ public struct WebViewContainer: UIViewRepresentable {
     public class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, UIScrollViewDelegate {
         var viewModel: BrowserViewModel
         weak var observedWebView: WKWebView?
-        private var lastScrollOffsetY: CGFloat = 0
-        private var isDragging = false
         private var cancellables = Set<AnyCancellable>()
         
         /// File extensions that trigger the "Download File?" popup.
@@ -353,17 +373,15 @@ public struct WebViewContainer: UIViewRepresentable {
             }
         }
         
-        // MARK: - Toolbar scroll collapse (UIScrollViewDelegate)
-        
+        // MARK: - Page scrolling
+
         public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-            isDragging = true
-            lastScrollOffsetY = scrollView.contentOffset.y
             // Dismiss the keyboard + suggestions when the user scrolls the page.
             if viewModel.isAddressFieldFocused {
                 viewModel.dismissKeyboard()
             }
         }
-        
+
         public func scrollViewDidScroll(_ scrollView: UIScrollView) {
             // Keep the "Download File?" popup attached to its triggering element
             // while the page scrolls beneath it.
@@ -376,28 +394,6 @@ public struct WebViewContainer: UIViewRepresentable {
                 )
                 self.viewModel.downloadAnchorPoint = webView.convert(viewPoint, to: nil)
             }
-            
-            guard isDragging, !viewModel.isAddressFieldFocused else { return }
-            let y = scrollView.contentOffset.y
-            let isScrollingDown = y > lastScrollOffsetY
-            lastScrollOffsetY = y
-            
-            // Collapse the top chrome when scrolling down past a threshold;
-            // expand again when nearing the top of the page.
-            let collapsed = viewModel.isChromeCollapsed
-            if isScrollingDown && y > 64 && !collapsed {
-                viewModel.isChromeCollapsed = true
-            } else if !isScrollingDown && y < 24 && collapsed {
-                viewModel.isChromeCollapsed = false
-            }
-        }
-        
-        public func scrollViewWillEndDragging(
-            _ scrollView: UIScrollView,
-            withVelocity velocity: CGPoint,
-            targetContentOffset: UnsafeMutablePointer<CGPoint>
-        ) {
-            isDragging = false
         }
         
         // MARK: - WKNavigationDelegate

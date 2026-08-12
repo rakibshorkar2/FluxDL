@@ -357,6 +357,47 @@ private struct BrowserSettingsCard: View {
     }
 }
 
+// MARK: - Torrent Tab Settings Card
+private struct TorrentSettingsCard: View {
+    @AppStorage("fluxdl_bg_keepalive_torrents") private var bgKeepAliveTorrents: Bool = true
+    @AppStorage("fluxdl_live_activity_torrents") private var liveActivityTorrents: Bool = true
+
+    var body: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Image(systemName: "magnet")
+                        .foregroundStyle(Color.red)
+                    Text("Torrent Controls")
+                        .font(.headline)
+                }
+
+                Toggle(isOn: $bgKeepAliveTorrents) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Torrent Background Keep-Alive")
+                        Text("Keep torrent downloading active in background")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .tint(Color.red)
+
+                Divider()
+
+                Toggle(isOn: $liveActivityTorrents) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Torrent Live Activity")
+                        Text("Display torrent progress in Dynamic Island")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .tint(Color.red)
+            }
+        }
+    }
+}
+
 // MARK: - Power & Battery Card
 private struct PowerNetworkCard: View {
     @AppStorage("fluxdl_wifi_only") private var isWiFiOnly: Bool = false
@@ -562,10 +603,13 @@ public struct SettingsView: View {
                     // 3. Browser Controls
                     BrowserSettingsCard()
 
-                    // 4. Power & Network
+                    // 4. Torrent Controls
+                    TorrentSettingsCard()
+
+                    // 5. Power & Network
                     PowerNetworkCard()
 
-                    // 5. About (bottom)
+                    // 6. About (bottom)
                     AboutCard(viewModel: viewModel, openURL: openURL)
                 }
                 .padding(.horizontal, 16)

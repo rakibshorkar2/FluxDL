@@ -165,10 +165,15 @@ public struct TorrentSettingsSheet: View {
         }
     }
 
-    // MARK: - Notifications
+    // MARK: - Notifications & Background
+
+    @AppStorage("fluxdl_bg_keepalive_torrents") private var torrentsKeepAlive: Bool = true
+    @AppStorage("fluxdl_live_activity_torrents") private var torrentsLiveActivity: Bool = true
 
     private var notificationsSection: some View {
-        Section(header: Text("Notifications"), footer: Text("Sends a notification when a torrent finishes downloading.")) {
+        Section(header: Text("Background & Notifications"), footer: Text("Controls background keep-alive, Dynamic Island / Live Activity, and completion notifications for torrent downloads.")) {
+            Toggle("Torrent Background Keep-Alive", isOn: $torrentsKeepAlive)
+            Toggle("Torrent Live Activity & Dynamic Island", isOn: $torrentsLiveActivity)
             Toggle("Download Complete Notifications", isOn: Binding(
                 get: { service.notificationsEnabled },
                 set: { viewModel.setNotificationsEnabled($0) }

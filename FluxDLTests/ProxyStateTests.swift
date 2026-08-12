@@ -96,10 +96,13 @@ final class ProxyStateTests: XCTestCase {
 
         await service.enable()
 
-        XCTAssertFalse(service.isEnabled)
+        // Failed ≠ Disabled: the user's requested intent survives the failed
+        // probe so consumers fail closed instead of falling back to direct.
+        XCTAssertTrue(service.isEnabled)
         XCTAssertEqual(service.connectionState, .failed)
         XCTAssertNotNil(service.lastTestResult?.failure)
         XCTAssertNil(service.lastTestResult?.latencyMs)
+        XCTAssertNil(service.activeConfiguration, "A failed proxy must not publish a route.")
     }
 
     func testEnableAfterDisableReconnects() async throws {
@@ -147,6 +150,53 @@ final class ProxyStateTests: XCTestCase {
         XCTAssertNil(service.activeConfiguration)
     }
 
+    // MARK: - Profile switch while enabled
+
+    func testSwitchingProfileWhileEnabledValidatesBeforeSwapping() async throws {
+        let server = try MockSOCKSServer(behavior: .accept)
+        defer { server.stop() }
+
+        let service = makeService()
+        let first = service.addProfile(mockProfile(port: Int(server.port)))
+        let second = service.addProfile(mockProfile(port: Int(server.port)))
+        service.selectProfile(id: first.id)
+        await service.enable()
+        XCTAssertEqual(service.connectionState, .connected)
+        XCTAssertEqual(service.activeConfiguration?.fingerprint, first.configuration.fingerprint)
+
+        // Switching must NOT optimistically publish the new configuration:
+        // the previous route keeps routing until the probe confirms the new
+        // profile.
+        service.selectProfile(id: second.id)
+        XCTAssertEqual(service.activeConfiguration?.fingerprint, first.configuration.fingerprint,
+                       "The old route must stay active while the new profile is validated.")
+
+        await waitUntil { service.activeConfiguration?.fingerprint == second.configuration.fingerprint }
+        XCTAssertEqual(service.connectionState, .connected)
+        XCTAssertTrue(service.isEnabled)
+    }
+
+    func testSwitchingProfileToUnreachableProxyFailsClosed() async throws {
+        let server = try MockSOCKSServer(behavior: .accept)
+        defer { server.stop() }
+        let reserver = try ClosedPortReserver()
+
+        let service = makeService()
+        let good = service.addProfile(mockProfile(port: Int(server.port)))
+        let dead = service.addProfile(mockProfile(port: Int(reserver.port)))
+        service.selectProfile(id: good.id)
+        await service.enable()
+        XCTAssertEqual(service.connectionState, .connected)
+
+        // A switch to a dead proxy must publish .failed and clear the route
+        // so consumers fail closed — never silently use the new config
+        // direct.
+        service.selectProfile(id: dead.id)
+        await waitUntil { service.connectionState == .failed }
+        XCTAssertNil(service.activeConfiguration, "A failed switch must not publish any route.")
+        XCTAssertTrue(service.isEnabled, "Requested intent survives a failed switch.")
+    }
+
     // MARK: - Live updates
 
     func testUpdatingActiveProfileWhileEnabledReVerifies() async throws {
@@ -164,7 +214,11 @@ final class ProxyStateTests: XCTestCase {
         updated.port = Int(server.port)
         service.updateProfile(ProxyProfile(configuration: updated))
 
-        XCTAssertEqual(service.activeConfiguration?.name, "Renamed")
+        // The new configuration takes effect only after the live
+        // re-validation probe confirms it (the previous route keeps working
+        // in the meantime).
+        await waitUntil { service.activeConfiguration?.name == "Renamed" }
+        XCTAssertEqual(service.connectionState, .connected)
         XCTAssertTrue(service.isEnabled, "Updating a live profile must keep the proxy enabled.")
     }
 
@@ -233,9 +287,10 @@ final class ProxyStateTests: XCTestCase {
 
         await service.enable()
 
-        XCTAssertFalse(service.isEnabled)
+        XCTAssertTrue(service.isEnabled, "Failed intent is not disabled intent.")
         XCTAssertEqual(service.connectionState, .failed)
         XCTAssertEqual(service.lastTestResult?.failure?.userMessage, ProxyTestFailure.authenticationFailed.userMessage)
+        XCTAssertNil(service.activeConfiguration)
     }
 
     func testDisableCancelsInFlightTest() async throws {
@@ -253,5 +308,18 @@ final class ProxyStateTests: XCTestCase {
 
         XCTAssertFalse(service.isEnabled)
         XCTAssertEqual(service.connectionState, .disabled)
+    }
+
+    // MARK: - Helpers
+
+    private func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: TimeInterval = 5) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() {
+            if Date() > deadline {
+                XCTFail("Timed out waiting for condition")
+                return
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
     }
 }

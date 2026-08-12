@@ -310,6 +310,50 @@ final class BrowserTests: XCTestCase {
         persistence.clear()
     }
     
+    // MARK: - Background keep-alive & Live Activity lifecycle smoke tests
+
+    /// The browser claims its keep-alive slot whenever at least one tab
+    /// exists; the downloads/torrents slots stay untouched. (Public setters
+    /// read the real app state — .active in the test host — so the claimed
+    /// value is exercised through the injectable appState variant.)
+    @MainActor
+    func testKeepAliveClaimTracksTabPresence() {
+        let tabManager = BrowserTabManager.shared
+        let service = ServiceContainer.shared.backgroundKeepAliveService
+        UserDefaults.standard.set(true, forKey: "fluxdl_bg_keepalive_browser")
+        defer { UserDefaults.standard.removeObject(forKey: "fluxdl_bg_keepalive_browser") }
+
+        XCTAssertFalse(tabManager.tabs.isEmpty)
+        service.updateBrowserKeepAlive(!tabManager.tabs.isEmpty, appState: .background)
+        XCTAssertTrue(service.isKeepAliveRunning, "open tab + toggle on + backgrounded must keep the process alive")
+
+        service.updateBrowserKeepAlive(false, appState: .background)
+        XCTAssertFalse(service.isKeepAliveRunning, "no tab → no browser keep-alive")
+
+        // refreshBackgroundKeepAlive must execute cleanly (in the test host the
+        // app is .active, so keep-alive stays stopped — the intended guard).
+        tabManager.refreshBackgroundKeepAlive()
+        service.stopAllKeepAlive()
+        XCTAssertFalse(service.isKeepAliveRunning)
+    }
+
+    /// Enter/leave background must not crash: activity ends, timer stops,
+    /// keep-alive re-evaluated. (In the test host the app state is .active,
+    /// so pushBrowserLiveActivity self-ends — exactly the guard we want.)
+    @MainActor
+    func testBackgroundLifecycleHandlersRunCleanly() {
+        let tabManager = BrowserTabManager.shared
+        let service = ServiceContainer.shared.backgroundKeepAliveService
+
+        tabManager.handleDidEnterBackground()
+        tabManager.handleDidBecomeActive()
+        tabManager.handleUserDefaultsChange()
+        tabManager.refreshBackgroundKeepAlive()
+
+        service.stopAllKeepAlive()
+        XCTAssertFalse(service.isKeepAliveRunning)
+    }
+
     // MARK: - Downloads
     
     @MainActor

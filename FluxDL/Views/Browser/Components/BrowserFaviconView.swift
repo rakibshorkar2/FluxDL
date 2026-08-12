@@ -57,7 +57,7 @@ public struct BrowserFaviconView: View {
         }
         
         Task {
-            let session = await Self.makeSession()
+            guard let session = await Self.makeSession() else { return }
             guard let (data, _) = try? await session.data(from: target),
                   let fetched = UIImage(data: data) else { return }
             session.finishTasksAndInvalidate()
@@ -69,10 +69,12 @@ public struct BrowserFaviconView: View {
     }
 
     /// Short-lived session routed through the browser's proxy (direct when
-    /// no proxy is active; rebuilt on every route change).
+    /// no proxy is active; rebuilt on every route change). Returns nil when
+    /// the proxy route is requested but unusable — the fetch fails closed
+    /// (letter avatar) instead of going direct.
     @MainActor
-    private static func makeSession() async -> URLSession {
-        let config = BrowserProxySession.shared.sessionConfiguration()
+    private static func makeSession() async -> URLSession? {
+        guard let config = BrowserProxySession.shared.sessionConfiguration() else { return nil }
         config.timeoutIntervalForRequest = 8
         config.waitsForConnectivity = false
         return URLSession(configuration: config)

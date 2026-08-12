@@ -32,6 +32,9 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
     private var autoPausedTaskIDs: Set<UUID> = []
 
     private var pathMonitor: NWPathMonitor?
+    /// Last known path, kept so the WiFi-only toggle can be re-applied
+    /// immediately when the user flips it in Settings.
+    private var lastPath: NWPath?
 
     public init() {
         self.isWiFiOnlyEnabled    = UserDefaults.standard.bool(forKey: "fluxdl_wifi_only")
@@ -51,6 +54,36 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in Task { @MainActor in self?.updateBatteryState() } }
             .store(in: &cancellables)
+
+        // Settings toggles are plain UserDefaults keys (written by the Settings
+        // tab's @AppStorage). Re-read them so toggling Wi-Fi Only / Low Battery
+        // / threshold takes effect immediately instead of on next launch or
+        // next battery/path event. Same pattern as BrowserTabManager.
+        NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in Task { @MainActor in self?.handleUserDefaultsChange() } }
+            .store(in: &cancellables)
+    }
+
+    /// Re-reads settings written directly to UserDefaults and re-applies them.
+    /// Equality guards prevent feedback loops with the published didSet
+    /// writers (which persist the same keys back).
+    func handleUserDefaultsChange() {
+        let storedWiFiOnly = UserDefaults.standard.bool(forKey: "fluxdl_wifi_only")
+        if storedWiFiOnly != isWiFiOnlyEnabled {
+            isWiFiOnlyEnabled = storedWiFiOnly
+        }
+        let storedBandwidth = UserDefaults.standard.integer(forKey: "fluxdl_bandwidth_limit")
+        if storedBandwidth != bandwidthLimitKBps {
+            bandwidthLimitKBps = storedBandwidth
+        }
+
+        // Re-evaluate battery and connectivity with the fresh settings.
+        updateBatteryState()
+        if let lastPath {
+            updatePathState(lastPath)
+        }
     }
 
     public func startMonitoring(engine: DownloadEngineProtocol) {
@@ -84,16 +117,18 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
         isLowPowerMode = lowPower
 
         // Auto-pause if low battery or Low Power Mode is on — and reliably
-        // auto-resume the exact tasks this monitor paused once it clears.
+        // auto-resume the exact tasks this monitor paused once it clears
+        // (or once the user disables the auto-pause toggle).
         let shouldAutoPause = UserDefaults.standard.bool(forKey: "fluxdl_low_battery_pause")
         if shouldAutoPause, (lowBat || lowPower) {
             pauseAllDownloading()
-        } else if !lowBat && !lowPower {
+        } else if !shouldAutoPause || (!lowBat && !lowPower) {
             resumeAutoPausedTasks()
         }
     }
 
     private func updatePathState(_ path: NWPath) {
+        lastPath = path
         guard isWiFiOnlyEnabled else {
             // Setting switched off while paused by it: restore what we paused.
             resumeAutoPausedTasks()

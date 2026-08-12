@@ -51,6 +51,7 @@
 		AA1000372C60000100000037 /* FindInPageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000372C60000100000037 /* FindInPageManager.swift */; };
 		AA1000382C60000100000038 /* BrowserTabManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000382C60000100000038 /* BrowserTabManager.swift */; };
 		AA1000392C60000100000039 /* BrowserAddressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000392C60000100000039 /* BrowserAddressBar.swift */; };
+		AA1000662C60000100000066 /* BrowserToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000662C60000100000066 /* BrowserToolbar.swift */; };
 		AA10003A2C6000010000003A /* BrowserTabGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003A2C6000010000003A /* BrowserTabGridView.swift */; };
 		AA10003B2C6000010000003B /* BrowserBookmarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003B2C6000010000003B /* BrowserBookmarksView.swift */; };
 		AA10003C2C6000010000003C /* BrowserHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003C2C6000010000003C /* BrowserHistoryView.swift */; };
@@ -82,6 +83,11 @@
 		AA1000602C60000100000060 /* AddTorrentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000602C60000100000060 /* AddTorrentSheet.swift */; };
 		AA1000612C60000100000061 /* TorrentDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000612C60000100000061 /* TorrentDetailSheet.swift */; };
 		AA1000652C60000100000065 /* TorrentSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000652C60000100000065 /* TorrentSettingsSheet.swift */; };
+		AA1000702C60000100000070 /* DownloadHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000702C60000100000070 /* DownloadHistoryEntry.swift */; };
+		AA1000712C60000100000071 /* DownloadHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000712C60000100000071 /* DownloadHistoryManager.swift */; };
+		AA1000722C60000100000072 /* ClipboardDownloadBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */; };
+		AA1000732C60000100000073 /* DownloadHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000732C60000100000073 /* DownloadHistoryView.swift */; };
+		AA1000742C60000100000074 /* DownloadHistoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000742C60000100000074 /* DownloadHistoryViewModel.swift */; };
 		AA1000622C60000100000062 /* LibTorrent.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB1000632C60000100000063 /* LibTorrent.framework */; };
 		AA1000632C60000100000063 /* LibTorrent.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = BB1000632C60000100000063 /* LibTorrent.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		AA2000012C60000100000001 /* SettingsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000012C60000100000001 /* SettingsServiceTests.swift */; };
@@ -100,6 +106,8 @@
 		AA20000E2C6000010000000E /* ProxyTesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000E2C6000010000000E /* ProxyTesterTests.swift */; };
 		AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000F2C6000010000000F /* ProxyStateTests.swift */; };
 		AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000102C60000100000010 /* MockKeychainStore.swift */; };
+		AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */; };
+		AA2000112C60000100000011 /* DownloadHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000112C60000100000011 /* DownloadHistoryTests.swift */; };
 		AA3000012C60000100000001 /* ProxyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000012C60000100000001 /* ProxyView.swift */; };
 		AA3000022C60000100000002 /* ProxyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000022C60000100000002 /* ProxyViewModel.swift */; };
 		AA3000032C60000100000003 /* ProxyStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000032C60000100000003 /* ProxyStatusCard.swift */; };
@@ -163,6 +171,7 @@
 		BB1000102C60000100000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BB1000112C60000100000011 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		BB1000122C60000100000012 /* DownloadTaskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadTaskModel.swift; sourceTree = "<group>"; };
+		BB1000702C60000100000070 /* DownloadHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryEntry.swift; sourceTree = "<group>"; };
 		BB1000132C60000100000013 /* DownloadRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRepository.swift; sourceTree = "<group>"; };
 		BB1000142C60000100000014 /* FileManagementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagementService.swift; sourceTree = "<group>"; };
 		BB1000152C60000100000015 /* DownloadEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadEngine.swift; sourceTree = "<group>"; };
@@ -191,6 +200,7 @@
 		BB1000372C60000100000037 /* FindInPageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/FindInPageManager.swift; sourceTree = "<group>"; };
 		BB1000382C60000100000038 /* BrowserTabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserTabManager.swift; sourceTree = "<group>"; };
 		BB1000392C60000100000039 /* BrowserAddressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserAddressBar.swift; sourceTree = "<group>"; };
+		BB1000662C60000100000066 /* BrowserToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserToolbar.swift; sourceTree = "<group>"; };
 		BB10003A2C6000010000003A /* BrowserTabGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserTabGridView.swift; sourceTree = "<group>"; };
 		BB10003B2C6000010000003B /* BrowserBookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserBookmarksView.swift; sourceTree = "<group>"; };
 		BB10003C2C6000010000003C /* BrowserHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserHistoryView.swift; sourceTree = "<group>"; };
@@ -205,6 +215,7 @@
 		BB1000442C60000100000044 /* BrowserEditBookmarkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserEditBookmarkSheet.swift; sourceTree = "<group>"; };
 		BB1000502C60000100000050 /* DownloadFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadFilters.swift; sourceTree = "<group>"; };
 		BB1000512C60000100000051 /* DownloadMetadataCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadMetadataCapture.swift; sourceTree = "<group>"; };
+		BB1000712C60000100000071 /* DownloadHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryManager.swift; sourceTree = "<group>"; };
 		BB1000522C60000100000052 /* DownloadDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadDiagnostics.swift; sourceTree = "<group>"; };
 		BB1000532C60000100000053 /* DownloadMirrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadMirrorManager.swift; sourceTree = "<group>"; };
 		BB1000542C60000100000054 /* DownloadVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadVerification.swift; sourceTree = "<group>"; };
@@ -214,6 +225,9 @@
 		BB1000582C60000100000058 /* UpdateURLSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateURLSheet.swift; sourceTree = "<group>"; };
 		BB1000592C60000100000059 /* MirrorPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorPickerSheet.swift; sourceTree = "<group>"; };
 		BB10005A2C6000010000005A /* DuplicateResolutionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateResolutionSheet.swift; sourceTree = "<group>"; };
+		BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardDownloadBanner.swift; sourceTree = "<group>"; };
+		BB1000732C60000100000073 /* DownloadHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryView.swift; sourceTree = "<group>"; };
+		BB1000742C60000100000074 /* DownloadHistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryViewModel.swift; sourceTree = "<group>"; };
 		BB10005B2C6000010000005B /* TorrentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentView.swift; sourceTree = "<group>"; };
 		BB10005C2C6000010000005C /* TorrentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentViewModel.swift; sourceTree = "<group>"; };
 		BB10005D2C6000010000005D /* TorrentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentService.swift; sourceTree = "<group>"; };
@@ -241,6 +255,8 @@
 		BB20000E2C6000010000000E /* ProxyTesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTesterTests.swift; sourceTree = "<group>"; };
 		BB20000F2C6000010000000F /* ProxyStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyStateTests.swift; sourceTree = "<group>"; };
 		BB2000102C60000100000010 /* MockKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockKeychainStore.swift; sourceTree = "<group>"; };
+		BB2000112C60000100000011 /* DownloadHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryTests.swift; sourceTree = "<group>"; };
+		BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsLiveApplyTests.swift; sourceTree = "<group>"; };
 		BB3000012C60000100000001 /* ProxyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyView.swift; sourceTree = "<group>"; };
 		BB3000022C60000100000002 /* ProxyViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyViewModel.swift; sourceTree = "<group>"; };
 		BB3000032C60000100000003 /* ProxyStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyStatusCard.swift; sourceTree = "<group>"; };
@@ -309,6 +325,7 @@
 			isa = PBXGroup;
 			children = (
 				BB1000122C60000100000012 /* DownloadTaskModel.swift */,
+				BB1000702C60000100000070 /* DownloadHistoryEntry.swift */,
 				BB3000072C60000100000007 /* ProxyModels.swift */,
 			);
 			path = Models;
@@ -335,6 +352,7 @@
 				BB1000242C60000100000024 /* BackgroundKeepAliveService.swift */,
 				BB1000502C60000100000050 /* DownloadFilters.swift */,
 				BB1000512C60000100000051 /* DownloadMetadataCapture.swift */,
+				BB1000712C60000100000071 /* DownloadHistoryManager.swift */,
 				BB1000522C60000100000052 /* DownloadDiagnostics.swift */,
 				BB1000532C60000100000053 /* DownloadMirrorManager.swift */,
 				BB1000542C60000100000054 /* DownloadVerification.swift */,
@@ -479,6 +497,8 @@
 			children = (
 				BB10000A2C6000010000000A /* DownloadsView.swift */,
 				BB10000B2C6000010000000B /* DownloadsViewModel.swift */,
+				BB1000732C60000100000073 /* DownloadHistoryView.swift */,
+				BB1000742C60000100000074 /* DownloadHistoryViewModel.swift */,
 				GG10000E2C6000010000000E /* Components */,
 			);
 			path = Downloads;
@@ -496,6 +516,7 @@
 				BB1000582C60000100000058 /* UpdateURLSheet.swift */,
 				BB1000592C60000100000059 /* MirrorPickerSheet.swift */,
 				BB10005A2C6000010000005A /* DuplicateResolutionSheet.swift */,
+				BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -516,6 +537,7 @@
 				BB1000372C60000100000037 /* FindInPageManager.swift */,
 				BB1000382C60000100000038 /* BrowserTabManager.swift */,
 				BB1000392C60000100000039 /* BrowserAddressBar.swift */,
+				BB1000662C60000100000066 /* BrowserToolbar.swift */,
 				BB10003A2C6000010000003A /* BrowserTabGridView.swift */,
 				BB10003B2C6000010000003B /* BrowserBookmarksView.swift */,
 				BB10003C2C6000010000003C /* BrowserHistoryView.swift */,
@@ -560,6 +582,8 @@
 				BB20000E2C6000010000000E /* ProxyTesterTests.swift */,
 				BB20000F2C6000010000000F /* ProxyStateTests.swift */,
 				BB2000102C60000100000010 /* MockKeychainStore.swift */,
+				BB2000112C60000100000011 /* DownloadHistoryTests.swift */,
+				BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */,
 				B3E000012C60000100000001 /* ProxyUITests.swift */,
 			);
 			path = FluxDLTests;
@@ -785,6 +809,7 @@
 				AA1000372C60000100000037 /* FindInPageManager.swift in Sources */,
 				AA1000382C60000100000038 /* BrowserTabManager.swift in Sources */,
 				AA1000392C60000100000039 /* BrowserAddressBar.swift in Sources */,
+				AA1000662C60000100000066 /* BrowserToolbar.swift in Sources */,
 				AA10003A2C6000010000003A /* BrowserTabGridView.swift in Sources */,
 				AA10003B2C6000010000003B /* BrowserBookmarksView.swift in Sources */,
 				AA10003C2C6000010000003C /* BrowserHistoryView.swift in Sources */,
@@ -808,6 +833,11 @@
 				AA1000582C60000100000058 /* UpdateURLSheet.swift in Sources */,
 				AA1000592C60000100000059 /* MirrorPickerSheet.swift in Sources */,
 				AA10005A2C6000010000005A /* DuplicateResolutionSheet.swift in Sources */,
+				AA1000702C60000100000070 /* DownloadHistoryEntry.swift in Sources */,
+				AA1000712C60000100000071 /* DownloadHistoryManager.swift in Sources */,
+				AA1000722C60000100000072 /* ClipboardDownloadBanner.swift in Sources */,
+				AA1000732C60000100000073 /* DownloadHistoryView.swift in Sources */,
+				AA1000742C60000100000074 /* DownloadHistoryViewModel.swift in Sources */,
 				AA10005B2C6000010000005B /* TorrentView.swift in Sources */,
 				AA10005C2C6000010000005C /* TorrentViewModel.swift in Sources */,
 				AA10005D2C6000010000005D /* TorrentService.swift in Sources */,
@@ -854,6 +884,8 @@
 				AA20000E2C6000010000000E /* ProxyTesterTests.swift in Sources */,
 				AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */,
 				AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */,
+				AA2000112C60000100000011 /* DownloadHistoryTests.swift in Sources */,
+				AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */,
 				A3E000012C60000100000001 /* ProxyUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -1,235 +1,222 @@
 import SwiftUI
+import UIKit
 
-/// Browser toolbar with a Liquid Glass treatment: it collapses to a compact
-/// pill while scrolling and expands (back/forward/home + suggestion panel)
-/// when the address field is focused.
-public struct BrowserAddressBar<MoreMenuContent: View>: View {
+/// Professional address bar, attached to the browser chrome (never floating
+/// over the webpage).
+///
+/// Two distinct states:
+/// - Display (not editing): favicon + security indicator + the hostname
+///   rendered prominently; the reload/stop button sits on the right.
+/// - Editing (focused): the full URL is revealed in a focused field whose
+///   text is selected, a clear button appears, and submitting performs a
+///   search or navigation. The keyboard never hides the bar because the
+///   whole chrome is part of the safe-area layout.
+public struct BrowserAddressBar: View {
     @Binding var text: String
     @Binding var isFieldFocused: Bool
+    let displayHost: String
     let isLoading: Bool
     let progress: Double
-    let canGoBack: Bool
-    let canGoForward: Bool
-    let tabCount: Int
     let faviconURL: URL?
     let isSecure: Bool
     let blockedCount: Int
     let suggestions: [URLSuggestion]
     let onCommit: () -> Void
     let onReload: () -> Void
-    let onGoBack: () -> Void
-    let onGoForward: () -> Void
-    let onGoHome: () -> Void
-    let onOpenTabs: () -> Void
     let onFocusChange: (Bool) -> Void
     let onSelectSuggestion: (URLSuggestion) -> Void
     let onClearSuggestions: () -> Void
-    let moreMenu: () -> MoreMenuContent
-    
+
     @FocusState private var isFocused: Bool
-    
+
+    private var isEditing: Bool { isFocused }
+
+    private var fallbackLetter: String {
+        let host = URL(string: text)?.host ?? ""
+        return String((host.isEmpty ? text : host).prefix(1)).uppercased()
+    }
+
+    private var displayText: String {
+        if !displayHost.isEmpty { return displayHost }
+        return text.isEmpty ? "Search or enter web address" : text
+    }
+
     public init(
         text: Binding<String>,
         isFieldFocused: Binding<Bool> = .constant(false),
+        displayHost: String,
         isLoading: Bool,
         progress: Double,
-        canGoBack: Bool,
-        canGoForward: Bool,
-        tabCount: Int,
         faviconURL: URL? = nil,
         isSecure: Bool = false,
         blockedCount: Int = 0,
         suggestions: [URLSuggestion] = [],
         onCommit: @escaping () -> Void,
         onReload: @escaping () -> Void,
-        onGoBack: @escaping () -> Void,
-        onGoForward: @escaping () -> Void,
-        onGoHome: @escaping () -> Void,
-        onOpenTabs: @escaping () -> Void,
         onFocusChange: @escaping (Bool) -> Void,
         onSelectSuggestion: @escaping (URLSuggestion) -> Void = { _ in },
-        onClearSuggestions: @escaping () -> Void = {},
-        @ViewBuilder moreMenu: @escaping () -> MoreMenuContent
+        onClearSuggestions: @escaping () -> Void = {}
     ) {
         self._text = text
         self._isFieldFocused = isFieldFocused
+        self.displayHost = displayHost
         self.isLoading = isLoading
         self.progress = progress
-        self.canGoBack = canGoBack
-        self.canGoForward = canGoForward
-        self.tabCount = tabCount
         self.faviconURL = faviconURL
         self.isSecure = isSecure
         self.blockedCount = blockedCount
         self.suggestions = suggestions
         self.onCommit = onCommit
         self.onReload = onReload
-        self.onGoBack = onGoBack
-        self.onGoForward = onGoForward
-        self.onGoHome = onGoHome
-        self.onOpenTabs = onOpenTabs
         self.onFocusChange = onFocusChange
         self.onSelectSuggestion = onSelectSuggestion
         self.onClearSuggestions = onClearSuggestions
-        self.moreMenu = moreMenu
     }
-    
-    private var isExpanded: Bool { isFocused || !suggestions.isEmpty }
-    
-    private var fallbackLetter: String {
-        let host = URL(string: text)?.host ?? ""
-        return String((host.isEmpty ? text : host).prefix(1)).uppercased()
-    }
-    
+
     public var body: some View {
-        VStack(spacing: 6) {
-            GlassCard(padding: 6) {
-                HStack(spacing: 4) {
-                    // Navigation controls only appear in the expanded state.
-                    if isExpanded {
-                        ToolbarButton(
-                            systemImage: "chevron.backward",
-                            isEnabled: canGoBack,
-                            accessibilityLabel: "Go Back",
-                            action: onGoBack
-                        )
-                        .transition(.opacity.combined(with: .scale(scale: 0.6)))
-                        
-                        ToolbarButton(
-                            systemImage: "chevron.forward",
-                            isEnabled: canGoForward,
-                            accessibilityLabel: "Go Forward",
-                            action: onGoForward
-                        )
-                        .transition(.opacity.combined(with: .scale(scale: 0.6)))
-                        
-                        ToolbarButton(
-                            systemImage: "house",
-                            isEnabled: true,
-                            accessibilityLabel: "Go Home",
-                            action: onGoHome
-                        )
-                        .transition(.opacity.combined(with: .scale(scale: 0.6)))
-                    }
-                    
-                    // Address / Search field
-                    HStack(spacing: 6) {
-                        if faviconURL != nil || !text.isEmpty {
-                            BrowserFaviconView(url: faviconURL ?? URL(string: text), fallbackText: fallbackLetter, size: 14)
-                                .accessibilityHidden(true)
-                        }
-                        
-                        Image(systemName: isSecure ? "lock.fill" : "lock.open")
-                            .font(.caption2)
-                            .foregroundStyle(isSecure ? Color.green : Color.orange)
-                            .accessibilityLabel(isSecure ? "Secure connection" : "Not secure")
-                        
-                        TextField("Search or enter web address...", text: $text)
-                            .font(.subheadline)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($isFocused)
-                            .onSubmit {
-                                isFocused = false
-                                onCommit()
-                            }
-                            .accessibilityLabel("Address or search field")
-                        
-                        if isLoading {
-                            ProgressView()
-                                .scaleEffect(0.6)
-                                .accessibilityHidden(true)
-                        } else if !text.isEmpty {
-                            Button(action: { text = "" }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .accessibilityLabel("Clear address field")
-                        }
-                    }
-                    .padding(.horizontal, 6)
-                    .frame(minHeight: 30)
-                    .background(
-                        Color.primary.opacity(isExpanded ? 0.08 : 0.05),
-                        in: RoundedRectangle(cornerRadius: isExpanded ? 10 : 16, style: .continuous)
-                    )
-                    .layoutPriority(1)
-                    
-                    // Blocked-request badge for the current page
-                    if blockedCount > 0 {
-                        HStack(spacing: 3) {
-                            Image(systemName: "eye.slash.fill")
-                            Text("\(blockedCount)")
-                                .monospacedDigit()
-                        }
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Color.primary.opacity(0.08), in: Capsule())
-                        .accessibilityLabel("\(blockedCount) blocked requests")
-                        .transition(.opacity)
-                    }
-                    
-                    // Reload / Stop
-                    ToolbarButton(
-                        systemImage: isLoading ? "xmark" : "arrow.clockwise",
-                        isEnabled: true,
-                        accessibilityLabel: isLoading ? "Stop Loading" : "Reload",
-                        action: onReload
-                    )
-                    
-                    // Tabs button with count badge
-                    Button(action: onOpenTabs) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(0.6), lineWidth: 1.5)
-                                .frame(width: 24, height: 24)
-                            Text("\(tabCount)")
-                                .font(.system(size: 11, weight: .bold))
-                                .monospacedDigit()
-                                .contentTransition(.numericText())
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Tabs")
-                    .accessibilityValue("\(tabCount) open tabs")
-                    .disabled(tabCount == 0)
-                    
-                    // More menu
-                    moreMenu()
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                field
+
+                BrowserChromeButton(
+                    systemImage: isLoading ? "xmark" : "arrow.clockwise",
+                    isEnabled: true,
+                    accessibilityLabel: isLoading ? "Stop Loading" : "Reload",
+                    action: onReload
+                )
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+
+            if isLoading, progress > 0, progress < 1 {
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(Color.accentColor)
+                        .frame(width: max(2, geo.size.width * progress))
                 }
-                .animation(AppTheme.quickSpring, value: isExpanded)
+                .frame(height: 2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 18)
+                .padding(.bottom, 4)
+                .animation(.linear(duration: 0.15), value: progress)
+                .transition(.opacity)
+                .accessibilityHidden(true)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .onChange(of: isFocused) { focused in
-                isFieldFocused = focused
-                onFocusChange(focused)
-            }
-            .onChange(of: isFieldFocused) { focused in
-                if !focused, isFocused { isFocused = false }
-            }
-            
-            // Autocomplete suggestions panel (expanded + focused state)
-            if isExpanded && !suggestions.isEmpty {
+
+            if isEditing && !suggestions.isEmpty {
                 suggestionsPanel
                     .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             }
-            
-            // Linear loading progress bar
-            if isLoading {
-                ProgressView(value: progress)
-                    .progressViewStyle(.linear)
-                    .tint(Color.accentColor)
-                    .frame(height: 2)
-                    .accessibilityHidden(true)
-            }
         }
         .animation(AppTheme.quickSpring, value: suggestions)
+        .onChange(of: isFocused) { focused in
+            isFieldFocused = focused
+            onFocusChange(focused)
+            if focused {
+                selectAllText()
+            } else {
+                onClearSuggestions()
+            }
+        }
+        .onChange(of: isFieldFocused) { focused in
+            if !focused, isFocused { isFocused = false }
+        }
     }
-    
+
+    // MARK: - Address field
+
+    private var field: some View {
+        ZStack(alignment: .trailing) {
+            // Field surface
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(uiColor: .tertiarySystemFill))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            isEditing ? Color.accentColor.opacity(0.7) : Color.clear,
+                            lineWidth: 1.5
+                        )
+                )
+
+            // Display mode: favicon + security + hostname (prominent).
+            HStack(spacing: 6) {
+                BrowserFaviconView(url: faviconURL ?? URL(string: text), fallbackText: fallbackLetter, size: 15)
+                    .accessibilityHidden(true)
+
+                Image(systemName: isSecure ? "lock.fill" : "lock.open")
+                    .font(.caption2)
+                    .foregroundStyle(isSecure ? Color.green : Color.orange)
+                    .accessibilityLabel(isSecure ? "Secure connection" : "Not secure")
+
+                Text(displayText)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .accessibilityHidden(true)
+                } else if blockedCount > 0 {
+                    HStack(spacing: 3) {
+                        Image(systemName: "eye.slash.fill")
+                        Text("\(blockedCount)")
+                            .monospacedDigit()
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.primary.opacity(0.08), in: Capsule())
+                    .accessibilityLabel("\(blockedCount) blocked requests")
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, 8)
+            .allowsHitTesting(false)
+            .opacity(isEditing ? 0 : 1)
+
+            // Editing mode: real URL/search input.
+            HStack(spacing: 6) {
+                TextField("Search or enter web address", text: $text)
+                    .font(.subheadline)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.webSearch)
+                    .submitLabel(.go)
+                    .focused($isFocused)
+                    .onSubmit {
+                        isFocused = false
+                        onCommit()
+                    }
+                    .accessibilityLabel("Address or search field")
+
+                if !text.isEmpty {
+                    Button(action: { text = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear address field")
+                }
+            }
+            .padding(.horizontal, 10)
+            .allowsHitTesting(isEditing)
+            .opacity(isEditing ? 1 : 0)
+        }
+        .frame(height: 40)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !isEditing { isFocused = true }
+        }
+    }
+
+    // MARK: - Autocomplete suggestions
+
     private var suggestionsPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -246,12 +233,12 @@ public struct BrowserAddressBar<MoreMenuContent: View>: View {
             .padding(.horizontal, 12)
             .padding(.top, 8)
             .padding(.bottom, 4)
-            
+
             ForEach(suggestions) { suggestion in
                 Button(action: { onSelectSuggestion(suggestion) }) {
                     HStack(spacing: 8) {
                         BrowserFaviconView(url: URL(string: suggestion.urlString), fallbackText: suggestion.title, size: 16)
-                        
+
                         VStack(alignment: .leading, spacing: 1) {
                             Text(suggestion.title)
                                 .font(.subheadline)
@@ -261,9 +248,9 @@ public struct BrowserAddressBar<MoreMenuContent: View>: View {
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
-                        
+
                         Spacer(minLength: 0)
-                        
+
                         Image(systemName: suggestion.kind == .bookmark ? "bookmark.fill" : "clock")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -276,32 +263,22 @@ public struct BrowserAddressBar<MoreMenuContent: View>: View {
             }
             .padding(.bottom, 6)
         }
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AppTheme.cornerRadiusMedium, style: .continuous))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: AppTheme.cornerRadiusMedium, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.cornerRadiusMedium, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
         )
         .shadow(color: AppTheme.glassShadowColor, radius: AppTheme.glassShadowRadius, y: 4)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 6)
     }
-}
 
-private struct ToolbarButton: View {
-    let systemImage: String
-    let isEnabled: Bool
-    let accessibilityLabel: String
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.body.weight(.medium))
-                .frame(width: 28, height: 30)
-                .contentShape(Rectangle())
+    // MARK: - Keyboard helpers
+
+    /// Selects the whole URL so the user can type or replace it immediately.
+    private func selectAllText() {
+        DispatchQueue.main.async {
+            UIApplication.shared.sendAction(#selector(UIResponder.selectAll(_:)), to: nil, from: nil, for: nil)
         }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.35)
-        .accessibilityLabel(accessibilityLabel)
     }
 }

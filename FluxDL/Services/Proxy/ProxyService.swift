@@ -81,10 +81,19 @@ public final class ProxyService: ObservableObject, ProxyProviding {
     @Published public private(set) var isBulkTesting = false
 
     @Published public var browserProxyEnabled = false {
-        didSet { defaults.set(browserProxyEnabled, forKey: Key.browserRouting) }
+        didSet {
+            defaults.set(browserProxyEnabled, forKey: Key.browserRouting)
+            // Notify consumers immediately so sessions are rebuilt without
+            // requiring a full disable/enable cycle.
+            if isEnabled { onProxyStateChange?() }
+        }
     }
     @Published public var downloadsProxyEnabled = false {
-        didSet { defaults.set(downloadsProxyEnabled, forKey: Key.downloadsRouting) }
+        didSet {
+            defaults.set(downloadsProxyEnabled, forKey: Key.downloadsRouting)
+            // Notify DownloadEngine to rebuild / tear down its proxied session.
+            if isEnabled { onProxyStateChange?() }
+        }
     }
     @Published public var failoverEnabled = false {
         didSet { defaults.set(failoverEnabled, forKey: Key.failoverEnabled) }
@@ -234,8 +243,13 @@ public final class ProxyService: ObservableObject, ProxyProviding {
         }
         profiles[index] = updated
         persistProfiles()
-        if activeProfile?.id == updated.id {
-            activeConfiguration = resolveConfiguration(updated)
+        // Editing the profile that is currently routing (or requested):
+        // re-validate the new configuration before it takes effect. Until
+        // the probe confirms it, consumers keep the previous route — and if
+        // validation fails, they fail closed rather than use the new config
+        // over a direct connection.
+        if isEnabled, activeProfile?.id == updated.id {
+            Task { await runActivationValidation(for: updated) }
         }
     }
 
@@ -265,8 +279,13 @@ public final class ProxyService: ObservableObject, ProxyProviding {
         guard profiles.contains(where: { $0.id == id }) else { return }
         selectedProfileID = id
         defaults.set(id.uuidString, forKey: Key.selectedProfileID)
+        // Switching profiles while the proxy is requested is NOT optimistic:
+        // the new profile must pass a real probe before it replaces the
+        // active route. Until validated, the previous configuration keeps
+        // routing (in-flight work is not interrupted); if validation fails
+        // the proxy publishes `.failed` and consumers fail closed.
         if isEnabled, let profile = selectedProfile {
-            activeConfiguration = resolveConfiguration(profile)
+            Task { await runActivationValidation(for: profile) }
         }
     }
 
@@ -298,12 +317,41 @@ public final class ProxyService: ObservableObject, ProxyProviding {
 
     /// Enables the proxy: the selected profile is probed with a REAL
     /// handshake + HTTP request through the tunnel. Only a successful probe
-    /// activates the proxy — enabling is never optimistic. A `disable()`
-    /// issued mid-probe cancels the probe and leaves the proxy disabled.
+    /// (and a usable adapter, when one is required) activates the proxy —
+    /// enabling is never optimistic. A `disable()` issued mid-probe cancels
+    /// the probe and leaves the proxy disabled.
+    ///
+    /// Failed and disabled are distinct states: `isEnabled` reflects the
+    /// user's REQUESTED intent and stays true when the probe fails, so
+    /// consumers fail closed instead of silently falling back to direct
+    /// networking. Disabling remains the only path that turns routing off.
     public func enable() async {
         guard let profile = selectedProfile else { return }
+        await runActivationValidation(for: profile)
+    }
+
+    /// Validates the selected profile (real probe) and atomically publishes
+    /// the outcome. Used by `enable()` and by profile switches while the
+    /// proxy is requested (`selectProfile`, `updateProfile`).
+    ///
+    /// Publishing rules:
+    ///   * Probe success + adapter usable → `.connected` + active config.
+    ///   * Probe failure or adapter unusable → `.failed`, NO active config
+    ///     (consumers fail closed; in-flight sessions keep their old route).
+    ///   * `isEnabled` is the user's requested intent: never cleared here.
+    ///
+    /// When a route is already active (profile switch), the published state
+    /// is NOT downgraded to `.connecting`: the previous configuration keeps
+    /// routing (and in-flight work keeps its session) until the probe
+    /// confirms the replacement. Only activations with no live route report
+    /// `.connecting`, so consumers fail closed instead of going direct.
+    @discardableResult
+    private func runActivationValidation(for profile: ProxyProfile) async -> ProxyTestResult {
         isTesting = true
-        connectionState = .connecting
+        let hadActiveRoute = connectionState == .connected && activeConfiguration != nil
+        if !hadActiveRoute {
+            connectionState = .connecting
+        }
 
         let epoch = enableEpoch + 1
         enableEpoch = epoch
@@ -322,21 +370,36 @@ public final class ProxyService: ObservableObject, ProxyProviding {
             result = try await task.value
         } catch {
             // Cancelled by disable() — state already reflects .disabled.
-            return
+            return ProxyTestResult.failure(.connectionFailed)
         }
-        // A disable(), or a newer enable() bumping `enableEpoch`, invalidates
+        // A disable(), or a newer validation bumping `enableEpoch`, invalidates
         // this stale continuation: never apply the outcome of a probe the
         // user already cancelled or superseded.
-        guard enableEpoch == epoch, !Task.isCancelled else { return }
+        guard enableEpoch == epoch, !Task.isCancelled else { return result }
         isTesting = false
         applyTestResult(result, to: profile.id)
 
-        isEnabled = result.success
-        connectionState = result.success ? .connected : .failed
-        activeConfiguration = result.success ? resolveConfiguration(profile) : nil
-        defaults.set(result.success, forKey: Key.isEnabled)
-        hapticService.notificationOccurred(result.success ? .success : .error)
+        isEnabled = true
+        defaults.set(true, forKey: Key.isEnabled)
+        if result.success {
+            let configuration = resolveConfiguration(profile)
+            if let failure = sessionProvider.prepare(configuration) {
+                lastTestResult = ProxyTestResult.failure(failure)
+                connectionState = .failed
+                activeConfiguration = nil
+                hapticService.notificationOccurred(.error)
+            } else {
+                connectionState = .connected
+                activeConfiguration = configuration
+                hapticService.notificationOccurred(.success)
+            }
+        } else {
+            connectionState = .failed
+            activeConfiguration = nil
+            hapticService.notificationOccurred(.error)
+        }
         onProxyStateChange?()
+        return result
     }
 
     /// Disables the proxy immediately and cancels any in-flight bulk test.
@@ -357,7 +420,7 @@ public final class ProxyService: ObservableObject, ProxyProviding {
     public func activate(_ proxy: ProxyProfile) async throws {
         selectProfile(id: proxy.id)
         await enable()
-        guard isEnabled else { throw ProxyServiceError.notEnabled }
+        guard isEnabled, connectionState == .connected else { throw ProxyServiceError.notEnabled }
     }
 
     public func deactivate() {

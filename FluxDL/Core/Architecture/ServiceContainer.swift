@@ -10,6 +10,7 @@ public final class ServiceContainer: ObservableObject {
     public let hapticService: HapticServiceProtocol
     public let themeService: ThemeServiceProtocol
     public let downloadRepository: DownloadRepositoryProtocol
+    public let downloadHistoryManager: DownloadHistoryManager
     public let fileManagementService: FileManagementServiceProtocol
     public let storageManager: StorageManagerProtocol
     public let queueManager: QueueManagerProtocol
@@ -20,6 +21,7 @@ public final class ServiceContainer: ObservableObject {
     public let liveActivityManager: LiveActivityManagerProtocol
     public let backgroundKeepAliveService: BackgroundKeepAliveServiceProtocol
     public let downloadEngine: DownloadEngineProtocol
+    public let torrentService: TorrentService
     public let proxyService: ProxyProviding
     
     public init(
@@ -33,6 +35,7 @@ public final class ServiceContainer: ObservableObject {
         self.hapticService = hapticService
         self.themeService = themeService
         self.downloadRepository = downloadRepository
+        self.downloadHistoryManager = DownloadHistoryManager(repository: downloadRepository)
         self.fileManagementService = fileManagementService
         self.storageManager = StorageManager(fileManagementService: fileManagementService)
         self.queueManager = QueueManager()
@@ -49,6 +52,7 @@ let powerMon = PowerNetworkMonitor()
 
         let proxy = ProxyService()
         self.proxyService = proxy
+        self.torrentService = TorrentService.shared
 
         let engine = DownloadEngine(
             repository: downloadRepository,
@@ -60,7 +64,16 @@ let powerMon = PowerNetworkMonitor()
         proxy.onProxyStateChange = { [weak engine] in
             engine?.refreshProxyRouting()
         }
+        // When the proxy route becomes usable again (enable, recovery after a
+        // failed switch), pending downloads blocked by the fail-closed guard
+        // are released through the normal scheduler.
+        engine.onRoutingStateChange = { [weak engine] in
+            guard let engine else { return }
+            ServiceContainer.shared.queueManager.scheduleNextTasks(in: engine)
+        }
         self.downloadEngine = engine
+
+        downloadHistoryManager.startObserving(engine: engine)
 
         powerMon.startMonitoring(engine: engine)
     }

@@ -5,7 +5,14 @@ import SwiftUI
 public struct DownloadsView: View {
     @StateObject private var viewModel = DownloadsViewModel()
 
-    public init() {}
+    /// Whether the Downloads tab is currently the selected tab. When the user
+    /// switches to another tab the clipboard detection state is cleared, so
+    /// the banner never lingers over Browser/Proxy/Settings/Torrent.
+    private let isActive: Bool
+
+    public init(isActive: Bool = true) {
+        self.isActive = isActive
+    }
 
     public var body: some View {
         NavigationStack {
@@ -37,6 +44,20 @@ public struct DownloadsView: View {
                     taskList
                 }
             }
+            .overlay(alignment: .bottom) {
+                // ── Clipboard prompt (Downloads-tab owned) ───────────────
+                if let url = viewModel.clipboardDetectedURL {
+                    ClipboardDownloadBanner(
+                        url: url,
+                        onDownload: { viewModel.startDownloadFromClipboard() },
+                        onDismiss: { viewModel.dismissClipboardDetection() }
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(), value: viewModel.clipboardDetectedURL)
             .navigationTitle("Downloads")
             .toolbar { navigationToolbar }
             .animation(.easeInOut(duration: 0.25), value: viewModel.isSelectionMode)
@@ -46,6 +67,12 @@ public struct DownloadsView: View {
             }
             .sheet(isPresented: $viewModel.isQueueSettingsPresented) {
                 QueueSettingsSheet()
+            }
+            .sheet(isPresented: $viewModel.isHistoryPresented) {
+                DownloadHistoryView(
+                    historyManager: viewModel.historyManager,
+                    onRetry: { entry in viewModel.retryFromHistory(entry: entry) }
+                )
             }
             .sheet(item: $viewModel.taskForInfoSheet) { task in
                 DownloadInfoSheet(task: task)
@@ -90,6 +117,13 @@ public struct DownloadsView: View {
                 Text("This will remove \(viewModel.selectedCount) selected downloads.")
             }
             .onAppear { viewModel.refreshStorageInfo() }
+            .onChange(of: isActive) { newValue in
+                // Leaving the Downloads tab clears the clipboard detection
+                // state — the banner must never linger over other tabs.
+                if !newValue {
+                    viewModel.dismissClipboardDetection()
+                }
+            }
         }
     }
 
@@ -359,9 +393,16 @@ public struct DownloadsView: View {
             }
         }
 
-        // Trailing: Select mode toggle + Add button
+        // Trailing: History + Select mode toggle + Add button
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
+                Button(action: { viewModel.isHistoryPresented = true }) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.body)
+                        .foregroundStyle(Color.accentColor)
+                }
+                .accessibilityLabel("Download History")
+
                 Button(action: viewModel.toggleSelectionMode) {
                     Text(viewModel.isSelectionMode ? "Done" : "Select")
                         .font(.subheadline.bold())

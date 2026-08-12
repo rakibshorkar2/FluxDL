@@ -32,8 +32,17 @@ public struct ProxyStatusCard: View {
                     testingRow
                 }
 
-                Divider()
+                // Routing toggles — shown whenever a profile is selected so
+                // users can configure routing before enabling the proxy.
+                if service.selectedProfileID != nil {
+                    Divider()
+                    routingSection
+                }
 
+                Divider()
+                torrentIsolationNote
+
+                Divider()
                 toggleButton
             }
         }
@@ -183,6 +192,53 @@ public struct ProxyStatusCard: View {
             Spacer()
         }
         .padding(.vertical, 2)
+    }
+
+    // MARK: Routing
+
+    private var routingSection: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Image(systemName: "arrow.triangle.branch")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                Text("Route through Proxy")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+
+            Toggle(isOn: $service.downloadsProxyEnabled) {
+                Label("Downloads", systemImage: "arrow.down.circle")
+                    .font(.subheadline)
+            }
+            .tint(Color.accentColor)
+            .accessibilityIdentifier("proxy.routing.downloads")
+
+            Toggle(isOn: $service.browserProxyEnabled) {
+                Label("Browser", systemImage: "safari")
+                    .font(.subheadline)
+            }
+            .tint(Color.accentColor)
+            .accessibilityIdentifier("proxy.routing.browser")
+        }
+    }
+
+    // MARK: Torrent Isolation Note
+
+    private var torrentIsolationNote: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.top, 1)
+            Text("Proxy applies only to Downloads and Browser. Torrent traffic is always independent.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityIdentifier("proxy.torrentIsolationNote")
     }
 
     // MARK: Toggle

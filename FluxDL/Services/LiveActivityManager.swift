@@ -50,6 +50,20 @@ public struct BrowserActivitySnapshot: Sendable {
     }
 }
 
+public struct TorrentActivityAttributes: ActivityAttributes {
+    public struct ContentState: Codable, Hashable {
+        public var torrentName: String
+        public var progress: Double
+        public var downloadedSize: String
+        public var totalSize: String
+        public var downloadSpeed: String
+        public var uploadSpeed: String
+        public var status: String
+    }
+    
+    public var infoHash: String
+}
+
 public protocol LiveActivityManagerProtocol: AnyObject {
     func startActivity(for task: DownloadTaskModel)
     func updateActivity(for task: DownloadTaskModel)
@@ -59,6 +73,13 @@ public protocol LiveActivityManagerProtocol: AnyObject {
     func handleAppForegrounding()
     func updateBrowserActivity(snapshot: BrowserActivitySnapshot)
     func endBrowserActivity()
+    
+    // Torrent Live Activity
+    func startTorrentActivity(for task: TorrentTaskModel)
+    func updateTorrentActivity(for task: TorrentTaskModel)
+    func endTorrentActivity(for torrentId: String)
+    func endAllTorrentActivities()
+    func handleTorrentAppBackgrounding(tasks: [TorrentTaskModel])
 }
 
 public final class LiveActivityManager: LiveActivityManagerProtocol {
@@ -73,6 +94,11 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
     private var lastBrowserUpdate: Date = .distantPast
     private let browserLiveActivityKey = "fluxdl_live_activity_browser"
     
+    // Torrent activities (keyed by torrent info-hash)
+    private var activeTorrentActivities: [String: Activity<TorrentActivityAttributes>] = [:]
+    private var lastTorrentUpdateTimes: [String: Date] = [:]
+    private let torrentLiveActivityKey = "fluxdl_live_activity_torrents"
+    
     private var isDownloadsLiveActivityEnabled: Bool {
         UserDefaults.standard.object(forKey: downloadsLiveActivityKey) != nil
             ? UserDefaults.standard.bool(forKey: downloadsLiveActivityKey) : true
@@ -80,6 +106,11 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
     
     private var isBrowserLiveActivityEnabled: Bool {
         UserDefaults.standard.bool(forKey: browserLiveActivityKey)
+    }
+    
+    private var isTorrentLiveActivityEnabled: Bool {
+        UserDefaults.standard.object(forKey: torrentLiveActivityKey) != nil
+            ? UserDefaults.standard.bool(forKey: torrentLiveActivityKey) : true
     }
     
     public init() {}
@@ -156,11 +187,13 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
     }
     
     public func endActivity(for taskId: UUID) {
-        guard let activity = activeActivities[taskId] else { return }
+        // Remove the entry synchronously BEFORE the async end: a pending
+        // end-task must never clobber a freshly re-inserted activity
+        // (startActivity re-inserts synchronously right after calling this).
+        guard let activity = activeActivities.removeValue(forKey: taskId) else { return }
+        lastUpdateTimes.removeValue(forKey: taskId)
         Task {
             await activity.end(dismissalPolicy: .immediate)
-            self.activeActivities.removeValue(forKey: taskId)
-            self.lastUpdateTimes.removeValue(forKey: taskId)
         }
     }
 
@@ -222,14 +255,15 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
 
     public func endBrowserActivity() {
         guard let activity = browserActivity else { return }
+        browserActivity = nil
         Task {
             await activity.end(dismissalPolicy: .immediate)
-            self.browserActivity = nil
         }
     }
     
     public func endAllActivities() {
         endBrowserActivity()
+        endAllTorrentActivities()
         for (id, _) in activeActivities {
             endActivity(for: id)
         }
@@ -244,5 +278,133 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
     
     public func handleAppForegrounding() {
         endAllActivities()
+    }
+
+    // MARK: - Torrent Live Activity
+
+    public func startTorrentActivity(for task: TorrentTaskModel) {
+        guard isTorrentLiveActivityEnabled,
+              task.isActive,
+              UIApplication.shared.applicationState == .background,
+              ActivityAuthorizationInfo().areActivitiesEnabled else {
+            endTorrentActivity(for: task.id)
+            return
+        }
+        
+        endTorrentActivity(for: task.id)
+        
+        let attributes = TorrentActivityAttributes(infoHash: task.id)
+        let state = makeTorrentContentState(for: task)
+        
+        do {
+            let activity = try Activity<TorrentActivityAttributes>.request(
+                attributes: attributes,
+                contentState: state,
+                pushType: nil
+            )
+            activeTorrentActivities[task.id] = activity
+            lastTorrentUpdateTimes[task.id] = Date()
+        } catch {
+            print("FluxDL LiveActivity: Failed to start torrent activity: \(error.localizedDescription)")
+        }
+    }
+    
+    public func updateTorrentActivity(for task: TorrentTaskModel) {
+        guard isTorrentLiveActivityEnabled,
+              UIApplication.shared.applicationState == .background else {
+            endTorrentActivity(for: task.id)
+            return
+        }
+        
+        // Handle completed / cancelled / error states according to UX requirement:
+        if task.isFinished || task.state == .finished {
+            if let activity = activeTorrentActivities.removeValue(forKey: task.id) {
+                lastTorrentUpdateTimes.removeValue(forKey: task.id)
+                let finalState = makeTorrentContentState(for: task)
+                Task {
+                    await activity.update(using: finalState)
+                    // Briefly show completed state then end
+                    await activity.end(dismissalPolicy: .after(Date().addingTimeInterval(4.0)))
+                }
+            }
+            return
+        }
+        
+        if task.state == .storageError {
+            if let activity = activeTorrentActivities.removeValue(forKey: task.id) {
+                lastTorrentUpdateTimes.removeValue(forKey: task.id)
+                let errorState = makeTorrentContentState(for: task)
+                Task {
+                    await activity.update(using: errorState)
+                    await activity.end(dismissalPolicy: .after(Date().addingTimeInterval(6.0)))
+                }
+            }
+            return
+        }
+        
+        guard task.isActive else {
+            endTorrentActivity(for: task.id)
+            return
+        }
+        
+        guard let activity = activeTorrentActivities[task.id] else {
+            startTorrentActivity(for: task)
+            return
+        }
+        
+        let now = Date()
+        let lastTime = lastTorrentUpdateTimes[task.id] ?? .distantPast
+        
+        // Throttled update (max 1 Hz)
+        guard now.timeIntervalSince(lastTime) >= 1.0 else { return }
+        
+        let newState = makeTorrentContentState(for: task)
+        
+        Task {
+            await activity.update(using: newState)
+            self.lastTorrentUpdateTimes[task.id] = now
+        }
+    }
+    
+    public func endTorrentActivity(for torrentId: String) {
+        // Synchronous removal (same reasoning as endActivity): the deferred
+        // end must never delete a freshly re-inserted torrent activity.
+        guard let activity = activeTorrentActivities.removeValue(forKey: torrentId) else { return }
+        lastTorrentUpdateTimes.removeValue(forKey: torrentId)
+        Task {
+            await activity.end(dismissalPolicy: .immediate)
+        }
+    }
+    
+    public func endAllTorrentActivities() {
+        for (id, _) in activeTorrentActivities {
+            endTorrentActivity(for: id)
+        }
+    }
+    
+    public func handleTorrentAppBackgrounding(tasks: [TorrentTaskModel]) {
+        guard isTorrentLiveActivityEnabled else { return }
+        for task in tasks where task.isActive {
+            startTorrentActivity(for: task)
+        }
+    }
+
+    private func makeTorrentContentState(for task: TorrentTaskModel) -> TorrentActivityAttributes.ContentState {
+        let fmt = ByteCountFormatter()
+        fmt.countStyle = .file
+        let dlFormatted = fmt.string(fromByteCount: task.totalDone)
+        let totalFormatted = fmt.string(fromByteCount: task.total)
+        let speedDlFormatted = task.downloadRate > 0 ? "\(fmt.string(fromByteCount: task.downloadRate))/s" : "0 B/s"
+        let speedUlFormatted = task.uploadRate > 0 ? "\(fmt.string(fromByteCount: task.uploadRate))/s" : "0 B/s"
+        
+        return TorrentActivityAttributes.ContentState(
+            torrentName: task.name,
+            progress: task.clampedProgress,
+            downloadedSize: dlFormatted,
+            totalSize: totalFormatted,
+            downloadSpeed: speedDlFormatted,
+            uploadSpeed: speedUlFormatted,
+            status: task.statusTitle
+        )
     }
 }

@@ -8,12 +8,15 @@ import Combine
 // `Network.ProxyConfiguration` (iOS 17+). Deprecated
 // `connectionProxyDictionary` is NOT used as the primary path.
 //
-//   SOCKS5  → ProxyConfiguration(socksv5Proxy:) + applyCredential
+//   SOCKS5 (no auth)    → ProxyConfiguration(socksv5Proxy:)
+//   SOCKS5 (with auth)  → LocalSOCKS5Adapter (RFC 1928/1929 handshake
+//                         with real credentials on loopback; URLSession
+//                         sees a no-auth SOCKS5 endpoint). This is the
+//                         same pattern used for SOCKS4 — Apple's native
+//                         ProxyConfiguration has no credential field.
 //   HTTP    → ProxyConfiguration(httpCONNECTProxy:tlsOptions: nil)
 //   HTTPS   → ProxyConfiguration(httpCONNECTProxy:tlsOptions: TLS options)
-//   SOCKS4  → NOT natively supported by Network.framework — the caller must
-//             use `LocalSOCKS5Adapter` (a local SOCKS5 endpoint bridging to
-//             the upstream SOCKS4/4a server) instead. Returns nil.
+//   SOCKS4  → LocalSOCKS5Adapter (bridges to upstream SOCKS4/4a).
 
 public enum ProxyNetworkConfigurationBuilder {
 
@@ -36,6 +39,12 @@ public enum ProxyNetworkConfigurationBuilder {
         let proxy: Network.ProxyConfiguration
         switch configuration.type {
         case .socks5:
+            // Authenticated SOCKS5 must NOT use the native path: Apple's
+            // Network.ProxyConfiguration(socksv5Proxy:) has no credential
+            // field — credentials would be silently dropped and the proxy
+            // server would reject the connection. The caller (applyProxy)
+            // detects this case and routes through LocalSOCKS5Adapter instead.
+            guard username == nil || password == nil else { return nil }
             proxy = Network.ProxyConfiguration(socksv5Proxy: endpoint)
         case .http:
             proxy = Network.ProxyConfiguration(httpCONNECTProxy: endpoint, tlsOptions: nil)
@@ -44,12 +53,6 @@ public enum ProxyNetworkConfigurationBuilder {
             proxy = Network.ProxyConfiguration(httpCONNECTProxy: endpoint, tlsOptions: tlsOptions)
         case .socks4:
             return nil
-        }
-
-        if let username, let password, !username.isEmpty, !password.isEmpty {
-            // NOTE: Apple's native proxy APIs do not carry credentials on the
-            // ProxyConfiguration itself; authenticated SOCKS5/HTTP proxies are
-            // therefore only routed by Transport (raw), not by these sessions.
         }
         return [proxy]
     }
@@ -77,7 +80,40 @@ public final class ProxySessionProvider: ObservableObject {
 
     private let adapter = LocalSOCKS5Adapter()
 
+    /// Set whenever `applyProxy` cannot represent the requested route
+    /// (adapter bind failure, invalid configuration). Cleared on the next
+    /// successful apply or when the route is removed. Consumers must check
+    /// this after building a session configuration: an empty proxy list with
+    /// a requested route means "proxy not usable" — routing traffic then
+    /// would silently go direct.
+    public private(set) var lastApplyFailure: ProxyTestFailure?
+
     public init() {}
+
+    /// Pre-starts (or stops) the loopback adapter for a configuration so the
+    /// caller can CONFIRM the route is usable before publishing state.
+    /// Returns nil when the configuration can be applied, or the failure.
+    /// `nil` configuration stops the adapter (no proxy route).
+    @discardableResult
+    public func prepare(_ configuration: ProxyConfiguration?) -> ProxyTestFailure? {
+        guard let configuration else {
+            adapter.stop()
+            lastApplyFailure = nil
+            return nil
+        }
+        let needsAdapter = configuration.type == .socks4
+            || (configuration.type == .socks5 && configuration.requiresAuthentication)
+        if needsAdapter {
+            guard adapter.start(upstream: configuration) != nil else {
+                lastApplyFailure = .proxyUnavailable
+                return lastApplyFailure
+            }
+        } else {
+            adapter.stop()
+        }
+        lastApplyFailure = nil
+        return nil
+    }
 
     /// Ephemeral configuration through the given proxy (nil → direct).
     public func sessionConfiguration(for configuration: ProxyConfiguration?) -> URLSessionConfiguration {
@@ -87,33 +123,56 @@ public final class ProxySessionProvider: ObservableObject {
         return config
     }
 
-    /// Applies the proxy to an existing configuration. When the proxy is
-    /// SOCKS4 the local adapter is (re)started and its loopback SOCKS5
-    /// endpoint is used. On any failure the configuration has NO proxy and
-    /// `lastAdapterError` is set so the caller can surface a useful error.
+    /// Applies the proxy to an existing configuration.
+    ///
+    /// Routing rules:
+    ///   * SOCKS4              → `LocalSOCKS5Adapter` (SOCKS4/4a upstream)
+    ///   * SOCKS5 + auth       → `LocalSOCKS5Adapter` (RFC 1929 credentials;
+    ///                           Apple's native API has no credential field)
+    ///   * SOCKS5 (no auth)    → native `Network.ProxyConfiguration`
+    ///   * HTTP / HTTPS        → native `Network.ProxyConfiguration`
+    ///
+    /// On any failure the configuration has NO proxy applied and a
+    /// `ProxyTestFailure` is returned so callers can surface an error instead
+    /// of silently leaking traffic over a direct connection.
     @discardableResult
     public func applyProxy(_ configuration: ProxyConfiguration?, to sessionConfiguration: URLSessionConfiguration) -> ProxyTestFailure? {
-        if let configuration {
-            if configuration.type == .socks4 {
-                if let endpoint = adapter.start(upstream: configuration) {
-                    let proxy = Network.ProxyConfiguration(
-                        socksv5Proxy: NWEndpoint.hostPort(host: "127.0.0.1", port: endpoint)
-                    )
-                    ProxyNetworkConfigurationBuilder.apply([proxy], to: sessionConfiguration)
-                    return nil
-                }
-                sessionConfiguration.proxyConfigurations = []
-                return .proxyUnavailable
-            }
-            if let native = ProxyNetworkConfigurationBuilder.nativeProxyConfigurations(for: configuration), !native.isEmpty {
-                ProxyNetworkConfigurationBuilder.apply(native, to: sessionConfiguration)
+        guard let configuration else {
+            sessionConfiguration.proxyConfigurations = []
+            lastApplyFailure = nil
+            return nil
+        }
+
+        // Both SOCKS4 and authenticated SOCKS5 are handled by the local adapter.
+        // The adapter performs the real handshake (including RFC 1929 auth for
+        // SOCKS5) and presents a no-auth SOCKS5 interface on loopback.
+        let needsAdapter = configuration.type == .socks4
+            || (configuration.type == .socks5 && configuration.requiresAuthentication)
+
+        if needsAdapter {
+            if let endpoint = adapter.start(upstream: configuration) {
+                let proxy = Network.ProxyConfiguration(
+                    socksv5Proxy: NWEndpoint.hostPort(host: "127.0.0.1", port: endpoint)
+                )
+                ProxyNetworkConfigurationBuilder.apply([proxy], to: sessionConfiguration)
+                lastApplyFailure = nil
                 return nil
             }
             sessionConfiguration.proxyConfigurations = []
-            return .invalidConfiguration("Proxy could not be represented for this session")
+            lastApplyFailure = .proxyUnavailable
+            return lastApplyFailure
+        }
+
+        // SOCKS5 (no auth) and HTTP/HTTPS use the native path.
+        if let native = ProxyNetworkConfigurationBuilder.nativeProxyConfigurations(for: configuration),
+           !native.isEmpty {
+            ProxyNetworkConfigurationBuilder.apply(native, to: sessionConfiguration)
+            lastApplyFailure = nil
+            return nil
         }
         sessionConfiguration.proxyConfigurations = []
-        return nil
+        lastApplyFailure = .invalidConfiguration("Proxy could not be represented for this session")
+        return lastApplyFailure
     }
 
     public func stopAdapter() {

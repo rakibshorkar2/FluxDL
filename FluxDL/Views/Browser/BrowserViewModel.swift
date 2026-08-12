@@ -114,10 +114,8 @@ public final class BrowserViewModel: ObservableObject {
     public var browserWindowOrigin: CGPoint = .zero
     @Published public var loadErrorMessage: String? = nil
     @Published public var isOffline: Bool = false
-    @Published public var isChromeCollapsed: Bool = false
     @Published public var isAddressFieldFocused: Bool = false {
         didSet {
-            if isAddressFieldFocused { isChromeCollapsed = false }
             if !isAddressFieldFocused { suggestions = [] }
         }
     }

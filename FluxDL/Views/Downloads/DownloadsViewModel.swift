@@ -39,10 +39,16 @@ public final class DownloadsViewModel: ObservableObject {
     // ── Sheet presentation ────────────────────────────────────────────────
     @Published public var isAddSheetPresented: Bool = false
     @Published public var isQueueSettingsPresented: Bool = false
+    @Published public var isHistoryPresented: Bool = false
     @Published public var taskForInfoSheet: DownloadTaskModel?
     @Published public var taskForDiagnosticsSheet: DownloadTaskModel?
     @Published public var taskForUpdateURLSheet: DownloadTaskModel?
     @Published public var taskForMirrorSheet: DownloadTaskModel?
+
+    // ── Clipboard detection (owned by the Downloads tab) ──────────────────
+    /// Mirror of `ClipboardService.detectedURL`, rendered by DownloadsView's
+    /// banner. Cleared when the download starts or the banner is dismissed.
+    @Published public private(set) var clipboardDetectedURL: URL?
 
     // ── Duplicate detection ───────────────────────────────────────────────
     @Published public var pendingDuplicateURL: URL?
@@ -70,10 +76,16 @@ public final class DownloadsViewModel: ObservableObject {
     public let fileManagerService: FileManagementServiceProtocol
     public let storageManager: StorageManagerProtocol
     public let queueManager: QueueManagerProtocol
+    public let historyManager: DownloadHistoryManager
+    private let clipboardService: ClipboardServiceProtocol
     private let hapticService: HapticServiceProtocol
     private var cancellables = Set<AnyCancellable>()
 
     private var _allTasks: [DownloadTaskModel] = []
+
+    /// Guards against double-starts from rapid repeated taps on the
+    /// clipboard banner Download button.
+    private var isClipboardDownloadInFlight = false
 
     // MARK: init
 
@@ -82,12 +94,16 @@ public final class DownloadsViewModel: ObservableObject {
         fileManagerService: FileManagementServiceProtocol  = ServiceContainer.shared.fileManagementService,
         storageManager:     StorageManagerProtocol         = ServiceContainer.shared.storageManager,
         queueManager:       QueueManagerProtocol           = ServiceContainer.shared.queueManager,
+        historyManager:     DownloadHistoryManager         = ServiceContainer.shared.downloadHistoryManager,
+        clipboardService:   ClipboardServiceProtocol       = ServiceContainer.shared.clipboardService,
         hapticService:      HapticServiceProtocol          = ServiceContainer.shared.hapticService
     ) {
         self.downloadEngine      = downloadEngine
         self.fileManagerService  = fileManagerService
         self.storageManager      = storageManager
         self.queueManager        = queueManager
+        self.historyManager      = historyManager
+        self.clipboardService    = clipboardService
         self.hapticService       = hapticService
         self.filterState         = DownloadFilterState.load()
 
@@ -97,6 +113,15 @@ public final class DownloadsViewModel: ObservableObject {
                 self?._allTasks = tasks
                 self?.applyFilter()
                 self?.computeCounts(tasks)
+            }
+            .store(in: &cancellables)
+
+        // The Downloads tab owns the clipboard prompt. When the banner is
+        // acted on (or the tab is left), the detection state is cleared here.
+        clipboardService.detectedURLPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] url in
+                self?.clipboardDetectedURL = url
             }
             .store(in: &cancellables)
 
@@ -130,6 +155,46 @@ public final class DownloadsViewModel: ObservableObject {
         storageUsedPercentage  = storageManager.storageUsedPercentage
         queueModeFormatted     = queueManager.queueMode.rawValue
         maxConcurrentDownloads = queueManager.maxConcurrentDownloads
+    }
+
+    // MARK: ── Clipboard banner ────────────────────────────────────────────
+
+    /// Starts the download for a URL detected on the clipboard.
+    ///
+    /// The banner is dismissed first (so a repeated tap can never start a
+    /// second download), and the `isClipboardDownloadInFlight` guard covers
+    /// double-taps within the same frame before the view re-renders.
+    public func startDownloadFromClipboard() {
+        guard let url = clipboardDetectedURL else { return }
+        guard !isClipboardDownloadInFlight else { return }
+        isClipboardDownloadInFlight = true
+        defer { isClipboardDownloadInFlight = false }
+
+        dismissClipboardDetection()
+        startNewDownload(url: url, filename: nil)
+        hapticService.impactOccurred(.light)
+    }
+
+    /// Clears both the view-level banner state and the underlying clipboard
+    /// detection state — never just hides the banner visually.
+    public func dismissClipboardDetection() {
+        clipboardDetectedURL = nil
+        clipboardService.dismissDetectedURL()
+    }
+
+    // MARK: ── History ─────────────────────────────────────────────────────
+
+    /// Restarts a download from a history record's saved original URL.
+    /// The history sheet is dismissed first so the duplicate-resolution sheet
+    /// (if the URL already exists) can present cleanly afterwards.
+    public func retryFromHistory(entry: DownloadHistoryEntry) {
+        isHistoryPresented = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.startNewDownload(url: entry.originalURL, filename: entry.filename)
+            }
+        }
     }
 
     // MARK: ── Download actions ────────────────────────────────────────────

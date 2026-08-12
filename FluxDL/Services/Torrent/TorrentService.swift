@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import Combine
 import UserNotifications
 import LibTorrent
@@ -97,8 +97,10 @@ public final class TorrentRecordStore {
 }
 
 /// Torrent engine wrapper around the LibTorrent framework.
-/// Self-contained: it is created and owned exclusively by the Torrent tab.
+/// Self-contained engine service for managing torrent tasks.
 public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
+
+    public static let shared = TorrentService()
 
     // MARK: - Published State
 
@@ -158,6 +160,7 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         static let preallocateStorage = "Torrent.PreallocateStorage"
         static let encryptionOption = "Torrent.EncryptionOption"
         static let validateHttpsTrackers = "Torrent.ValidateHttpsTrackers"
+        static let notifiedCompletedHashes = "Torrent.NotifiedCompletedHashes"
     }
 
     private let defaults: UserDefaults
@@ -185,6 +188,10 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
            let option = TorrentEncryptionOption(rawValue: raw) { connection.encryptionOption = option }
         if let value = defaults.object(forKey: SettingsKey.validateHttpsTrackers) as? Bool { connection.validateHttpsTrackers = value }
         self.connectionSettings = connection
+
+        if let savedCompleted = defaults.stringArray(forKey: SettingsKey.notifiedCompletedHashes) {
+            self.notifiedCompletedHashes = Set(savedCompleted)
+        }
 
         super.init()
     }
@@ -424,6 +431,8 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         // A re-added torrent with the same info-hash must produce a fresh
         // completion notification even if its predecessor already fired.
         notifiedCompletedHashes.remove(id)
+        saveNotifiedCompletedHashes()
+        ServiceContainer.shared.liveActivityManager.endTorrentActivity(for: id)
         requestRefresh()
     }
 
@@ -625,6 +634,17 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
                 self.torrents = withStallState
                 self.refreshInFlight = false
                 self.checkForCompletions(withStallState)
+                
+                // Update live activities & background keep-alive status when app is in background
+                let hasActiveTorrents = withStallState.contains { $0.isActive && !$0.isFinished }
+                if UIApplication.shared.applicationState == .background {
+                    ServiceContainer.shared.backgroundKeepAliveService
+                        .updateTorrentsKeepAlive(hasActiveTorrents)
+                    for model in withStallState {
+                        ServiceContainer.shared.liveActivityManager.updateTorrentActivity(for: model)
+                    }
+                }
+                
                 if self.refreshPending {
                     self.refreshPending = false
                     self.requestRefresh()
@@ -773,12 +793,24 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         return updated
     }
 
+    // MARK: - App Lifecycle & Keep-Alive Integration
+
+    public func handleAppBackgrounding() {
+        let hasActiveTorrents = torrents.contains { $0.isActive && !$0.isFinished }
+        ServiceContainer.shared.backgroundKeepAliveService
+            .updateTorrentsKeepAlive(hasActiveTorrents)
+        ServiceContainer.shared.liveActivityManager.handleTorrentAppBackgrounding(tasks: torrents)
+    }
+
+    public func handleAppForegrounding() {
+        // App in foreground natively maintains process execution thread.
+    }
+
     // MARK: - Completion Notifications
 
     /// Notifies once per torrent when it transitions to a finished/seeding state.
     private func checkForCompletions(_ models: [TorrentTaskModel]) {
         guard notificationsEnabled else {
-            hasEstablishedCompletionBaseline = false
             return
         }
         for model in models where model.isSeed || model.isFinished {
@@ -786,19 +818,26 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
                 notifiedCompletedHashes.insert(model.id)
             } else if !notifiedCompletedHashes.contains(model.id) {
                 notifiedCompletedHashes.insert(model.id)
+                saveNotifiedCompletedHashes()
                 postCompletionNotification(for: model)
             }
         }
+        saveNotifiedCompletedHashes()
         hasEstablishedCompletionBaseline = true
+    }
+
+    private func saveNotifiedCompletedHashes() {
+        defaults.set(Array(notifiedCompletedHashes), forKey: SettingsKey.notifiedCompletedHashes)
     }
 
     private func postCompletionNotification(for model: TorrentTaskModel) {
         let content = UNMutableNotificationContent()
-        content.title = "Download Complete"
-        content.body = model.name
+        content.title = "Torrent Download Complete"
+        content.body = "\(model.name) has finished downloading."
         content.sound = .default
+        content.userInfo = ["torrentId": model.id, "type": "torrent"]
         let request = UNNotificationRequest(
-            identifier: "FluxDL.complete.\(model.id)",
+            identifier: "FluxDL.torrent.complete.\(model.id)",
             content: content,
             trigger: nil
         )
