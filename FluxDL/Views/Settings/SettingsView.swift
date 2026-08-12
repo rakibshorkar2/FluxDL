@@ -1,6 +1,5 @@
 import SwiftUI
 
-// Settings screen container — keeps GPU load low while scrolling.
 // MARK: - Settings-specific opaque card
 // GlassCard uses .ultraThinMaterial which requires live GPU backdrop sampling every scroll frame.
 // SettingsCard uses a plain opaque fill — dramatically reduces GPU load and eliminates scroll stutter.
