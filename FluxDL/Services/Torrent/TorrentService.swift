@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import UserNotifications
+import UIKit
 import LibTorrent
 
 /// Error surfaced by the torrent service. Carries a user-facing message.
