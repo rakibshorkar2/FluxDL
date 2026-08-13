@@ -26,6 +26,8 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
     private var cancellables = Set<AnyCancellable>()
     private weak var engine: DownloadEngineProtocol?
 
+    private let lowBatteryPauseKey = "fluxdl_low_battery_pause"
+
     /// Tasks auto-paused by this monitor (low battery / LPM / cellular with
     /// WiFi-only). They are restored automatically once the condition clears;
     /// tasks the user paused manually are never touched.
@@ -103,6 +105,14 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
         monitor.start(queue: DispatchQueue(label: "com.rakib.FluxDL.power.path"))
     }
 
+    /// Low-battery auto-pause toggle. The absent-key default (true) must match
+    /// the Settings tab's @AppStorage default, so a fresh install behaves the
+    /// way the UI shows it. Extracted for deterministic testing.
+    func lowBatteryAutoPauseEnabled() -> Bool {
+        UserDefaults.standard.object(forKey: lowBatteryPauseKey) != nil
+            ? UserDefaults.standard.bool(forKey: lowBatteryPauseKey) : true
+    }
+
     private func updateBatteryState() {
         let level    = UIDevice.current.batteryLevel
         let state    = UIDevice.current.batteryState
@@ -119,7 +129,7 @@ public final class PowerNetworkMonitor: ObservableObject, PowerNetworkMonitorPro
         // Auto-pause if low battery or Low Power Mode is on — and reliably
         // auto-resume the exact tasks this monitor paused once it clears
         // (or once the user disables the auto-pause toggle).
-        let shouldAutoPause = UserDefaults.standard.bool(forKey: "fluxdl_low_battery_pause")
+        let shouldAutoPause = lowBatteryAutoPauseEnabled()
         if shouldAutoPause, (lowBat || lowPower) {
             pauseAllDownloading()
         } else if !shouldAutoPause || (!lowBat && !lowPower) {

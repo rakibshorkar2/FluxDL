@@ -22,6 +22,9 @@ public final class ServiceContainer: ObservableObject {
     public let backgroundKeepAliveService: BackgroundKeepAliveServiceProtocol
     public let downloadEngine: DownloadEngineProtocol
     public let torrentService: TorrentService
+    /// Owns the torrent subsystem's background lifecycle (keep-alive claim +
+    /// Live Activities), isolated from the downloads/browser machinery.
+    public let torrentBackgroundManager: TorrentBackgroundManager
     public let proxyService: ProxyProviding
     
     public init(
@@ -53,6 +56,17 @@ let powerMon = PowerNetworkMonitor()
         let proxy = ProxyService()
         self.proxyService = proxy
         self.torrentService = TorrentService.shared
+
+        // Constructed after torrentService (never inside TorrentService.init)
+        // so no static-init recursion occurs. The manager claims the torrents
+        // keep-alive slot and drives torrent Live Activities — it never
+        // touches the proxy.
+        let torrentBackground = TorrentBackgroundManager(
+            keepAliveService: backgroundKeepAliveService,
+            liveActivityManager: liveActivityManager
+        )
+        self.torrentBackgroundManager = torrentBackground
+        self.torrentService.configureBackgroundLifecycle(torrentBackground)
 
         let engine = DownloadEngine(
             repository: downloadRepository,

@@ -104,6 +104,7 @@
 		AA20000C2C6000010000000C /* ProxyYAMLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000C2C6000010000000C /* ProxyYAMLParserTests.swift */; };
 		AA20000D2C6000010000000D /* ProxyPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000D2C6000010000000D /* ProxyPersistenceTests.swift */; };
 		AA20000E2C6000010000000E /* ProxyTesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000E2C6000010000000E /* ProxyTesterTests.swift */; };
+		D54E00012C60000100000001 /* ProxyAdapterDataPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54E00022C60000100000002 /* ProxyAdapterDataPathTests.swift */; };
 		AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000F2C6000010000000F /* ProxyStateTests.swift */; };
 		AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000102C60000100000010 /* MockKeychainStore.swift */; };
 		AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */; };
@@ -126,6 +127,15 @@
 		AA30000E2C6000010000000E /* ProxySessionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000E2C6000010000000E /* ProxySessionProvider.swift */; };
 		AA30000F2C6000010000000F /* DefaultProxies.yaml in Resources */ = {isa = PBXBuildFile; fileRef = BB30000F2C6000010000000F /* DefaultProxies.yaml */; };
 		AA4000032C60000100000003 /* Yams in Sources */ = {isa = PBXBuildFile; productRef = AA4000022C60000100000002 /* Yams */; };
+		AA4E00012C60000100000001 /* TorrentBackgroundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00012C60000100000001 /* TorrentBackgroundManager.swift */; };
+		AA4E00022C60000100000002 /* TorrentCompletionTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00022C60000100000002 /* TorrentCompletionTracker.swift */; };
+		AA4E00032C60000100000003 /* TorrentActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */; };
+		AA4E00042C60000100000004 /* TorrentActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */; };
+		AA4E00052C60000100000005 /* FluxDLWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00042C60000100000004 /* FluxDLWidgetsBundle.swift */; };
+		AA4E00062C60000100000006 /* TorrentLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00052C60000100000005 /* TorrentLiveActivity.swift */; };
+		AA4E00072C60000100000007 /* FluxDLWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BB4E00062C60000100000006 /* FluxDLWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AA4E00082C60000100000008 /* TorrentBackgroundManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */; };
+		AA4E00092C60000100000009 /* TorrentCompletionTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -149,6 +159,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = EE1000012C60000100000001;
 			remoteInfo = FluxDL;
+		};
+		CC4E00012C60000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD1000012C60000100000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE4E00012C60000100000001;
+			remoteInfo = FluxDLWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -253,6 +270,7 @@
 		BB20000C2C6000010000000C /* ProxyYAMLParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyYAMLParserTests.swift; sourceTree = "<group>"; };
 		BB20000D2C6000010000000D /* ProxyPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyPersistenceTests.swift; sourceTree = "<group>"; };
 		BB20000E2C6000010000000E /* ProxyTesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTesterTests.swift; sourceTree = "<group>"; };
+		D54E00022C60000100000002 /* ProxyAdapterDataPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyAdapterDataPathTests.swift; sourceTree = "<group>"; };
 		BB20000F2C6000010000000F /* ProxyStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyStateTests.swift; sourceTree = "<group>"; };
 		BB2000102C60000100000010 /* MockKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockKeychainStore.swift; sourceTree = "<group>"; };
 		BB2000112C60000100000011 /* DownloadHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryTests.swift; sourceTree = "<group>"; };
@@ -272,6 +290,15 @@
 		BB30000D2C6000010000000D /* ProxyTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTester.swift; sourceTree = "<group>"; };
 		BB30000E2C6000010000000E /* ProxySessionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxySessionProvider.swift; sourceTree = "<group>"; };
 		BB30000F2C6000010000000F /* DefaultProxies.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = DefaultProxies.yaml; sourceTree = "<group>"; };
+		BB4E00012C60000100000001 /* TorrentBackgroundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentBackgroundManager.swift; sourceTree = "<group>"; };
+		BB4E00022C60000100000002 /* TorrentCompletionTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentCompletionTracker.swift; sourceTree = "<group>"; };
+		BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentActivityAttributes.swift; sourceTree = "<group>"; };
+		BB4E00042C60000100000004 /* FluxDLWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxDLWidgetsBundle.swift; sourceTree = "<group>"; };
+		BB4E00052C60000100000005 /* TorrentLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentLiveActivity.swift; sourceTree = "<group>"; };
+		BB4E00062C60000100000006 /* FluxDLWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FluxDLWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentBackgroundManagerTests.swift; sourceTree = "<group>"; };
+		BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentCompletionTrackerTests.swift; sourceTree = "<group>"; };
+		BB4E00092C60000100000009 /* WidgetInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B3E000012C60000100000001 /* ProxyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyUITests.swift; sourceTree = "<group>"; };
 		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -284,9 +311,28 @@
 				GG1000012C60000100000001 /* FluxDL */,
 				GG2000012C60000100000001 /* FluxDLTests */,
 				GG3E00012C60000100000001 /* FluxDLUITests */,
+				GG4E00012C60000100000001 /* FluxDLWidgets */,
 				GG1000992C60000100000099 /* Products */,
 				GG1000122C60000100000012 /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		GG4E00012C60000100000001 /* FluxDLWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				BB4E00042C60000100000004 /* FluxDLWidgetsBundle.swift */,
+				BB4E00052C60000100000005 /* TorrentLiveActivity.swift */,
+				BB4E00092C60000100000009 /* Info.plist */,
+			);
+			path = FluxDLWidgets;
+			sourceTree = "<group>";
+		};
+		GG4E00022C60000100000002 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 		GG1000012C60000100000001 /* FluxDL */ = {
@@ -295,6 +341,7 @@
 				BB1000002C60000100000000 /* Info.plist */,
 				BB1000642C60000100000064 /* Assets.xcassets */,
 				BB1000012C60000100000001 /* FluxDLApp.swift */,
+				GG4E00022C60000100000002 /* Shared */,
 				GG1000022C60000100000002 /* Core */,
 				GG1000032C60000100000003 /* Services */,
 				GG1000042C60000100000004 /* DesignSystem */,
@@ -382,6 +429,8 @@
 			children = (
 				BB10005D2C6000010000005D /* TorrentService.swift */,
 				BB10005E2C6000010000005E /* TorrentTaskModel.swift */,
+				BB4E00012C60000100000001 /* TorrentBackgroundManager.swift */,
+				BB4E00022C60000100000002 /* TorrentCompletionTracker.swift */,
 			);
 			path = Torrent;
 			sourceTree = "<group>";
@@ -576,10 +625,13 @@
 				BB2000082C60000100000008 /* PowerNetworkTests.swift */,
 				BB2000092C60000100000009 /* URLFilenameExtractorTests.swift */,
 				BB20000A2C6000010000000A /* BackgroundKeepAliveTests.swift */,
+				BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */,
+				BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */,
 				BB20000B2C6000010000000B /* ProxyConfigurationTests.swift */,
 				BB20000C2C6000010000000C /* ProxyYAMLParserTests.swift */,
 				BB20000D2C6000010000000D /* ProxyPersistenceTests.swift */,
 				BB20000E2C6000010000000E /* ProxyTesterTests.swift */,
+				D54E00022C60000100000002 /* ProxyAdapterDataPathTests.swift */,
 				BB20000F2C6000010000000F /* ProxyStateTests.swift */,
 				BB2000102C60000100000010 /* MockKeychainStore.swift */,
 				BB2000112C60000100000011 /* DownloadHistoryTests.swift */,
@@ -602,6 +654,7 @@
 				BB1000992C60000100000099 /* FluxDL.app */,
 				BB2000992C60000100000099 /* FluxDLTests.xctest */,
 				P3E000012C60000100000001 /* FluxDLUITests.xctest */,
+				BB4E00062C60000100000006 /* FluxDLWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -617,11 +670,13 @@
 				E01000012C60000100000001 /* Frameworks */,
 				RR1000012C60000100000001 /* Resources */,
 				E02000012C60000100000002 /* Embed Frameworks */,
+				E04E00022C60000100000002 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				DD1000012C60000100000010 /* PBXTargetDependency */,
+				DD4E00012C60000100000001 /* PBXTargetDependency */,
 			);
 			name = FluxDL;
 			packageProductDependencies = (
@@ -663,6 +718,23 @@
 			productReference = P3E000012C60000100000001 /* FluxDLUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		EE4E00012C60000100000001 /* FluxDLWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF4E00012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLWidgets" */;
+			buildPhases = (
+				SS4E00012C60000100000001 /* Sources */,
+				E04E00012C60000100000001 /* Frameworks */,
+				RR4E00012C60000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FluxDLWidgets;
+			productName = FluxDLWidgets;
+			productReference = BB4E00062C60000100000006 /* FluxDLWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -683,6 +755,9 @@
 					EE3000012C60000100000001 = {
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = EE1000012C60000100000001;
+					};
+					EE4E00012C60000100000001 = {
+						CreatedOnToolsVersion = 16.0;
 					};
 				};
 			};
@@ -705,6 +780,7 @@
 				EE1000012C60000100000001 /* FluxDL */,
 				EE2000012C60000100000001 /* FluxDLTests */,
 				EE3000012C60000100000001 /* FluxDLUITests */,
+				EE4E00012C60000100000001 /* FluxDLWidgets */,
 			);
 		};
 /* Begin XCLocalSwiftPackageReference section */
@@ -724,6 +800,17 @@
 /* End PBXProject section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		E04E00022C60000100000002 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AA4E00072C60000100000007 /* FluxDLWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E02000012C60000100000002 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -738,6 +825,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		E04E00012C60000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		E01000012C60000100000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -755,6 +849,13 @@
 			files = (
 				AA1000642C60000100000064 /* Assets.xcassets in Resources */,
 				AA30000F2C6000010000000F /* DefaultProxies.yaml in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		RR4E00012C60000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -842,6 +943,9 @@
 				AA10005C2C6000010000005C /* TorrentViewModel.swift in Sources */,
 				AA10005D2C6000010000005D /* TorrentService.swift in Sources */,
 				AA10005E2C6000010000005E /* TorrentTaskModel.swift in Sources */,
+				AA4E00012C60000100000001 /* TorrentBackgroundManager.swift in Sources */,
+				AA4E00022C60000100000002 /* TorrentCompletionTracker.swift in Sources */,
+				AA4E00032C60000100000003 /* TorrentActivityAttributes.swift in Sources */,
 				AA10005F2C6000010000005F /* TorrentItemCard.swift in Sources */,
 				AA1000602C60000100000060 /* AddTorrentSheet.swift in Sources */,
 				AA1000612C60000100000061 /* TorrentDetailSheet.swift in Sources */,
@@ -878,10 +982,13 @@
 				AA2000082C60000100000008 /* PowerNetworkTests.swift in Sources */,
 				AA2000092C60000100000009 /* URLFilenameExtractorTests.swift in Sources */,
 				AA20000A2C6000010000000A /* BackgroundKeepAliveTests.swift in Sources */,
+				AA4E00082C60000100000008 /* TorrentBackgroundManagerTests.swift in Sources */,
+				AA4E00092C60000100000009 /* TorrentCompletionTrackerTests.swift in Sources */,
 				AA20000B2C6000010000000B /* ProxyConfigurationTests.swift in Sources */,
 				AA20000C2C6000010000000C /* ProxyYAMLParserTests.swift in Sources */,
 				AA20000D2C6000010000000D /* ProxyPersistenceTests.swift in Sources */,
 				AA20000E2C6000010000000E /* ProxyTesterTests.swift in Sources */,
+				D54E00012C60000100000001 /* ProxyAdapterDataPathTests.swift in Sources */,
 				AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */,
 				AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */,
 				AA2000112C60000100000011 /* DownloadHistoryTests.swift in Sources */,
@@ -894,6 +1001,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		SS4E00012C60000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA4E00042C60000100000004 /* TorrentActivityAttributes.swift in Sources */,
+				AA4E00052C60000100000005 /* FluxDLWidgetsBundle.swift in Sources */,
+				AA4E00062C60000100000006 /* TorrentLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -914,6 +1031,11 @@
 			isa = PBXTargetDependency;
 			target = EE1000012C60000100000001 /* FluxDL */;
 			targetProxy = CC3E00012C60000100000001 /* PBXContainerItemProxy */;
+		};
+		DD4E00012C60000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE4E00012C60000100000001 /* FluxDLWidgets */;
+			targetProxy = CC4E00012C60000100000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1159,6 +1281,58 @@
 			};
 			name = Release;
 		};
+		CF4E00012C60000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FluxDLWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FluxDL Widgets";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Debug;
+		};
+		CF4E00012C60000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FluxDLWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FluxDL Widgets";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1194,6 +1368,15 @@
 			buildConfigurations = (
 				CF3E00012C60000100000001 /* Debug */,
 				CF3E00012C60000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF4E00012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF4E00012C60000100000001 /* Debug */,
+				CF4E00012C60000100000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

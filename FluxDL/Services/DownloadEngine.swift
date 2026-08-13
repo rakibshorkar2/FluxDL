@@ -93,6 +93,12 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     // URLSessionDownloadTask reference (for cancel/pause) – MainActor only
     private var urlTaskByID: [UUID: URLSessionDownloadTask] = [:]
 
+    // Owning session identity per live task – MainActor only. Lets the engine
+    // tell which tasks belong to the proxied session when it is dropped
+    // (profile switch/disable) so they can be requeued instead of continuing
+    // through a stale proxy configuration.
+    private var sessionByTaskID: [UUID: ObjectIdentifier] = [:]
+
     // Pending auto-retry tasks (MainActor only) — cancelled when the user
     // cancels/pauses/deletes a download during the retry delay.
     private var autoRetryTaskByID: [UUID: Task<Void, Never>] = [:]
@@ -202,11 +208,13 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         return session
     }
 
-    /// Re-evaluates routing after the proxy state changes. In-flight proxied
-    /// tasks are allowed to finish; the proxied session is dropped so new
-    /// tasks never keep using a stale endpoint (profile switch/update) and
-    /// never go direct while the route is unavailable. Consumers (browser)
-    /// are notified through `onRoutingStateChange`.
+    /// Re-evaluates routing after the proxy state changes. When the proxied
+    /// session is dropped (profile switch/update, proxy disabled, route
+    /// failure), in-flight tasks on it are REQUIRED to never keep running
+    /// through a stale proxy configuration — they are requeued and restarted
+    /// on the current route (new proxied session, or the background session
+    /// when the route was disabled) by `QueueManager.scheduleNextTasks`.
+    /// Consumers (browser) are notified through `onRoutingStateChange`.
     public func refreshProxyRouting() {
         let configuration = proxyProvider?.activeConfiguration
         let isUsable = proxyProvider?.connectionState == .connected
@@ -214,11 +222,61 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
             && (proxyProvider?.downloadsProxyEnabled == true)
             && configuration != nil
         if !isUsable || proxiedSessionFingerprint != configuration?.fingerprint {
-            proxiedSession?.finishTasksAndInvalidate()
-            proxiedSession = nil
-            proxiedSessionFingerprint = nil
+            if let dropped = proxiedSession {
+                proxiedSession = nil
+                proxiedSessionFingerprint = nil
+                requeueTasks(from: dropped)
+                dropped.finishTasksAndInvalidate()
+            }
         }
         onRoutingStateChange?()
+    }
+
+    /// Moves tasks still attached to a dropped proxied session back to
+    /// `.pending`. The URLSession-level task is cancelled with resume data so
+    /// the download restarts on the current session (new proxy or direct)
+    /// instead of silently continuing through the old configuration.
+    private func requeueTasks(from dropped: URLSession) {
+        let droppedID = ObjectIdentifier(dropped)
+        let affected = urlTaskByID.keys.filter { sessionByTaskID[$0] == droppedID }
+        guard !affected.isEmpty else { return }
+
+        for id in affected {
+            guard let index = tasks.firstIndex(where: { $0.id == id }),
+                  tasks[index].status == .downloading,
+                  let dlTask = urlTaskByID[id] else { continue }
+            autoRetryTaskByID[id]?.cancel()
+            autoRetryTaskByID.removeValue(forKey: id)
+
+            dlTask.cancel { [weak self, capturedTask = dlTask] resumeData in
+                // This closure runs on delegateQueue
+                guard let self else { return }
+                Task { @MainActor in
+                    guard let self,
+                          let idx = self.tasks.firstIndex(where: { $0.id == id }) else { return }
+                    // Ignore if the task was resumed/deleted/retried or the
+                    // session already changed again while the cancel was in
+                    // flight — never resurrect a stale requeue over the
+                    // current route.
+                    guard self.urlTaskByID[id] === capturedTask,
+                          self.sessionByTaskID[id] == droppedID else { return }
+                    self.tasks[idx].resumeData         = resumeData
+                    self.tasks[idx].status             = .pending
+                    self.tasks[idx].errorMessage       = nil
+                    self.tasks[idx].speedBytesPerSec   = 0
+                    self.tasks[idx].remainingTimeSeconds = 0
+                    self.tasks[idx].sessionTaskIdentifier = nil
+                    self.urlTaskByID.removeValue(forKey: id)
+                    self.sessionByTaskID.removeValue(forKey: id)
+                    self.cleanupDelegateTracking(id: id)
+                    ServiceContainer.shared.liveActivityManager.endActivity(for: id)
+                    self.repository.saveTasks(self.tasks)
+                    ServiceContainer.shared.queueManager.scheduleNextTasks(in: self)
+                    self.updateScreenAwakeState()
+                    self.notifyKeepAlive()
+                }
+            }
+        }
     }
 
     /// Stable identity for the task reverse-lookup. Delegate callbacks arrive
@@ -278,6 +336,7 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         }
         let dlTask = usedSession.downloadTask(with: url)
         urlTaskByID[model.id] = dlTask
+        sessionByTaskID[model.id] = ObjectIdentifier(usedSession)
 
         // Register reverse lookup on delegate queue (serialised)
         let taskID     = model.id
@@ -372,6 +431,7 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         }
 
         urlTaskByID[id] = dlTask
+        sessionByTaskID[id] = ObjectIdentifier(usedSession)
         tasks[index].sessionTaskIdentifier = dlTask.taskIdentifier
 
         let taskID     = id
@@ -596,6 +656,7 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
     /// Must be called from MainActor; schedules cleanup on delegate queue.
     private func cleanupDelegateTracking(id: UUID) {
+        sessionByTaskID.removeValue(forKey: id)
         delegateQueue.addOperation { [weak self] in
             guard let self else { return }
             // Remove by value search (only runs on status change, not hot path)

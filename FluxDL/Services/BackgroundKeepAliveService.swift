@@ -2,6 +2,7 @@ import Foundation
 import UIKit
 import AVFoundation
 import CoreLocation
+import Combine
 
 public protocol BackgroundKeepAliveServiceProtocol: AnyObject {
     /// Each subsystem reports ONLY its own domain through a private slot.
@@ -33,8 +34,21 @@ public final class BackgroundKeepAliveService: NSObject, BackgroundKeepAliveServ
     /// Diagnostic/test-observable: whether keep-alive is currently running.
     public private(set) var isKeepAliveRunning: Bool = false
 
+    private var cancellables = Set<AnyCancellable>()
+
     public override init() {
         super.init()
+
+        // Settings toggles are plain UserDefaults keys (written by the Settings
+        // tab's @AppStorage). Re-evaluate immediately when any of them changes
+        // so a keep-alive toggle flip takes effect at once instead of waiting
+        // for the next lifecycle or task-status event. Same pattern as
+        // BrowserTabManager / PowerNetworkMonitor / QueueManager.
+        NotificationCenter.default
+            .publisher(for: UserDefaults.didChangeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.handleUserDefaultsChange() }
+            .store(in: &cancellables)
     }
 
     public func updateDownloadsKeepAlive(_ active: Bool) {
@@ -63,6 +77,14 @@ public final class BackgroundKeepAliveService: NSObject, BackgroundKeepAliveServ
 
     func updateTorrentsKeepAlive(_ active: Bool, appState: UIApplication.State) {
         activeTorrents = active
+        evaluate(appState: appState)
+    }
+
+    /// Re-reads the keep-alive toggles and re-evaluates the running state.
+    /// Called when the Settings tab flips a toggle; `appState` is injectable
+    /// for deterministic unit tests (same pattern as the update*(_ :appState:)
+    /// variants). Each toggle value still gates only its own slot.
+    func handleUserDefaultsChange(appState: UIApplication.State = UIApplication.shared.applicationState) {
         evaluate(appState: appState)
     }
 

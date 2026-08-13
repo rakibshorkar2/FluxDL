@@ -33,6 +33,10 @@
 		<string>audio</string>
 		<string>location</string>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>FluxDL uses location in the background to keep downloads alive when the app is minimized.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

@@ -25,7 +25,7 @@ public enum AppTab: Int, CaseIterable, Identifiable {
         case .browser: return "globe"
         case .proxy: return "arrow.left.arrow.right"
         case .settings: return "gearshape.fill"
-        case .torrent: return "network"
+        case .torrent: return "arrow.down.to.line"
         }
     }
 }

@@ -168,6 +168,82 @@ public struct TorrentTaskModel: Identifiable, Equatable {
         }
         return state.displayTitle
     }
+
+    // MARK: - Test fixture
+
+    /// Builds a lightweight model for tests and previews without exposing
+    /// LibTorrent types through the signature. `stateName` uses the engine
+    /// state's raw names ("downloading", "paused", "seeding", "finished",
+    /// "storageError", "checkingFiles", "downloadingMetadata",
+    /// "checkingResumeData").
+    public static func makeStub(
+        id: String,
+        name: String,
+        stateName: String = "downloading",
+        progress: Double = 0.5,
+        downloadRate: Int64 = 0,
+        uploadRate: Int64 = 0,
+        total: Int64 = 100,
+        totalDone: Int64 = 50,
+        isStalled: Bool = false,
+        isPaused: Bool = false,
+        isSeed: Bool = false,
+        isFinished: Bool = false,
+        createdAt: Date = Date()
+    ) -> TorrentTaskModel {
+        TorrentTaskModel(
+            id: id,
+            name: name,
+            state: state(for: stateName),
+            progress: progress,
+            downloadRate: downloadRate,
+            uploadRate: uploadRate,
+            eta: nil,
+            downloadLimit: -1,
+            uploadLimit: -1,
+            total: total,
+            totalDone: totalDone,
+            totalDownload: totalDone,
+            totalUpload: 0,
+            seeds: 0,
+            peers: 0,
+            leechers: 0,
+            totalSeeds: 0,
+            totalPeers: 0,
+            totalLeechers: 0,
+            files: [],
+            trackers: [],
+            magnetLink: nil,
+            comment: nil,
+            creator: nil,
+            creationDate: nil,
+            addedDate: nil,
+            createdAt: createdAt,
+            downloadPath: nil,
+            pieceLength: 0,
+            pieceCount: 0,
+            isStalled: isStalled,
+            isPaused: isPaused,
+            isSeed: isSeed,
+            isFinished: isFinished,
+            stopSeeding: false,
+            isSequential: false,
+            isFirstLastPiecePriority: false
+        )
+    }
+
+    private static func state(for name: String) -> TorrentHandle.State {
+        switch name {
+        case "paused": return .paused
+        case "seeding": return .seeding
+        case "finished": return .finished
+        case "storageError": return .storageError
+        case "checkingFiles": return .checkingFiles
+        case "downloadingMetadata": return .downloadingMetadata
+        case "checkingResumeData": return .checkingResumeData
+        default: return .downloading
+        }
+    }
 }
 
 // MARK: - State display helpers

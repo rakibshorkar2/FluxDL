@@ -145,6 +145,75 @@ final class ProxyPersistenceTests: XCTestCase {
         XCTAssertNil(service.selectedProfileID)
     }
 
+    // MARK: - Launch restore re-validation
+
+    func testLaunchRestoreNeverPublishesConnectedWithoutProbe() async throws {
+        let server = try MockSOCKSServer(behavior: .accept)
+        defer { server.stop() }
+
+        let first = makeService()
+        first.addProfile(makeMockServerProfile(port: Int(server.port)))
+        await first.enable()
+        XCTAssertEqual(first.connectionState, .connected)
+
+        // Relaunch: the restored intent must NOT report "connected" without
+        // a live probe — the service starts `.connecting` with no route.
+        let second = makeService()
+        XCTAssertTrue(second.isEnabled)
+        XCTAssertEqual(second.connectionState, .connecting)
+        XCTAssertNil(second.activeConfiguration, "No route may be published without proof.")
+
+        // The asynchronous re-validation probe succeeds against the live
+        // mock server and only then publishes the route.
+        await waitUntil { second.connectionState == .connected }
+        XCTAssertNotNil(second.activeConfiguration)
+        XCTAssertEqual(second.activeConfiguration?.host, "127.0.0.1")
+    }
+
+    func testLaunchRestoreWithUnreachableProxyFailsClosed() async throws {
+        let server = try MockSOCKSServer(behavior: .accept)
+        let first = makeService()
+        first.addProfile(makeMockServerProfile(port: Int(server.port)))
+        await first.enable()
+        XCTAssertEqual(first.connectionState, .connected)
+        server.stop()
+
+        // The restored profile points at a now-dead proxy: the launch probe
+        // must fail and NEVER publish a route.
+        let second = makeService()
+        XCTAssertTrue(second.isEnabled, "Requested intent survives relaunch.")
+        XCTAssertEqual(second.connectionState, .connecting)
+        XCTAssertNil(second.activeConfiguration)
+
+        await waitUntil { second.connectionState == .failed }
+        XCTAssertTrue(second.isEnabled)
+        XCTAssertNil(second.activeConfiguration, "A dead proxy must never publish a route.")
+    }
+
+    func testLaunchRestoreDisableDuringProbeStaysDisabled() async throws {
+        let server = try MockSOCKSServer(behavior: .silent)
+        defer { server.stop() }
+        defaults.set(true, forKey: "fluxdl_proxy_enabled")
+
+        // Seed a profile so the restored instance has a selection.
+        let seed = makeService()
+        seed.addProfile(makeMockServerProfile(port: Int(server.port)))
+
+        let service = makeService()
+        XCTAssertTrue(service.isEnabled)
+        XCTAssertEqual(service.connectionState, .connecting)
+
+        service.disable()
+        XCTAssertFalse(service.isEnabled)
+        XCTAssertEqual(service.connectionState, .disabled)
+
+        // The launch probe continuation must not resurrect state.
+        try await Task.sleep(nanoseconds: 500_000_000)
+        XCTAssertFalse(service.isEnabled)
+        XCTAssertEqual(service.connectionState, .disabled)
+        XCTAssertNil(service.activeConfiguration)
+    }
+
     // MARK: - Deletion
 
     func testDeleteProfileRemovesKeychainEntryAndSelection() {
@@ -214,5 +283,18 @@ final class ProxyPersistenceTests: XCTestCase {
         let service = makeService()
         service.addProfile(sampleConfiguration())
         XCTAssertEqual(service.profiles.count, 1)
+    }
+
+    // MARK: - Helpers
+
+    private func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: TimeInterval = 8) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition() {
+            if Date() > deadline {
+                XCTFail("Timed out waiting for condition")
+                return
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
     }
 }

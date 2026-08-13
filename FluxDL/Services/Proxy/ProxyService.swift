@@ -145,13 +145,21 @@ public final class ProxyService: ObservableObject, ProxyProviding {
             selectedProfileID = id
         }
         // Enabled state is restored so the user's routing choice survives
-        // relaunch. Connectivity is always re-verified on the next enable();
-        // session consumers re-check `isEnabled` before routing anything.
+        // relaunch — but "connected" is NEVER restored: connectivity must be
+        // proven by a live probe. The restored intent starts as `.connecting`
+        // with no published route (consumers fail closed meanwhile) and is
+        // re-validated asynchronously; the activation path publishes
+        // `.connected` + activeConfiguration and notifies consumers through
+        // `onProxyStateChange` only when the probe succeeds.
         isEnabled = defaults.bool(forKey: Key.isEnabled) && selectedProfileID != nil
         if isEnabled {
-            connectionState = .connected
-            if let selectedProfile {
-                activeConfiguration = resolveConfiguration(selectedProfile)
+            connectionState = .connecting
+            activeConfiguration = nil
+            if let profile = selectedProfile {
+                Task { await runActivationValidation(for: profile) }
+            } else {
+                isEnabled = false
+                connectionState = .disabled
             }
         } else {
             connectionState = .disabled

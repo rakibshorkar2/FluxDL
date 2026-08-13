@@ -110,4 +110,46 @@ final class BackgroundKeepAliveTests: XCTestCase {
         service.updateTorrentsKeepAlive(true, appState: .background)
         XCTAssertTrue(service.isKeepAliveRunning)
     }
+
+    /// Flipping a keep-alive toggle in Settings must re-evaluate immediately:
+    /// with a downloads claim active while backgrounded, turning the downloads
+    /// toggle OFF stops keep-alive without waiting for another lifecycle or
+    /// task-status event.
+    func testDownloadsToggleFlipReappliesImmediately() {
+        let service = BackgroundKeepAliveService()
+        UserDefaults.standard.set(true, forKey: downloadsKey)
+        UserDefaults.standard.set(false, forKey: browserKey)
+        UserDefaults.standard.set(true, forKey: torrentsKey)
+
+        service.updateDownloadsKeepAlive(true, appState: .background)
+        XCTAssertTrue(service.isKeepAliveRunning)
+
+        UserDefaults.standard.set(false, forKey: downloadsKey)
+        service.handleUserDefaultsChange(appState: .background)
+        XCTAssertFalse(service.isKeepAliveRunning, "toggle flip must stop downloads keep-alive immediately")
+
+        UserDefaults.standard.set(true, forKey: downloadsKey)
+        service.handleUserDefaultsChange(appState: .background)
+        XCTAssertTrue(service.isKeepAliveRunning, "re-enabling must restore downloads keep-alive immediately")
+    }
+
+    /// The browser keep-alive toggle flips apply immediately too (no claim
+    /// change needed) and never affect the downloads slot.
+    func testBrowserToggleFlipReappliesImmediately() {
+        let service = BackgroundKeepAliveService()
+        UserDefaults.standard.set(false, forKey: browserKey)
+        UserDefaults.standard.set(true, forKey: downloadsKey)
+        UserDefaults.standard.set(true, forKey: torrentsKey)
+
+        service.updateBrowserKeepAlive(true, appState: .background)
+        XCTAssertFalse(service.isKeepAliveRunning, "browser toggle off must block the claim")
+
+        UserDefaults.standard.set(true, forKey: browserKey)
+        service.handleUserDefaultsChange(appState: .background)
+        XCTAssertTrue(service.isKeepAliveRunning, "browser toggle on must start keep-alive immediately")
+
+        UserDefaults.standard.set(false, forKey: browserKey)
+        service.handleUserDefaultsChange(appState: .background)
+        XCTAssertFalse(service.isKeepAliveRunning, "browser toggle off must stop keep-alive immediately")
+    }
 }

@@ -137,6 +137,10 @@ public final class BrowserViewModel: ObservableObject {
     public let hapticService: HapticServiceProtocol = ServiceContainer.shared.hapticService
     
     private var cancellables = Set<AnyCancellable>()
+    /// Proxy configuration fingerprint of the last tab reload, so profile
+    /// switches (which fire `proxyDidChange` without flipping the route)
+    /// trigger exactly one reload per effective configuration.
+    private var lastReloadedProxyFingerprint: String?
     
     public init() {
         tabManager.$activeTabId
@@ -171,13 +175,19 @@ public final class BrowserViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // When the proxy route changes, reload every tab that has loaded a
-        // page so content is fetched under the new route (or direct mode).
-        proxySession.$isProxyActive
-            .dropFirst()
+        // When the effective proxy route changes, reload every tab that has
+        // loaded a page so content is fetched under the new route (or direct
+        // mode). `proxyDidChange` covers both flips (enable/disable/toggle)
+        // and configuration swaps — profile switches while the proxy stays
+        // active never flip `isProxyActive`, so they are deduplicated by
+        // fingerprint and reloaded too.
+        proxySession.proxyDidChange
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
+            .sink { [weak self] in
                 guard let self else { return }
+                let fingerprint = self.proxySession.activeConfiguration?.fingerprint
+                guard fingerprint != self.lastReloadedProxyFingerprint else { return }
+                self.lastReloadedProxyFingerprint = fingerprint
                 for tab in self.tabManager.tabs where tab.webView?.url != nil {
                     tab.webView?.reload()
                 }

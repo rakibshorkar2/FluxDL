@@ -8,14 +8,17 @@ import Combine
 // `Network.ProxyConfiguration` (iOS 17+). Deprecated
 // `connectionProxyDictionary` is NOT used as the primary path.
 //
-//   SOCKS5 (no auth)    → ProxyConfiguration(socksv5Proxy:)
-//   SOCKS5 (with auth)  → LocalSOCKS5Adapter (RFC 1928/1929 handshake
-//                         with real credentials on loopback; URLSession
-//                         sees a no-auth SOCKS5 endpoint). This is the
-//                         same pattern used for SOCKS4 — Apple's native
-//                         ProxyConfiguration has no credential field.
-//   HTTP    → ProxyConfiguration(httpCONNECTProxy:tlsOptions: nil)
-//   HTTPS   → ProxyConfiguration(httpCONNECTProxy:tlsOptions: TLS options)
+//   SOCKS5 (no auth)  → ProxyConfiguration(socksv5Proxy:)
+//   SOCKS5 (with auth)  → LocalSOCKS5Adapter — real RFC 1928/1929 handshake
+//                         with credentials against the upstream server,
+//                         exposed as a no-auth SOCKS5 endpoint on loopback
+//                         (Apple's native ProxyConfiguration has no
+//                         credential field, so URLSession could never
+//                         authenticate on its own).
+//   HTTP / HTTPS (no auth) → ProxyConfiguration(httpCONNECTProxy:)
+//   HTTP / HTTPS (with auth) → LocalSOCKS5Adapter bridging to an HTTP
+//                         CONNECT upstream (Proxy-Authorization: Basic) —
+//                         same reason: no native credential field.
 //   SOCKS4  → LocalSOCKS5Adapter (bridges to upstream SOCKS4/4a).
 
 public enum ProxyNetworkConfigurationBuilder {
@@ -101,8 +104,7 @@ public final class ProxySessionProvider: ObservableObject {
             lastApplyFailure = nil
             return nil
         }
-        let needsAdapter = configuration.type == .socks4
-            || (configuration.type == .socks5 && configuration.requiresAuthentication)
+        let needsAdapter = Self.needsLocalAdapter(configuration)
         if needsAdapter {
             guard adapter.start(upstream: configuration) != nil else {
                 lastApplyFailure = .proxyUnavailable
@@ -113,6 +115,18 @@ public final class ProxySessionProvider: ObservableObject {
         }
         lastApplyFailure = nil
         return nil
+    }
+
+    /// Whether the configuration requires the local loopback adapter.
+    /// Apple's native `ProxyConfiguration` has no credential field, so every
+    /// authenticated proxy type (SOCKS5, HTTP, HTTPS) and SOCKS4 (no native
+    /// representation) must bridge through the adapter.
+    private static func needsLocalAdapter(_ configuration: ProxyConfiguration) -> Bool {
+        if configuration.type == .socks4 { return true }
+        if configuration.type == .socks5 && configuration.requiresAuthentication { return true }
+        if (configuration.type == .http || configuration.type == .https)
+            && configuration.requiresAuthentication { return true }
+        return false
     }
 
     /// Ephemeral configuration through the given proxy (nil → direct).
@@ -127,10 +141,12 @@ public final class ProxySessionProvider: ObservableObject {
     ///
     /// Routing rules:
     ///   * SOCKS4              → `LocalSOCKS5Adapter` (SOCKS4/4a upstream)
-    ///   * SOCKS5 + auth       → `LocalSOCKS5Adapter` (RFC 1929 credentials;
+    ///   * SOCKS5 + auth       → `LocalSOCKS5Adapter` (RFC 1928/1929 upstream;
     ///                           Apple's native API has no credential field)
     ///   * SOCKS5 (no auth)    → native `Network.ProxyConfiguration`
-    ///   * HTTP / HTTPS        → native `Network.ProxyConfiguration`
+    ///   * HTTP / HTTPS + auth → `LocalSOCKS5Adapter` (HTTP CONNECT upstream
+    ///                           with Proxy-Authorization)
+    ///   * HTTP / HTTPS (no auth) → native `Network.ProxyConfiguration`
     ///
     /// On any failure the configuration has NO proxy applied and a
     /// `ProxyTestFailure` is returned so callers can surface an error instead
@@ -143,11 +159,12 @@ public final class ProxySessionProvider: ObservableObject {
             return nil
         }
 
-        // Both SOCKS4 and authenticated SOCKS5 are handled by the local adapter.
-        // The adapter performs the real handshake (including RFC 1929 auth for
-        // SOCKS5) and presents a no-auth SOCKS5 interface on loopback.
-        let needsAdapter = configuration.type == .socks4
-            || (configuration.type == .socks5 && configuration.requiresAuthentication)
+        // SOCKS4, authenticated SOCKS5, and authenticated HTTP/HTTPS are all
+        // handled by the local adapter. The adapter performs the real
+        // handshake against the upstream server (SOCKS4/4a, RFC 1928/1929,
+        // or HTTP CONNECT with Basic auth) and presents a no-auth SOCKS5
+        // interface on loopback.
+        let needsAdapter = Self.needsLocalAdapter(configuration)
 
         if needsAdapter {
             if let endpoint = adapter.start(upstream: configuration) {
@@ -183,16 +200,22 @@ public final class ProxySessionProvider: ObservableObject {
 // MARK: - LocalSOCKS5Adapter
 //
 // "FluxDL Proxy Adapter": a local SOCKS5 endpoint on loopback that bridges to
-// an upstream SOCKS4/SOCKS4a server. This is how SOCKS4 proxies gain access
-// to Apple's native `ProxyConfiguration(socksv5Proxy:)` path.
+// an upstream proxy. This is how proxy types that Apple's native
+// `ProxyConfiguration` cannot represent gain access to URLSession's
+// `ProxyConfiguration(socksv5Proxy:)` path:
 //
 //   Browser / Downloads (native)  →  127.0.0.1:port (SOCKS5, no auth)
 //                                          ↓ adapter
-//                                   Upstream SOCKS4 / SOCKS4a
+//        Upstream: SOCKS4 / 4a | SOCKS5 (RFC 1928/1929) | HTTP CONNECT
 //                                          ↓
 //                                        Destination
 //
-// IPv6 destinations are rejected cleanly (SOCKS4 has no IPv6 encoding).
+// The upstream protocol is chosen from the configured proxy type:
+//   SOCKS4                       → SOCKS4/4a request (user ID only)
+//   SOCKS5 (+ auth)              → RFC 1928 negotiation + RFC 1929 auth
+//   HTTP/HTTPS (+ auth)          → CONNECT + Proxy-Authorization: Basic
+// IPv6 destinations are rejected cleanly for SOCKS4 (no IPv6 encoding);
+// SOCKS5 and HTTP CONNECT handle them natively.
 
 public final class LocalSOCKS5Adapter {
 
@@ -207,7 +230,10 @@ public final class LocalSOCKS5Adapter {
     /// Starts (or reuses) the local SOCKS5 listener bridging to `upstream`.
     /// Returns the loopback endpoint to put in the client configuration.
     public func start(upstream: ProxyConfiguration) -> NWEndpoint.Port? {
-        let key = upstream.fingerprint
+        // The reuse key includes the password: RFC 1929 / Proxy-Authorization
+        // use it at tunnel time, so a password-only edit must rebuild the
+        // listener instead of reusing a stale upstream handshake.
+        let key = upstream.fingerprint + "|" + (upstream.password ?? "")
         if let listener, upstreamKey == key,
            let activePort,
            let endpoint = NWEndpoint.Port(rawValue: activePort) {
@@ -235,7 +261,7 @@ public final class LocalSOCKS5Adapter {
         }
 
         listener.newConnectionHandler = { [weak self] connection in
-            self?.handleInbound(connection, upstreamEndpoint: upstreamEndpoint, userID: upstream.username)
+            self?.handleInbound(connection, upstreamEndpoint: upstreamEndpoint, upstreamConfiguration: upstream)
         }
         listener.stateUpdateHandler = { [weak self] state in
             if case .failed = state {
@@ -292,11 +318,11 @@ public final class LocalSOCKS5Adapter {
 
     // MARK: - Inbound
 
-    private func handleInbound(_ connection: NWConnection, upstreamEndpoint: NWEndpoint, userID: String) {
+    private func handleInbound(_ connection: NWConnection, upstreamEndpoint: NWEndpoint, upstreamConfiguration: ProxyConfiguration) {
         let tunnel = AdapterTunnel(
             inbound: connection,
             upstreamEndpoint: upstreamEndpoint,
-            userID: userID,
+            upstreamConfiguration: upstreamConfiguration,
             queue: queue
         ) { [weak self] tunnel in
             self?.tunnels[tunnel.id] = nil
@@ -309,7 +335,8 @@ public final class LocalSOCKS5Adapter {
 // MARK: - AdapterTunnel
 //
 // Per-connection bridge: completes the local SOCKS5 handshake, dials the
-// upstream SOCKS4/4a server, then relays bytes in both directions.
+// upstream proxy (SOCKS4/4a, SOCKS5 with RFC 1929 auth, or HTTP CONNECT with
+// Proxy-Authorization), then relays bytes in both directions.
 
 private final class AdapterTunnel {
     // UUID rather than ObjectIdentifier(self): the identifier must be usable
@@ -318,7 +345,7 @@ private final class AdapterTunnel {
     let id: UUID = UUID()
     private let inbound: NWConnection
     private let upstreamEndpoint: NWEndpoint
-    private let userID: String
+    private let upstreamConfiguration: ProxyConfiguration
     private let queue: DispatchQueue
     private let onFinish: (AdapterTunnel) -> Void
     private var upstream: NWConnection?
@@ -326,13 +353,13 @@ private final class AdapterTunnel {
     init(
         inbound: NWConnection,
         upstreamEndpoint: NWEndpoint,
-        userID: String,
+        upstreamConfiguration: ProxyConfiguration,
         queue: DispatchQueue,
         onFinish: @escaping (AdapterTunnel) -> Void
     ) {
         self.inbound = inbound
         self.upstreamEndpoint = upstreamEndpoint
-        self.userID = userID
+        self.upstreamConfiguration = upstreamConfiguration
         self.queue = queue
         self.onFinish = onFinish
     }
@@ -422,29 +449,18 @@ private final class AdapterTunnel {
         }
     }
 
-    // MARK: - Upstream SOCKS4/4a
+    // MARK: - Upstream dialing
 
     private func dialUpstream(host: String, port: UInt16) {
-        let connection = NWConnection(to: upstreamEndpoint, using: .tcp)
+        // HTTPS proxies are reached over TLS; everything else is plain TCP.
+        let parameters: NWParameters
+        switch upstreamConfiguration.type {
+        case .https: parameters = .tls
+        default:     parameters = .tcp
+        }
+        let connection = NWConnection(to: upstreamEndpoint, using: parameters)
         self.upstream = connection
         connection.start(queue: queue)
-
-        var ipv4 = in_addr()
-        let isIPv4Literal = inet_pton(AF_INET, host, &ipv4) == 1
-
-        var request = Data([0x04, 0x01])
-        request.append(contentsOf: [UInt8(port >> 8), UInt8(port & 0xFF)])
-        if isIPv4Literal {
-            withUnsafeBytes(of: &ipv4) { request.append(contentsOf: $0) }
-        } else {
-            request.append(contentsOf: [0, 0, 0, 1]) // SOCKS4a marker
-        }
-        request.append(contentsOf: Array(userID.utf8))
-        request.append(0)
-        if !isIPv4Literal {
-            request.append(contentsOf: Array(host.utf8))
-            request.append(0)
-        }
 
         var ready = false
         connection.stateUpdateHandler = { [weak self] state in
@@ -452,15 +468,14 @@ private final class AdapterTunnel {
             switch state {
             case .ready:
                 ready = true
-                connection.send(content: request, completion: .contentProcessed { [weak self] error in
-                    guard let self else { return }
-                    if let error {
-                        self.replyConnectFailed()
-                        self.cancel()
-                        return
-                    }
-                    self.receiveUpstreamReply()
-                })
+                switch self.upstreamConfiguration.type {
+                case .socks4:
+                    self.sendSOCKS4Request(host: host, port: port)
+                case .socks5:
+                    self.startSOCKS5Upstream(host: host, port: port)
+                case .http, .https:
+                    self.sendHTTPConnectRequest(host: host, port: port)
+                }
             case .failed, .cancelled:
                 if !ready {
                     self.replyConnectFailed()
@@ -472,8 +487,29 @@ private final class AdapterTunnel {
         }
     }
 
-    private func receiveUpstreamReply() {
+    // MARK: - Upstream SOCKS4 / 4a
+
+    private func sendSOCKS4Request(host: String, port: UInt16) {
         guard let upstream else { return }
+
+        var ipv4 = in_addr()
+        let isIPv4Literal = inet_pton(AF_INET, host, &ipv4) == 1
+
+        var request = Data([0x04, 0x01])
+        request.append(contentsOf: [UInt8(port >> 8), UInt8(port & 0xFF)])
+        if isIPv4Literal {
+            withUnsafeBytes(of: &ipv4) { request.append(contentsOf: $0) }
+        } else {
+            request.append(contentsOf: [0, 0, 0, 1]) // SOCKS4a marker
+        }
+        request.append(contentsOf: Array(upstreamConfiguration.username.utf8))
+        request.append(0)
+        if !isIPv4Literal {
+            request.append(contentsOf: Array(host.utf8))
+            request.append(0)
+        }
+
+        send(upstream, request)
         receiveExactly(upstream, 8) { [weak self] data in
             guard let self else { return }
             guard let data, data.count == 8, data[0] == 0x00, data[1] == 90 else {
@@ -481,17 +517,193 @@ private final class AdapterTunnel {
                 self.cancel()
                 return
             }
-            // Local SOCKS5 success reply (rep 0x00, bound 0.0.0.0:0).
-            self.send(self.inbound, Data([0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]))
-            self.beginRelay()
+            self.connectEstablished()
         }
+    }
+
+    // MARK: - Upstream SOCKS5 (RFC 1928 / 1929)
+
+    private func startSOCKS5Upstream(host: String, port: UInt16) {
+        guard let upstream else { return }
+        // Method negotiation: offer no-auth + RFC 1929 user/pass; the server
+        // picks the method it supports.
+        let offer: [UInt8] = upstreamConfiguration.requiresAuthentication
+            ? [0x05, 0x02, 0x00, 0x02]
+            : [0x05, 0x01, 0x00]
+        send(upstream, Data(offer))
+        receiveExactly(upstream, 2) { [weak self] data in
+            guard let self, let data, data.count == 2, data[0] == 0x05 else {
+                self.replyConnectFailed()
+                self.cancel()
+                return
+            }
+            switch data[1] {
+            case 0x00:
+                self.sendSOCKS5Connect(host: host, port: port)
+            case 0x02:
+                self.socks5Authenticate { [weak self] authenticated in
+                    guard let self else { return }
+                    if authenticated {
+                        self.sendSOCKS5Connect(host: host, port: port)
+                    } else {
+                        self.replyConnectFailed()
+                        self.cancel()
+                    }
+                }
+            default:
+                self.replyConnectFailed()
+                self.cancel()
+            }
+        }
+    }
+
+    /// RFC 1929 username/password negotiation with the upstream server.
+    private func socks5Authenticate(completion: @escaping (Bool) -> Void) {
+        guard let upstream else {
+            completion(false)
+            return
+        }
+        var request = Data([0x01])
+        let user = Array(upstreamConfiguration.username.utf8)
+        let pass = Array((upstreamConfiguration.password ?? "").utf8)
+        request.append(UInt8(user.count))
+        request.append(contentsOf: user)
+        request.append(UInt8(pass.count))
+        request.append(contentsOf: pass)
+        send(upstream, request)
+        receiveExactly(upstream, 2) { data in
+            guard let data, data.count == 2, data[0] == 0x01, data[1] == 0x00 else {
+                completion(false)
+                return
+            }
+            completion(true)
+        }
+    }
+
+    private func sendSOCKS5Connect(host: String, port: UInt16) {
+        guard let upstream else { return }
+        var ipv4 = in_addr()
+        var ipv6 = in6_addr()
+        var request = Data([0x05, 0x01, 0x00])
+        if inet_pton(AF_INET, host, &ipv4) == 1 {
+            request.append(0x01)
+            withUnsafeBytes(of: &ipv4) { request.append(contentsOf: $0) }
+        } else if inet_pton(AF_INET6, host, &ipv6) == 1 {
+            request.append(0x04)
+            withUnsafeBytes(of: &ipv6) { request.append(contentsOf: $0) }
+        } else {
+            let bytes = Array(host.utf8)
+            request.append(0x03)
+            request.append(UInt8(bytes.count))
+            request.append(contentsOf: bytes)
+        }
+        request.append(contentsOf: [UInt8(port >> 8), UInt8(port & 0xFF)])
+        send(upstream, request)
+        receiveExactly(upstream, 4) { [weak self] data in
+            guard let self, let data, data.count == 4, data[0] == 0x05, data[1] == 0x00 else {
+                self.replyConnectFailed()
+                self.cancel()
+                return
+            }
+            let atyp = data[3]
+            switch atyp {
+            case 0x01:
+                self.receiveExactly(upstream, 4) { _ in self.finishSOCKS5Connect() }
+            case 0x04:
+                self.receiveExactly(upstream, 16) { _ in self.finishSOCKS5Connect() }
+            case 0x03:
+                self.receiveExactly(upstream, 1) { lengthData in
+                    guard let lengthData, let length = lengthData.first else {
+                        self.replyConnectFailed()
+                        self.cancel()
+                        return
+                    }
+                    self.receiveExactly(upstream, Int(length)) { _ in self.finishSOCKS5Connect() }
+                }
+            default:
+                self.replyConnectFailed()
+                self.cancel()
+            }
+        }
+    }
+
+    private func finishSOCKS5Connect() {
+        guard let upstream else { return }
+        // Bound address + port (variable per ATYP) — must be consumed before
+        // any tunneled bytes are read.
+        receiveExactly(upstream, 2) { [weak self] _ in
+            guard let self else { return }
+            self.connectEstablished()
+        }
+    }
+
+    // MARK: - Upstream HTTP CONNECT
+
+    private func sendHTTPConnectRequest(host: String, port: UInt16) {
+        guard let upstream else { return }
+        let target = "\(host):\(port)"
+        var lines = ["CONNECT \(target) HTTP/1.1", "Host: \(target)"]
+        if upstreamConfiguration.requiresAuthentication,
+           let username = upstreamConfiguration.username,
+           !username.isEmpty {
+            let token = "\(username):\(upstreamConfiguration.password ?? "")"
+            let encoded = token.data(using: .utf8)?.base64EncodedString() ?? ""
+            lines.append("Proxy-Authorization: Basic \(encoded)")
+        }
+        let request = (lines.joined(separator: "\r\n") + "\r\n\r\n").data(using: .utf8) ?? Data()
+        send(upstream, request)
+        readHTTPConnectResponse()
+    }
+
+    /// Parses the CONNECT response; waits for the full header block
+    /// (`\r\n\r\n`) so the status line can be validated before relaying.
+    private func readHTTPConnectResponse(accumulated: Data = Data()) {
+        guard let upstream else { return }
+        upstream.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] data, _, _, _ in
+            guard let self else { return }
+            guard let data, !data.isEmpty else {
+                self.replyConnectFailed()
+                self.cancel()
+                return
+            }
+            var accumulated = accumulated
+            accumulated.append(data)
+            guard accumulated.count <= 65_536 else {
+                self.replyConnectFailed()
+                self.cancel()
+                return
+            }
+            let separator = Data("\r\n\r\n".utf8)
+            guard let range = accumulated.range(of: separator) else {
+                self.readHTTPConnectResponse(accumulated: accumulated)
+                return
+            }
+            let head = String(data: accumulated[..<range.lowerBound], encoding: .utf8) ?? ""
+            let statusLine = head.components(separatedBy: "\r\n").first ?? ""
+            guard statusLine.hasPrefix("HTTP/1."), statusLine.contains(" 200 ") else {
+                self.replyConnectFailed()
+                self.cancel()
+                return
+            }
+            self.connectEstablished()
+            let extra = accumulated[range.upperBound...]
+            if !extra.isEmpty {
+                self.inbound.send(content: extra, completion: .contentProcessed { _ in })
+            }
+        }
+    }
+
+    // MARK: - Completion / relay
+
+    /// Local SOCKS5 success reply (rep 0x00, bound 0.0.0.0:0), then relay.
+    private func connectEstablished() {
+        send(inbound, Data([0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]))
+        beginRelay()
     }
 
     private func replyConnectFailed() {
         send(inbound, Data([0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0]))
     }
-
-    // MARK: - Relay
 
     private func beginRelay() {
         guard let upstream else { return }

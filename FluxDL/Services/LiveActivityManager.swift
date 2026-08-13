@@ -50,20 +50,6 @@ public struct BrowserActivitySnapshot: Sendable {
     }
 }
 
-public struct TorrentActivityAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        public var torrentName: String
-        public var progress: Double
-        public var downloadedSize: String
-        public var totalSize: String
-        public var downloadSpeed: String
-        public var uploadSpeed: String
-        public var status: String
-    }
-    
-    public var infoHash: String
-}
-
 public protocol LiveActivityManagerProtocol: AnyObject {
     func startActivity(for task: DownloadTaskModel)
     func updateActivity(for task: DownloadTaskModel)
@@ -97,7 +83,12 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
     // Torrent activities (keyed by torrent info-hash)
     private var activeTorrentActivities: [String: Activity<TorrentActivityAttributes>] = [:]
     private var lastTorrentUpdateTimes: [String: Date] = [:]
+    /// Last status string posted per torrent; used to break the update
+    /// throttle when the state meaningfully changes (pause/resume/complete).
+    private var lastTorrentPostedStatuses: [String: String] = [:]
     private let torrentLiveActivityKey = "fluxdl_live_activity_torrents"
+    /// Throttle for steady-state progress updates. Status changes bypass it.
+    private let torrentUpdateThrottle: TimeInterval = 5.0
     
     private var isDownloadsLiveActivityEnabled: Bool {
         UserDefaults.standard.object(forKey: downloadsLiveActivityKey) != nil
@@ -304,6 +295,7 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
             )
             activeTorrentActivities[task.id] = activity
             lastTorrentUpdateTimes[task.id] = Date()
+            lastTorrentPostedStatuses[task.id] = state.status
         } catch {
             print("FluxDL LiveActivity: Failed to start torrent activity: \(error.localizedDescription)")
         }
@@ -316,10 +308,11 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
             return
         }
         
-        // Handle completed / cancelled / error states according to UX requirement:
+        // Completed → briefly show the completed state, then end.
         if task.isFinished || task.state == .finished {
             if let activity = activeTorrentActivities.removeValue(forKey: task.id) {
                 lastTorrentUpdateTimes.removeValue(forKey: task.id)
+                lastTorrentPostedStatuses.removeValue(forKey: task.id)
                 let finalState = makeTorrentContentState(for: task)
                 Task {
                     await activity.update(using: finalState)
@@ -330,15 +323,26 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
             return
         }
         
+        // Storage error → show the error state, then end.
         if task.state == .storageError {
             if let activity = activeTorrentActivities.removeValue(forKey: task.id) {
                 lastTorrentUpdateTimes.removeValue(forKey: task.id)
+                lastTorrentPostedStatuses.removeValue(forKey: task.id)
                 let errorState = makeTorrentContentState(for: task)
                 Task {
                     await activity.update(using: errorState)
                     await activity.end(dismissalPolicy: .after(Date().addingTimeInterval(6.0)))
                 }
             }
+            return
+        }
+        
+        // Paused → reflect the paused state on the existing island instead of
+        // ending it, so the user can see why progress stopped. A paused
+        // torrent never creates a new activity.
+        if task.isPaused {
+            guard let activity = activeTorrentActivities[task.id] else { return }
+            throttleOrUpdate(activity, task: task)
             return
         }
         
@@ -352,17 +356,23 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
             return
         }
         
-        let now = Date()
-        let lastTime = lastTorrentUpdateTimes[task.id] ?? .distantPast
-        
-        // Throttled update (max 1 Hz)
-        guard now.timeIntervalSince(lastTime) >= 1.0 else { return }
-        
+        throttleOrUpdate(activity, task: task)
+    }
+    
+    /// Applies the throttling policy for one torrent activity: a status
+    /// change is posted immediately, steady-state progress is posted at most
+    /// once per `torrentUpdateThrottle`.
+    private func throttleOrUpdate(_ activity: Activity<TorrentActivityAttributes>, task: TorrentTaskModel) {
         let newState = makeTorrentContentState(for: task)
+        let now = Date()
+        let statusChanged = lastTorrentPostedStatuses[task.id] != newState.status
+        let lastTime = lastTorrentUpdateTimes[task.id] ?? .distantPast
+        guard statusChanged || now.timeIntervalSince(lastTime) >= torrentUpdateThrottle else { return }
         
         Task {
             await activity.update(using: newState)
             self.lastTorrentUpdateTimes[task.id] = now
+            self.lastTorrentPostedStatuses[task.id] = newState.status
         }
     }
     
@@ -371,6 +381,7 @@ public final class LiveActivityManager: LiveActivityManagerProtocol {
         // end must never delete a freshly re-inserted torrent activity.
         guard let activity = activeTorrentActivities.removeValue(forKey: torrentId) else { return }
         lastTorrentUpdateTimes.removeValue(forKey: torrentId)
+        lastTorrentPostedStatuses.removeValue(forKey: torrentId)
         Task {
             await activity.end(dismissalPolicy: .immediate)
         }

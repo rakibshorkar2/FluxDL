@@ -65,6 +65,11 @@ final class MockSOCKSServer {
         case silent
         /// Replies REP 0x05 (connection refused) to the connect request.
         case refuse
+        /// Completes the handshake (with RFC 1929 auth when credentials are
+        /// given), then answers the tunneled request with a canned HTTP 200
+        /// response — optionally after `delay` seconds so tests can hold a
+        /// connection in-flight while they switch routes.
+        case httpRespond(username: String?, password: String?, delay: TimeInterval)
     }
 
     let port: UInt16
@@ -72,6 +77,17 @@ final class MockSOCKSServer {
     private let queue = DispatchQueue(label: "test.mock.socks5")
     private let behavior: Behavior
     private var connections: [NWConnection] = []
+    /// Number of accepted connections — lets tests verify which proxy a
+    /// download actually traversed.
+    private(set) var connectionCount = 0
+    /// Number of canned HTTP responses actually served (only served for
+    /// SOCKS5-tunneled requests) — a proxy that never served content did not
+    /// deliver the download.
+    private(set) var servedHTTPResponses = 0
+    /// Number of canned HTTP responses whose SEND completed without error —
+    /// a proxy whose tunnel was torn down mid-flight (requeue, disable) never
+    /// delivers the download even if it received the request.
+    private(set) var deliveredHTTPResponses = 0
 
     init(behavior: Behavior) throws {
         self.behavior = behavior
@@ -94,6 +110,7 @@ final class MockSOCKSServer {
     // MARK: - Server state machine
 
     private func handle(_ connection: NWConnection) {
+        connectionCount += 1
         connections.append(connection)
         connection.start(queue: queue)
         switch behavior {
@@ -111,13 +128,13 @@ final class MockSOCKSServer {
             self?.receiveExactly(connection, methodCount) { _ in
                 guard let self = self else { return }
                 switch self.behavior {
-                case .accept:
+                case .accept, .refuse:
                     self.send(connection, Data([0x05, 0x00]))
                     self.readConnectRequest(connection)
-                case .requireAuth:
+                case .requireAuth, .httpRespond(let username, _, _) where username != nil:
                     self.send(connection, Data([0x05, 0x02]))
                     self.readAuthRequest(connection)
-                case .refuse:
+                case .httpRespond:
                     self.send(connection, Data([0x05, 0x00]))
                     self.readConnectRequest(connection)
                 case .silent:
@@ -140,8 +157,16 @@ final class MockSOCKSServer {
                         guard let self = self, let passwordData = passwordData else { return }
                         let username = String(data: usernameData, encoding: .utf8) ?? ""
                         let password = String(data: passwordData, encoding: .utf8) ?? ""
-                        if case .requireAuth(let expectedUser, let expectedPass) = self.behavior,
-                           username == expectedUser, password == expectedPass {
+                        let matches: Bool
+                        switch self.behavior {
+                        case .requireAuth(let expectedUser, let expectedPass):
+                            matches = username == expectedUser && password == expectedPass
+                        case .httpRespond(let expectedUser?, let expectedPass?, _):
+                            matches = username == expectedUser && password == expectedPass
+                        default:
+                            matches = false
+                        }
+                        if matches {
                             self.send(connection, Data([0x01, 0x00]))
                             self.readConnectRequest(connection)
                         } else {
@@ -178,8 +203,37 @@ final class MockSOCKSServer {
             switch self.behavior {
             case .refuse:
                 self.send(connection, Data([0x05, 0x05, 0x00, 0x01, 0, 0, 0, 0, 0, 0]))
+            case .httpRespond(_, _, let delay):
+                self.respondCannedHTTP(connection, delay: delay)
             default:
                 self.send(connection, Data([0x05, 0x00, 0x00, 0x01, 127, 0, 0, 1, 0, 80]))
+            }
+        }
+    }
+
+    /// Waits for the tunneled request bytes, then answers with a canned
+    /// HTTP 200 response (after `delay` when requested).
+    private func respondCannedHTTP(_ connection: NWConnection, delay: TimeInterval) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65_536) { [weak self] data, _, _, _ in
+            guard let self = self, let data, !data.isEmpty else { return }
+            self.servedHTTPResponses += 1
+            let response = Data(
+                "HTTP/1.1 200 OK\r\nContent-Length: 11\r\nConnection: close\r\n\r\nHello mock\n".utf8
+            )
+            if delay > 0 {
+                self.queue.asyncAfter(deadline: .now() + delay) {
+                    connection.send(content: response, completion: .contentProcessed { error in
+                        if error == nil {
+                            self.deliveredHTTPResponses += 1
+                        }
+                    })
+                }
+            } else {
+                connection.send(content: response, completion: .contentProcessed { error in
+                    if error == nil {
+                        self.deliveredHTTPResponses += 1
+                    }
+                })
             }
         }
     }

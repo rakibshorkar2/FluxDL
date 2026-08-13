@@ -132,8 +132,12 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     private var updateTimer: Timer?
     private var refreshInFlight = false
     private var refreshPending = false
-    private var notifiedCompletedHashes: Set<String> = []
-    private var hasEstablishedCompletionBaseline = false
+    /// Deduplicates completion notifications (exactly once per torrent lifetime).
+    private let completionTracker = TorrentCompletionTracker(storageKey: SettingsKey.notifiedCompletedHashes)
+    /// Owns the torrent subsystem's background lifecycle (keep-alive claim +
+    /// Live Activities). Attached after ServiceContainer construction so
+    /// no static-init recursion occurs.
+    private var backgroundManager: TorrentBackgroundManager?
     private let snapshotQueue = DispatchQueue(label: "FluxDL.TorrentService.snapshot", qos: .userInteractive)
 
     /// Records the moment a torrent is first seen here. Never resets.
@@ -190,11 +194,13 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         if let value = defaults.object(forKey: SettingsKey.validateHttpsTrackers) as? Bool { connection.validateHttpsTrackers = value }
         self.connectionSettings = connection
 
-        if let savedCompleted = defaults.stringArray(forKey: SettingsKey.notifiedCompletedHashes) {
-            self.notifiedCompletedHashes = Set(savedCompleted)
-        }
-
         super.init()
+    }
+
+    /// Attaches the background lifecycle manager. Called exactly once by
+    /// `ServiceContainer` after both this service and the manager exist.
+    public func configureBackgroundLifecycle(_ manager: TorrentBackgroundManager) {
+        backgroundManager = manager
     }
 
     // MARK: - Session Lifecycle
@@ -431,9 +437,8 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         recordStore.removeRecord(for: id)
         // A re-added torrent with the same info-hash must produce a fresh
         // completion notification even if its predecessor already fired.
-        notifiedCompletedHashes.remove(id)
-        saveNotifiedCompletedHashes()
-        ServiceContainer.shared.liveActivityManager.endTorrentActivity(for: id)
+        completionTracker.remove(id)
+        backgroundManager?.torrentRemoved(id: id)
         requestRefresh()
     }
 
@@ -635,16 +640,10 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
                 self.torrents = withStallState
                 self.refreshInFlight = false
                 self.checkForCompletions(withStallState)
-                
-                // Update live activities & background keep-alive status when app is in background
-                let hasActiveTorrents = withStallState.contains { $0.isActive && !$0.isFinished }
-                if UIApplication.shared.applicationState == .background {
-                    ServiceContainer.shared.backgroundKeepAliveService
-                        .updateTorrentsKeepAlive(hasActiveTorrents)
-                    for model in withStallState {
-                        ServiceContainer.shared.liveActivityManager.updateTorrentActivity(for: model)
-                    }
-                }
+                // Drives background keep-alive + Live Activities. No-op in the
+                // foreground (keep-alive claim stays released, activities
+                // already ended by handleAppForegrounding).
+                self.backgroundManager?.update(with: withStallState)
                 
                 if self.refreshPending {
                     self.refreshPending = false
@@ -797,38 +796,34 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     // MARK: - App Lifecycle & Keep-Alive Integration
 
     public func handleAppBackgrounding() {
-        let hasActiveTorrents = torrents.contains { $0.isActive && !$0.isFinished }
-        ServiceContainer.shared.backgroundKeepAliveService
-            .updateTorrentsKeepAlive(hasActiveTorrents)
-        ServiceContainer.shared.liveActivityManager.handleTorrentAppBackgrounding(tasks: torrents)
+        backgroundManager?.handleAppBackgrounding(torrents: torrents)
     }
 
     public func handleAppForegrounding() {
         // App in foreground natively maintains process execution thread.
+        backgroundManager?.handleAppForegrounding()
     }
 
     // MARK: - Completion Notifications
 
-    /// Notifies once per torrent when it transitions to a finished/seeding state.
+    /// Notifies exactly once per torrent when it transitions to a finished/seeding
+    /// state. Already-complete torrents observed on the first refresh after
+    /// launch (e.g. restored from fast-resume data) are absorbed silently —
+    /// the completion predates this process, so notifying would be a false
+    /// "just finished" event.
     private func checkForCompletions(_ models: [TorrentTaskModel]) {
         guard notificationsEnabled else {
             return
         }
+        if !completionTracker.isBaselineEstablished {
+            completionTracker.establishBaseline(with: models.filter { $0.isSeed || $0.isFinished }.map(\.id))
+            return
+        }
         for model in models where model.isSeed || model.isFinished {
-            if !hasEstablishedCompletionBaseline {
-                notifiedCompletedHashes.insert(model.id)
-            } else if !notifiedCompletedHashes.contains(model.id) {
-                notifiedCompletedHashes.insert(model.id)
-                saveNotifiedCompletedHashes()
+            if completionTracker.noteCompleted(model.id) {
                 postCompletionNotification(for: model)
             }
         }
-        saveNotifiedCompletedHashes()
-        hasEstablishedCompletionBaseline = true
-    }
-
-    private func saveNotifiedCompletedHashes() {
-        defaults.set(Array(notifiedCompletedHashes), forKey: SettingsKey.notifiedCompletedHashes)
     }
 
     private func postCompletionNotification(for model: TorrentTaskModel) {
