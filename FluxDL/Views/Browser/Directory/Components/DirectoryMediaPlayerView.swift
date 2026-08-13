@@ -3,6 +3,95 @@ import AVKit
 import AVFoundation
 import Combine
 
+/// Playback session for one media sheet presentation. A reference type on
+/// purpose: it owns the AVPlayer and Combine subscriptions, so the SwiftUI
+/// view stays a plain immutable struct.
+@MainActor
+public final class DirectoryPlayerSession: ObservableObject {
+    @Published public private(set) var currentIndex: Int
+    public let player = AVPlayer()
+    public let playlist: [DirectoryItem]
+
+    private let onFailure: (String) -> Void
+    private var statusCancellable: AnyCancellable?
+    private var endCancellable: AnyCancellable?
+
+    private static let positionKeyPrefix = "fluxdl_media_pos_"
+
+    public init(
+        playlist: [DirectoryItem],
+        initialIndex: Int,
+        onFailure: @escaping (String) -> Void
+    ) {
+        self.playlist = playlist
+        self.currentIndex = min(max(initialIndex, 0), max(playlist.count - 1, 0))
+        self.onFailure = onFailure
+        observeEndOfPlaylist()
+        loadCurrentItem(autoplay: true)
+    }
+
+    public var currentItem: DirectoryItem {
+        playlist[currentIndex]
+    }
+
+    public func select(index: Int) {
+        guard playlist.indices.contains(index), index != currentIndex else { return }
+        savePosition()
+        currentIndex = index
+        loadCurrentItem(autoplay: true)
+    }
+
+    public func savePosition() {
+        guard let current = player.currentItem else { return }
+        let seconds = CMTimeGetSeconds(player.currentTime())
+        guard seconds.isFinite, seconds > 1 else { return }
+        if let urlAsset = current.asset as? AVURLAsset {
+            UserDefaults.standard.set(seconds, forKey: Self.positionKey(for: urlAsset.url))
+        }
+    }
+
+    public func restorePosition(for url: URL) {
+        let saved = UserDefaults.standard.double(forKey: Self.positionKey(for: url))
+        guard saved > 1 else { return }
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard let self else { return }
+            let time = CMTime(seconds: saved, preferredTimescale: 600)
+            await self.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
+    }
+
+    private func loadCurrentItem(autoplay: Bool) {
+        let current = currentItem
+        let newItem = AVPlayerItem(url: current.url)
+        statusCancellable = newItem.publisher(for: \.status)
+            .sink { [weak self] status in
+                guard status == .failed, let error = newItem.error else { return }
+                self?.onFailure(error.localizedDescription)
+            }
+        player.replaceCurrentItem(with: newItem)
+        if autoplay {
+            player.play()
+        }
+        restorePosition(for: current.url)
+    }
+
+    private func observeEndOfPlaylist() {
+        endCancellable = NotificationCenter.default
+            .publisher(for: AVPlayerItem.didPlayToEndTimeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self, self.playlist.count > 1, self.currentIndex < self.playlist.count - 1 else { return }
+                self.currentIndex += 1
+                self.loadCurrentItem(autoplay: true)
+            }
+    }
+
+    private static func positionKey(for url: URL) -> String {
+        positionKeyPrefix + url.absoluteString
+    }
+}
+
 /// Minimal in-app media player for Directory Mode.
 ///
 /// FluxDL has no media engine today, so this is a native AVPlayer sheet with
@@ -13,23 +102,17 @@ import Combine
 public struct DirectoryMediaPlayerView: View {
     @ObservedObject var viewModel: DirectoryBrowserViewModel
     @Environment(\.dismiss) private var dismiss
-
-    private let item: DirectoryItem
-    private let playlist: [DirectoryItem]
-
-    @State private var player: AVPlayer?
-    @State private var currentIndex: Int
-
-    private var statusCancellable: AnyCancellable?
-    private var endNotificationCancellable: AnyCancellable?
-
-    private static let positionKeyPrefix = "fluxdl_media_pos_"
+    @StateObject private var session: DirectoryPlayerSession
 
     public init(viewModel: DirectoryBrowserViewModel, request: DirectoryPlaybackRequest) {
         self.viewModel = viewModel
-        self.item = request.item
-        self.playlist = request.playlist
-        _currentIndex = State(initialValue: Self.indexOf(request.item, in: request.playlist))
+        let playlist = request.playlist
+        let initialIndex = DirectoryMediaPlayerView.indexOf(request.item, in: playlist)
+        _session = StateObject(wrappedValue: DirectoryPlayerSession(
+            playlist: playlist,
+            initialIndex: initialIndex,
+            onFailure: { message in viewModel.showToast("Playback failed: \(message)") }
+        ))
     }
 
     private static func indexOf(_ item: DirectoryItem, in playlist: [DirectoryItem]) -> Int {
@@ -53,73 +136,50 @@ public struct DirectoryMediaPlayerView: View {
                 }
 
                 GeometryReader { geo in
-                    if let player {
-                        VideoPlayerContainer(player: player)
-                            .frame(width: geo.size.width, height: geo.size.height)
-                    } else {
-                        VStack(spacing: 10) {
-                            ProgressView()
-                            Text("Preparing playback…")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    VideoPlayerContainer(player: session.player)
+                        .frame(width: geo.size.width, height: geo.size.height)
                 }
 
-                if playlist.count > 1 {
+                if session.playlist.count > 1 {
                     playlistStrip
                 }
             }
-            .navigationTitle(currentItem.name)
+            .navigationTitle(session.currentItem.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
             }
-            .onAppear { setUpPlayer() }
             .onDisappear {
-                savePosition()
-                player?.pause()
-            }
-            .onChange(of: currentIndex) { _ in
-                savePosition()
-                loadCurrentItem(autoplay: true)
+                session.savePosition()
+                session.player.pause()
             }
         }
         .presentationDetents([.large])
     }
 
-    // MARK: - Playlist
-
-    private var currentItem: DirectoryItem {
-        playlist.indices.contains(currentIndex) ? playlist[currentIndex] : item
-    }
-
     private var playlistStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(Array(playlist.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(session.playlist.enumerated()), id: \.element.id) { index, item in
                     Button {
-                        if index != currentIndex {
-                            currentIndex = index
-                        }
+                        session.select(index: index)
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: index == currentIndex ? "play.circle.fill" : "play.circle")
+                            Image(systemName: index == session.currentIndex ? "play.circle.fill" : "play.circle")
                                 .font(.caption)
                             Text(item.name)
-                                .font(.caption.weight(index == currentIndex ? .semibold : .regular))
+                                .font(.caption.weight(index == session.currentIndex ? .semibold : .regular))
                                 .lineLimit(1)
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
-                            index == currentIndex ? Color.accentColor : Color(uiColor: .tertiarySystemFill),
+                            index == session.currentIndex ? Color.accentColor : Color(uiColor: .tertiarySystemFill),
                             in: Capsule()
                         )
-                        .foregroundStyle(index == currentIndex ? .white : .primary)
+                        .foregroundStyle(index == session.currentIndex ? .white : .primary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -129,67 +189,6 @@ public struct DirectoryMediaPlayerView: View {
         }
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
-    }
-
-    // MARK: - Player lifecycle
-
-    private func setUpPlayer() {
-        player = AVPlayer()
-        observeEndOfPlaylist()
-        loadCurrentItem(autoplay: true)
-    }
-
-    private func loadCurrentItem(autoplay: Bool) {
-        guard let player else { return }
-        let current = currentItem
-        let newItem = AVPlayerItem(url: current.url)
-        statusCancellable = newItem.publisher(for: \.status)
-            .sink { [weak self] status in
-                guard status == .failed, let error = newItem.error else { return }
-                Task { @MainActor in
-                    self?.viewModel.showToast("Playback failed: \(error.localizedDescription)")
-                }
-            }
-        player.replaceCurrentItem(with: newItem)
-        if autoplay {
-            player.play()
-        }
-        restorePosition(for: current.url)
-    }
-
-    private func observeEndOfPlaylist() {
-        endNotificationCancellable = NotificationCenter.default
-            .publisher(for: AVPlayerItem.didPlayToEndTimeNotification)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                guard let self, self.playlist.count > 1, self.currentIndex < self.playlist.count - 1 else { return }
-                self.currentIndex += 1
-            }
-    }
-
-    private func restorePosition(for url: URL) {
-        let key = Self.positionKey(for: url)
-        let saved = UserDefaults.standard.double(forKey: key)
-        guard saved > 1 else { return }
-        Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 800_000_000)
-            guard let player = self?.player else { return }
-            let time = CMTime(seconds: saved, preferredTimescale: 600)
-            await player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
-        }
-    }
-
-    private func savePosition() {
-        guard let player, let current = player.currentItem else { return }
-        let seconds = CMTimeGetSeconds(player.currentTime())
-        guard seconds.isFinite, seconds > 1 else { return }
-        if let urlAsset = current.asset as? AVURLAsset {
-            UserDefaults.standard.set(seconds, forKey: Self.positionKey(for: urlAsset.url))
-        }
-    }
-
-    private static func positionKey(for url: URL) -> String {
-        positionKeyPrefix + url.absoluteString
     }
 }
 

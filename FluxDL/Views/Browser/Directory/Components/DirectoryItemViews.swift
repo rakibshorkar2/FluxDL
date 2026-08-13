@@ -62,10 +62,10 @@ public struct DirectoryItemRow: View {
                                 }
                             } else {
                                 if let size = item.sizeBytes {
-                                    Text(DirectoryItemFormatter.string(fromBytes: size))
+                                    Text(DirectoryItemFormatter.string(fromBytes: size) ?? "")
                                 }
                                 if let date = item.modifiedDate {
-                                    Text(DirectoryItemFormatter.string(fromDate: date))
+                                    Text(DirectoryItemFormatter.string(fromDate: date) ?? "")
                                 }
                             }
                         }
@@ -226,7 +226,7 @@ public struct DirectoryGridCell: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 } else if let size = item.sizeBytes {
-                    Text(DirectoryItemFormatter.string(fromBytes: size))
+                    Text(DirectoryItemFormatter.string(fromBytes: size) ?? "")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

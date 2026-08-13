@@ -30,7 +30,7 @@ public struct DirectoryPlaybackRequest: Identifiable, Equatable {
 
 /// State of the folder download preview (crawl results + user selection).
 public struct DirectoryFolderDownloadRequest: Identifiable, Equatable {
-    public let id: UUID
+    public let id: UUID = UUID()
     public let folderName: String
     public let folderURL: URL
     public var files: [CrawledFile]
@@ -127,7 +127,7 @@ public final class DirectoryBrowserViewModel: ObservableObject {
             .store(in: &cancellables)
         syncProxyState()
 
-        crawler.$progress
+        self.crawler.$progress
             .receive(on: DispatchQueue.main)
             .sink { [weak self] progress in self?.crawlProgress = progress }
             .store(in: &cancellables)

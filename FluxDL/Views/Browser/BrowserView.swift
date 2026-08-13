@@ -283,6 +283,7 @@ public struct BrowserView: View {
 
     // MARK: - Bottom toolbar
 
+    @ViewBuilder
     private var bottomBar: some View {
         if viewModel.browserMode == .directory {
             DirectoryBottomBar(viewModel: directoryViewModel)

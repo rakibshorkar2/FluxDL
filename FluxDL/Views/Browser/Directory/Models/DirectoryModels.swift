@@ -72,6 +72,18 @@ public enum DirectoryItemType: String, CaseIterable, Sendable {
         case .other: return "File"
         }
     }
+
+    public var systemImage: String {
+        switch self {
+        case .directory: return "folder.fill"
+        case .video: return "film"
+        case .audio: return "music.note"
+        case .image: return "photo"
+        case .archive: return "doc.zipper"
+        case .document: return "doc.text"
+        case .other: return "doc"
+        }
+    }
 }
 
 /// One entry of an open-directory listing.
