@@ -149,6 +149,59 @@ public final class DirectoryHTTPClient: ObservableObject {
         }
     }
 
+    /// Resolves a file size with a single HEAD request through the same
+    /// proxy policy as page fetches. Fail-closed: any problem (proxy not
+    /// applicable, non-2xx, missing/negative Content-Length) throws an
+    /// error — the size is never guessed.
+    public func fetchContentLength(url: URL) async throws -> Int64 {
+        guard url.scheme == "http" || url.scheme == "https" else {
+            throw DirectoryHTTPError.unsupportedScheme(url.scheme ?? "")
+        }
+        guard let configuration = proxySession.sessionConfiguration() else {
+            throw DirectoryHTTPError.proxyUnavailable
+        }
+        configuration.timeoutIntervalForRequest = 20
+        configuration.timeoutIntervalForResource = 30
+        configuration.waitsForConnectivity = false
+
+        let session = URLSession(configuration: configuration)
+        defer { session.finishTasksAndInvalidate() }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 20
+        request.setValue("FluxDL/1.0 (directory mode)", forHTTPHeaderField: "User-Agent")
+
+        do {
+            let (_, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw DirectoryHTTPError.malformedResponse
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                throw DirectoryHTTPError.httpStatus(http.statusCode)
+            }
+            guard let raw = http.value(forHTTPHeaderField: "Content-Length"),
+                  let bytes = Int64(raw), bytes >= 0 else {
+                throw DirectoryHTTPError.malformedResponse
+            }
+            return bytes
+        } catch is CancellationError {
+            throw DirectoryHTTPError.cancelled
+        } catch let error as URLError {
+            switch error.code {
+            case .timedOut:
+                throw DirectoryHTTPError.timeout
+            case .cancelled:
+                throw DirectoryHTTPError.cancelled
+            case .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet,
+                 .dnsLookupFailed, .cannotFindHost, .internationalRoamingOff, .dataNotAllowed:
+                throw DirectoryHTTPError.connectionFailed
+            default:
+                throw DirectoryHTTPError.connectionFailed
+            }
+        }
+    }
+
     /// Whether a URL must bypass the proxy (localhost). Mirrors
     /// `BrowserProxySession.shouldBypassProxy`.
     public func shouldBypassProxy(for url: URL) -> Bool {

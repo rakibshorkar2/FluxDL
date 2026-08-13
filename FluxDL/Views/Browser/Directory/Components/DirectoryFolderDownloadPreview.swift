@@ -180,8 +180,8 @@ public struct DirectoryFolderDownloadPreview: View {
                 Text(file.name)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                    .lineLimit(1...2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Spacer(minLength: 8)
 

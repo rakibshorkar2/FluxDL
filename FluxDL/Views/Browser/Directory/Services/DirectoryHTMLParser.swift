@@ -102,6 +102,8 @@ public enum DirectoryHTMLParser {
 
                 let (size, date) = extractRowMetadata(ns: html as NSString, matchRange: match.range)
                 let type: DirectoryItemType = isDirectory ? .directory : DirectoryItemType(extension: (text as NSString).pathExtension)
+                // TEMP DEBUG (§23): remove before finalizing.
+                print("FluxDL DirectoryParser: name=\(text) href=\(href) sizeBytes=\(size.map(String.init) ?? "nil") date=\(date.map(String.init) ?? "nil")")
                 items.append(DirectoryItem(name: text, url: resolved, type: type, sizeBytes: size, modifiedDate: date))
             }
         }
@@ -169,26 +171,61 @@ public enum DirectoryHTMLParser {
     ///
     /// Apache: `<td>` cells of the enclosing `<tr>` — the cell that looks
     /// like a size wins the size slot, the cell that looks like a date wins
-    /// the date slot (layout-agnostic across 4/5-column variants).
+    /// the date slot (layout-agnostic across 3/4/5-column variants).
+    ///
+    /// The anchor cell (the one holding the filename) is NEVER scanned for a
+    /// size: filenames routinely contain digits ("A.Bugs.Life.1998.1080p…")
+    /// that would otherwise be misread as byte counts. Only the text after
+    /// `</a>` of that cell counts, for servers that append size/date there.
+    /// Non-anchor cells are classified strictly (the whole cell must BE a
+    /// size or a date) so combined cells fall through to a safe token scan.
     /// Nginx: the trailing text of the row after the anchor.
     private static func extractRowMetadata(ns: NSString, matchRange: NSRange) -> (Int64?, Date?) {
         let matchStart = matchRange.location
         if let (rowStart, rowEnd) = enclosingTableRow(ns: ns, anchorLocation: matchStart) {
             let row = ns.substring(with: NSRange(location: rowStart, length: rowEnd - rowStart))
             let cells = tableCells(in: row)
-            if cells.count >= 4 {
+            if !cells.isEmpty {
                 var size: Int64?
                 var date: Date?
+                var nonAnchorText = ""
                 for cell in cells {
-                    let stripped = cell.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    if date == nil, let parsed = parseDateToken(stripped) {
-                        date = parsed
-                    } else if size == nil, let parsed = parseSizeToken(stripped) {
-                        size = parsed
+                    let stripped = String(
+                        cell
+                            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+                            .replacingOccurrences(of: "&nbsp;", with: " ", options: [.caseInsensitive])
+                            .replacingOccurrences(of: "&#160;", with: " ")
+                    )
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if cell.lowercased().contains("<a") {
+                        guard let closeTagRange = cell.range(of: "</a>", options: .caseInsensitive) else { continue }
+                        let suffix = String(cell[closeTagRange.upperBound...])
+                            .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        if suffix.isEmpty { continue }
+                        if date == nil, let parsed = parseDate(suffix) {
+                            date = parsed
+                        } else if size == nil, let parsed = parseSize(suffix) {
+                            size = parsed
+                        }
+                    } else {
+                        nonAnchorText += " " + stripped
+                        if date == nil, let parsed = parseDate(stripped) {
+                            date = parsed
+                        } else if size == nil, let parsed = parseSize(stripped) {
+                            size = parsed
+                        }
                     }
                 }
-                return (size, date)
+                if size != nil || date != nil {
+                    // Strict cells already told us what this row carries.
+                    // Never guess from leftover text (description columns can
+                    // legitimately contain "Requires 4 GB…").
+                    return (size, date)
+                }
+                // No cell is a clean size/date on its own — some servers cram
+                // "1.48G 2025-04-12 10:14" into a single trailing cell.
+                return extractTrailingMetadata(nonAnchorText)
             }
         }
 
@@ -197,9 +234,7 @@ public enum DirectoryHTMLParser {
         let remainder = lineEnd.location == NSNotFound
             ? afterAnchor
             : (afterAnchor as NSString).substring(to: lineEnd.location)
-        let date = parseDateToken(remainder)
-        let size = parseSizeToken(remainder)
-        return (size, date)
+        return extractTrailingMetadata(remainder)
     }
 
     private static func enclosingTableRow(ns: NSString, anchorLocation: Int) -> (Int, Int)? {
@@ -207,10 +242,39 @@ public enum DirectoryHTMLParser {
         let beforeStart = max(0, anchorLocation - searchLength)
         let before = ns.substring(with: NSRange(location: beforeStart, length: searchLength))
         let after = ns.substring(with: NSRange(location: anchorLocation, length: min(ns.length - anchorLocation, 20_000)))
-        let openRange = (before as NSString).range(of: "<tr", options: .backwards)
+        guard let openRegex = try? NSRegularExpression(pattern: #"<tr\b[^>]*>"#, options: [.caseInsensitive]) else { return nil }
+        let openMatches = openRegex.matches(
+            in: before,
+            options: [],
+            range: NSRange(location: 0, length: (before as NSString).length)
+        )
+        guard let openMatch = openMatches.last else { return nil }
         let closeRange = (after as NSString).range(of: "</tr>")
-        guard openRange.location != NSNotFound, closeRange.location != NSNotFound else { return nil }
-        return (beforeStart + openRange.location, anchorLocation + closeRange.location + closeRange.length)
+        guard closeRange.location != NSNotFound else { return nil }
+        return (beforeStart + openMatch.range.location, anchorLocation + closeRange.location + closeRange.length)
+    }
+
+    /// Size/date extraction from free text (Nginx rows, combined cells).
+    ///
+    /// The date span is consumed first and removed from the remainder so it
+    /// can never be misread as a size ("2025" is a year, not a byte count).
+    private static func extractTrailingMetadata(_ raw: String) -> (Int64?, Date?) {
+        var remainder = raw
+            .replacingOccurrences(of: "&nbsp;", with: " ", options: [.caseInsensitive])
+            .replacingOccurrences(of: "&#160;", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        var date: Date?
+        var size: Int64?
+        if let hit = dateToken(in: remainder), let parsed = parseDate(hit.token) {
+            date = parsed
+            remainder = remainder
+                .replacingCharacters(in: hit.fullRange, with: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let parsed = extractSizeToken(from: remainder) {
+            size = parsed
+        }
+        return (size, date)
     }
 
     private static func tableCells(in row: String) -> [String] {
@@ -225,14 +289,19 @@ public enum DirectoryHTMLParser {
 
     // MARK: - Size parsing
 
-    private static let sizeTokenPattern = #"([0-9]+(?:\.[0-9]+)?)\s*([KMGTP]?i?B?)"#
+    /// Strict: the entire trimmed string must be one size (e.g. "1.48G",
+    /// "1,480 MB", "500 B", "5").
+    private static let strictSizePattern = #"^((?:[0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)(?:\.[0-9]+)?)\s*([KMGTP]?i?B?)$"#
 
-    /// Extracts a size token from a cell or trailing row text.
-    private static func parseSizeToken(_ raw: String) -> Int64? {
-        guard let regex = try? NSRegularExpression(pattern: sizeTokenPattern, options: [.caseInsensitive]) else { return nil }
-        let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
-        guard let match = regex.firstMatch(in: raw, options: [], range: range),
-              let numberRange = Range(match.range(at: 1), in: raw),
+    /// Lenient: finds a size token inside larger text, but ONLY when it
+    /// carries an explicit unit suffix (K/M/G/T/P, optional i, optional B).
+    /// Bare numbers are never matched here — filenames, years and ids are
+    /// not sizes.
+    private static let sizedTokenPattern = #"((?:[0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)(?:\.[0-9]+)?)\s*([KMGTP]i?B)"#
+
+    /// Converts a matched `(number, unit)` pair into a byte count.
+    private static func sizeValue(from match: NSTextCheckingResult, in raw: String) -> Int64? {
+        guard let numberRange = Range(match.range(at: 1), in: raw),
               let value = Double(String(raw[numberRange]).replacingOccurrences(of: ",", with: "")) else {
             return nil
         }
@@ -247,23 +316,32 @@ public enum DirectoryHTMLParser {
         case "M", "MB", "MIB": multiplier = 1024 * 1024
         case "G", "GB", "GIB": multiplier = 1024 * 1024 * 1024
         case "T", "TB", "TIB": multiplier = 1024 * 1024 * 1024 * 1024
-        default: multiplier = 1
+        case "P", "PB", "PIB": multiplier = 1024 * 1024 * 1024 * 1024 * 1024
+        default: return nil
         }
         return Int64(value * multiplier)
     }
 
-    /// Strict full-string size parser used by tests (and the folder crawler
-    /// aggregator when needed).
+    /// Strict full-string size parser (table cells, tests).
     public static func parseSize(_ raw: String) -> Int64? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed != "-" else { return nil }
-        guard let regex = try? NSRegularExpression(
-            pattern: #"^\s*[0-9]+(?:\.[0-9]+)?\s*[KMGTP]?i?B?\s*$"#,
-            options: [.caseInsensitive]
-        ) else { return nil }
+        guard let regex = try? NSRegularExpression(pattern: strictSizePattern, options: [.caseInsensitive]) else { return nil }
         let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-        guard regex.firstMatch(in: trimmed, options: [], range: range) != nil else { return nil }
-        return parseSizeToken(trimmed)
+        guard let match = regex.firstMatch(in: trimmed, options: [], range: range) else { return nil }
+        return sizeValue(from: match, in: trimmed)
+    }
+
+    /// Lenient size extraction from trailing row text: the whole remainder
+    /// is tried strictly first, then a unit-bearing token is searched.
+    private static func extractSizeToken(from raw: String) -> Int64? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        if let strict = parseSize(trimmed) { return strict }
+        guard let regex = try? NSRegularExpression(pattern: sizedTokenPattern, options: [.caseInsensitive]) else { return nil }
+        let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
+        guard let match = regex.firstMatch(in: trimmed, options: [], range: range) else { return nil }
+        return sizeValue(from: match, in: trimmed)
     }
 
     // MARK: - Date parsing
@@ -280,13 +358,15 @@ public enum DirectoryHTMLParser {
         "dd-MMM-yyyy"
     ]
 
-    /// Extracts a date token from a cell or trailing row text.
-    private static func parseDateToken(_ raw: String) -> Date? {
+    /// First date token found in `raw`, plus the range of the whole matched
+    /// span so callers can remove it from the remainder.
+    private static func dateToken(in raw: String) -> (token: String, fullRange: Range<String.Index>)? {
         guard let regex = try? NSRegularExpression(pattern: dateTokenPattern, options: [.caseInsensitive]) else { return nil }
         let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
         guard let match = regex.firstMatch(in: raw, options: [], range: range),
-              let tokenRange = Range(match.range(at: 1), in: raw) else { return nil }
-        return parseDate(String(raw[tokenRange]))
+              let tokenRange = Range(match.range(at: 1), in: raw),
+              let fullRange = Range(match.range(at: 0), in: raw) else { return nil }
+        return (String(raw[tokenRange]), fullRange)
     }
 
     /// Strict full-string date parser used by tests.

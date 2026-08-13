@@ -437,6 +437,40 @@ public final class DirectoryBrowserViewModel: ObservableObject {
         topViewController()?.present(activity, animated: true)
     }
 
+    public func copyName(_ item: DirectoryItem) {
+        UIPasteboard.general.string = item.name
+        showToast("Copied \(item.name)")
+    }
+
+    /// Items that already have a pending size resolution (one HEAD per item).
+    private var pendingSizeResolutions: Set<UUID> = []
+
+    /// Resolves a missing file size with a single HEAD request through the
+    /// same proxy policy as page fetches (fail-closed: never a guess, never
+    /// a download). Only runs on explicit user action and never in parallel
+    /// for the same item.
+    public func resolveSize(_ item: DirectoryItem) {
+        guard item.sizeBytes == nil, item.type != .directory,
+              !pendingSizeResolutions.contains(item.id) else { return }
+        pendingSizeResolutions.insert(item.id)
+        showToast("Requesting size for \(item.name)…")
+        Task { [weak self] in
+            guard let self else { return }
+            let result = try? await self.client.fetchContentLength(url: item.url)
+            self.pendingSizeResolutions.remove(item.id)
+            guard let bytes = result else {
+                self.showToast("Could not determine size for \(item.name)")
+                return
+            }
+            // TEMP DEBUG (§23): remove before finalizing.
+            print("FluxDL Directory: resolved size for \(item.name) → \(bytes) bytes")
+            if let index = self.items.firstIndex(where: { $0.id == item.id }) {
+                self.items[index] = self.items[index].withSize(bytes)
+            }
+            self.showToast("\(DirectoryItemFormatter.formattedFileSize(bytes)) • \(item.name)")
+        }
+    }
+
     public func openExternally(_ item: DirectoryItem) {
         UIApplication.shared.open(item.url)
     }

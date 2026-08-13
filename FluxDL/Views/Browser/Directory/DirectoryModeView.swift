@@ -77,7 +77,9 @@ public struct DirectoryModeView: View {
                     onOpen: { open($0) },
                     onToggleSelection: { viewModel.toggleSelection($0) },
                     onDownload: { viewModel.download(items: [$0]) },
-                    onShare: { viewModel.share($0) }
+                    onShare: { viewModel.share($0) },
+                    onCopyName: { viewModel.copyName($0) },
+                    onResolveSize: { viewModel.resolveSize($0) }
                 )
             } else {
                 DirectoryListView(
@@ -87,7 +89,9 @@ public struct DirectoryModeView: View {
                     onOpen: { open($0) },
                     onToggleSelection: { viewModel.toggleSelection($0) },
                     onDownload: { viewModel.download(items: [$0]) },
-                    onShare: { viewModel.share($0) }
+                    onShare: { viewModel.share($0) },
+                    onCopyName: { viewModel.copyName($0) },
+                    onResolveSize: { viewModel.resolveSize($0) }
                 )
             }
         }

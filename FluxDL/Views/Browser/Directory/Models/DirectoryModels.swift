@@ -127,6 +127,22 @@ public struct DirectoryItem: Identifiable, Equatable, Sendable {
         DirectoryItemFormatter.string(fromBytes: sizeBytes)
     }
 
+    /// Returns a copy with the byte count replaced — used when a missing
+    /// size is resolved later (e.g. via a HEAD request) without losing the
+    /// item's identity, selection or metadata.
+    public func withSize(_ bytes: Int64?) -> DirectoryItem {
+        DirectoryItem(
+            id: id,
+            name: name,
+            url: url,
+            type: type,
+            sizeBytes: bytes,
+            modifiedDate: modifiedDate,
+            mimeType: mimeType,
+            childCount: childCount
+        )
+    }
+
     /// File extension without the leading dot, or nil for folders.
     public var fileExtension: String? {
         guard type != .directory else { return nil }
@@ -136,19 +152,32 @@ public struct DirectoryItem: Identifiable, Equatable, Sendable {
 
 /// Byte/date display formatting shared by directory UI.
 public enum DirectoryItemFormatter {
+    /// "1.48 GB", "512 MB", "12 KB", "0 B" — or "Unknown size" when the byte
+    /// count is missing. Binary units (1024), matching the app's
+    /// `ByteCountFormatter` convention elsewhere; whole-unit values drop the
+    /// decimal ("1 KB", never "1.0 KB").
+    public static func formattedFileSize(_ bytes: Int64?) -> String {
+        guard let bytes, bytes >= 0 else { return "Unknown size" }
+        if bytes == 0 { return "0 B" }
+        let units = ["B", "KB", "MB", "GB", "TB", "PB"]
+        var value = Double(bytes)
+        var index = 0
+        while value >= 1024, index < units.count - 1 {
+            value /= 1024
+            index += 1
+        }
+        if index == 0 {
+            return "\(bytes) B"
+        }
+        let trimmed = String(format: "%.2f", value)
+            .replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
+        return "\(trimmed) \(units[index])"
+    }
+
+    /// Byte formatting for contexts that treat "unknown" as absence (nil).
     public static func string(fromBytes bytes: Int64?) -> String? {
         guard let bytes, bytes >= 0 else { return nil }
-        let b = Double(bytes)
-        switch b {
-        case 0..<1024:
-            return "\(Int(b)) B"
-        case 1024..<(1024 * 1024):
-            return String(format: "%.1f KB", b / 1024)
-        case (1024 * 1024)..<(1024 * 1024 * 1024):
-            return String(format: "%.1f MB", b / (1024 * 1024))
-        default:
-            return String(format: "%.2f GB", b / (1024 * 1024 * 1024))
-        }
+        return formattedFileSize(bytes)
     }
 
     public static func string(fromDate date: Date?) -> String? {

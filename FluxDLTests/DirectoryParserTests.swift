@@ -192,9 +192,122 @@ final class DirectoryParserTests: XCTestCase {
         XCTAssertNil(DirectoryHTMLParser.parseSize("dir"))
     }
 
+    func testParseSizeVariants() {
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("2 KB"), 2048)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("2.0 KB"), 2048)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("1.48 GB"), 1_589_137_899)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("1.48G"), 1_589_137_899)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("1.48 GiB"), 1_589_137_899)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("1.48GB"), 1_589_137_899)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("1024 MB"), 1_073_741_824)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("1,480 MB"), 1_551_892_480)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("1.5 TB"), 1_649_267_441_664)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize("500 B"), 500)
+        XCTAssertEqual(DirectoryHTMLParser.parseSize(" 1.48G "), 1_589_137_899)
+        XCTAssertNil(DirectoryHTMLParser.parseSize(""))
+        XCTAssertNil(DirectoryHTMLParser.parseSize("unknown"))
+        XCTAssertNil(DirectoryHTMLParser.parseSize("-"))
+        XCTAssertNil(DirectoryHTMLParser.parseSize("Last modified"))
+        XCTAssertNil(DirectoryHTMLParser.parseSize("A.Bugs.Life.1998.1080p.x264.YIFY.mp4"))
+    }
+
+    // MARK: - Regression: filename digits must never be read as a size
+
+    func testLongFilenameWithYearIsNotMisreadAsSize() {
+        let html = """
+        <html><head><title>Index of /films</title></head><body><table>
+        <tr><th>Name</th><th>Last modified</th><th>Size</th><th>Description</th></tr>
+        <tr><td><a href="../">Parent Directory</a></td><td>&nbsp;</td><td>-</td><td>&nbsp;</td></tr>
+        <tr><td><a href="A.Bugs.Life.1998.1080p.x264.YIFY.mp4">A.Bugs.Life.1998.1080p.x264.YIFY.mp4</a></td><td>2025-04-12 10:14</td><td>1.48G</td><td>&nbsp;</td></tr>
+        </table></body></html>
+        """
+        let result = DirectoryHTMLParser.parse(html: html, baseURL: base)
+        let item = result.items.first
+        XCTAssertEqual(item?.name, "A.Bugs.Life.1998.1080p.x264.YIFY.mp4")
+        XCTAssertEqual(item?.sizeBytes, 1_589_137_899)
+        XCTAssertNotNil(item?.modifiedDate)
+    }
+
+    func testNGINXRemainderWithFilenameLikeNumbers() {
+        let html = """
+        <html><head><title>Index of /pub</title></head><body>
+        <a href="../">../</a>
+        <a href="A.Bugs.Life.1998.1080p.x264.YIFY.mp4">A.Bugs.Life.1998.1080p.x264.YIFY.mp4</a> 1.48G 2025-04-12 10:14
+        <br></body></html>
+        """
+        let result = DirectoryHTMLParser.parse(html: html, baseURL: base)
+        let item = result.items.first
+        XCTAssertEqual(item?.name, "A.Bugs.Life.1998.1080p.x264.YIFY.mp4")
+        XCTAssertEqual(item?.sizeBytes, 1_589_137_899)
+        XCTAssertNotNil(item?.modifiedDate)
+    }
+
+    func testNameContainingSizeLikeTokensIsIgnored() {
+        let html = """
+        <html><head><title>Index of /x</title></head><body><table>
+        <tr><th>Name</th><th>Last modified</th><th>Size</th></tr>
+        <tr><td><a href="movie.4K.remux.mkv">movie.4K.remux.mkv</a></td><td>2026-01-01 00:00</td><td>8.9G</td></tr>
+        </table></body></html>
+        """
+        let result = DirectoryHTMLParser.parse(html: html, baseURL: base)
+        let item = result.items.first
+        XCTAssertEqual(item?.name, "movie.4K.remux.mkv")
+        XCTAssertEqual(item?.sizeBytes, 9_556_302_233)
+    }
+
+    // MARK: - Layout variants
+
+    func testThreeColumnNameSizeDateLayout() {
+        let html = """
+        <html><head><title>Index of /x</title></head><body><table>
+        <tr><th>Name</th><th>Size</th><th>Last modified</th></tr>
+        <tr><td><a href="big.mkv">big.mkv</a></td><td>4.2G</td><td>2026-02-03 04:05</td></tr>
+        </table></body></html>
+        """
+        let result = DirectoryHTMLParser.parse(html: html, baseURL: base)
+        let item = result.items.first
+        XCTAssertEqual(item?.name, "big.mkv")
+        XCTAssertEqual(item?.sizeBytes, 4_509_715_660)
+        XCTAssertNotNil(item?.modifiedDate)
+    }
+
+    func testThreeColumnNameDateSizeLayout() {
+        let html = """
+        <html><head><title>Index of /x</title></head><body><table>
+        <tr><th>Name</th><th>Last modified</th><th>Size</th></tr>
+        <tr><td><a href="thing.iso">thing.iso</a></td><td>2026-05-06 07:08</td><td>950 MB</td></tr>
+        </table></body></html>
+        """
+        let result = DirectoryHTMLParser.parse(html: html, baseURL: base)
+        let item = result.items.first
+        XCTAssertEqual(item?.name, "thing.iso")
+        XCTAssertEqual(item?.sizeBytes, 996_147_200)
+        XCTAssertNotNil(item?.modifiedDate)
+    }
+
+    func testSizeAndDateInSingleTrailingCell() {
+        let html = """
+        <html><head><title>Index of /x</title></head><body><table>
+        <tr><th>Name</th><th>Details</th></tr>
+        <tr><td><a href="pack.tar">pack.tar</a></td><td>2.3G 2026-07-08 09:10</td></tr>
+        </table></body></html>
+        """
+        let result = DirectoryHTMLParser.parse(html: html, baseURL: base)
+        let item = result.items.first
+        XCTAssertEqual(item?.name, "pack.tar")
+        XCTAssertEqual(item?.sizeBytes, 2_469_606_195)
+        XCTAssertNotNil(item?.modifiedDate)
+    }
+
     func testFormatter() {
         XCTAssertEqual(DirectoryItemFormatter.string(fromBytes: 5), "5 B")
-        XCTAssertEqual(DirectoryItemFormatter.string(fromBytes: 512_000), "500.0 KB")
+        XCTAssertEqual(DirectoryItemFormatter.string(fromBytes: 512_000), "500 KB")
+        XCTAssertEqual(DirectoryItemFormatter.formattedFileSize(1024), "1 KB")
+        XCTAssertEqual(DirectoryItemFormatter.formattedFileSize(1_048_576), "1 MB")
+        XCTAssertEqual(DirectoryItemFormatter.formattedFileSize(1_073_741_824), "1 GB")
+        XCTAssertEqual(DirectoryItemFormatter.formattedFileSize(0), "0 B")
+        XCTAssertEqual(DirectoryItemFormatter.formattedFileSize(1_589_137_899), "1.48 GB")
+        XCTAssertEqual(DirectoryItemFormatter.formattedFileSize(nil), "Unknown size")
         XCTAssertNil(DirectoryItemFormatter.string(fromBytes: nil))
     }
 }
