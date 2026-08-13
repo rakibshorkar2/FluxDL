@@ -102,8 +102,6 @@ public enum DirectoryHTMLParser {
 
                 let (size, date) = extractRowMetadata(ns: html as NSString, matchRange: match.range)
                 let type: DirectoryItemType = isDirectory ? .directory : DirectoryItemType(extension: (text as NSString).pathExtension)
-                // TEMP DEBUG (§23): remove before finalizing.
-                print("FluxDL DirectoryParser: name=\(text) href=\(href) sizeBytes=\(size.map(String.init) ?? "nil") date=\(date.map(String.init) ?? "nil")")
                 items.append(DirectoryItem(name: text, url: resolved, type: type, sizeBytes: size, modifiedDate: date))
             }
         }

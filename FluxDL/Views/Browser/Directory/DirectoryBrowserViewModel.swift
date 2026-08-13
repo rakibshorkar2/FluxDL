@@ -462,8 +462,6 @@ public final class DirectoryBrowserViewModel: ObservableObject {
                 self.showToast("Could not determine size for \(item.name)")
                 return
             }
-            // TEMP DEBUG (§23): remove before finalizing.
-            print("FluxDL Directory: resolved size for \(item.name) → \(bytes) bytes")
             if let index = self.items.firstIndex(where: { $0.id == item.id }) {
                 self.items[index] = self.items[index].withSize(bytes)
             }
