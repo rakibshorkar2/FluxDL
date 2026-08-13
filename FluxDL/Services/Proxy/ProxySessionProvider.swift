@@ -532,7 +532,8 @@ private final class AdapterTunnel {
             : [0x05, 0x01, 0x00]
         send(upstream, Data(offer))
         receiveExactly(upstream, 2) { [weak self] data in
-            guard let self, let data, data.count == 2, data[0] == 0x05 else {
+            guard let self else { return }
+            guard let data, data.count == 2, data[0] == 0x05 else {
                 self.replyConnectFailed()
                 self.cancel()
                 return
@@ -600,7 +601,8 @@ private final class AdapterTunnel {
         request.append(contentsOf: [UInt8(port >> 8), UInt8(port & 0xFF)])
         send(upstream, request)
         receiveExactly(upstream, 4) { [weak self] data in
-            guard let self, let data, data.count == 4, data[0] == 0x05, data[1] == 0x00 else {
+            guard let self else { return }
+            guard let data, data.count == 4, data[0] == 0x05, data[1] == 0x00 else {
                 self.replyConnectFailed()
                 self.cancel()
                 return
@@ -644,9 +646,8 @@ private final class AdapterTunnel {
         let target = "\(host):\(port)"
         var lines = ["CONNECT \(target) HTTP/1.1", "Host: \(target)"]
         if upstreamConfiguration.requiresAuthentication,
-           let username = upstreamConfiguration.username,
-           !username.isEmpty {
-            let token = "\(username):\(upstreamConfiguration.password ?? "")"
+           !upstreamConfiguration.username.isEmpty {
+            let token = "\(upstreamConfiguration.username):\(upstreamConfiguration.password ?? "")"
             let encoded = token.data(using: .utf8)?.base64EncodedString() ?? ""
             lines.append("Proxy-Authorization: Basic \(encoded)")
         }

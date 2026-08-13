@@ -252,8 +252,7 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
                 // This closure runs on delegateQueue
                 guard let self else { return }
                 Task { @MainActor in
-                    guard let self,
-                          let idx = self.tasks.firstIndex(where: { $0.id == id }) else { return }
+                    guard let idx = self.tasks.firstIndex(where: { $0.id == id }) else { return }
                     // Ignore if the task was resumed/deleted/retried or the
                     // session already changed again while the cancel was in
                     // flight — never resurrect a stale requeue over the
