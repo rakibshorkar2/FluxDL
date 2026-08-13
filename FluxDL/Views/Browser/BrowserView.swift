@@ -6,6 +6,7 @@ import SwiftUI
 /// obscures the webpage, and the keyboard never hides the address bar.
 public struct BrowserView: View {
     @StateObject private var viewModel = BrowserViewModel()
+    @StateObject private var directoryViewModel = DirectoryBrowserViewModel()
     @ObservedObject private var tabManager = BrowserTabManager.shared
     private let onOpenDownloads: () -> Void
 
@@ -80,56 +81,73 @@ public struct BrowserView: View {
 
     private func webContent(geo: GeometryProxy) -> some View {
         ZStack {
-            // Web content — recreated per tab so each tab gets its own live WKWebView
+            // Web content — recreated per tab so each tab gets its own live
+            // WKWebView. Hidden (never removed) while Directory Mode is
+            // active so the active tab keeps its complete web state.
             WebViewContainer(viewModel: viewModel)
                 .id(tabManager.activeTabId)
+                .opacity(viewModel.browserMode == .web ? 1 : 0)
+                .allowsHitTesting(viewModel.browserMode == .web)
+                .accessibilityHidden(viewModel.browserMode != .web)
 
-            // Error / offline state overlay
-            if let message = viewModel.loadErrorMessage {
-                BrowserErrorView(url: viewModel.currentURL, message: message) {
-                    viewModel.reloadOrStop()
-                }
+            // Directory Mode — the DirXplore-inspired open-directory browser.
+            if viewModel.browserMode == .directory {
+                DirectoryModeView(
+                    viewModel: directoryViewModel,
+                    onOpenInWebBrowser: { viewModel.openInWebBrowser($0) }
+                )
                 .transition(.opacity)
             }
 
-            // "Download File?" popup — anchored to the exact element that
-            // triggered the download. Falls back to a toolbar-adjacent
-            // position for programmatic (non-element) download triggers.
-            if viewModel.showDownloadPrompt, let request = viewModel.pendingDownload {
-                let position = downloadPopupPosition(in: geo.size)
-                BrowserDownloadPromptView(
-                    request: request,
-                    onDownload: { viewModel.startDetectedDownload() },
-                    onCancel: { viewModel.cancelDetectedDownload() }
-                )
-                .position(x: position.x, y: position.y)
-                .offset(y: position.y < 150 ? 96 : -86)
-                .zIndex(30)
-                .transition(.opacity.combined(with: .scale(scale: 0.92)))
-                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.downloadAnchorPoint)
-            }
-
-            // Proxy status indicator (non-interactive pill, toolbar-adjacent)
-            if viewModel.proxySession.isProxyActive, let label = viewModel.proxySession.proxyLabel {
-                VStack {
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Image(systemName: "network")
-                        Text(label)
-                            .font(.caption2.bold())
+            // Web-only overlays
+            if viewModel.browserMode == .web {
+                // Error / offline state overlay
+                if let message = viewModel.loadErrorMessage {
+                    BrowserErrorView(url: viewModel.currentURL, message: message) {
+                        viewModel.reloadOrStop()
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(.thinMaterial, in: Capsule())
-                    .padding(.bottom, 10)
+                    .transition(.opacity)
                 }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.trailing, 12)
-                .allowsHitTesting(false)
+
+                // "Download File?" popup — anchored to the exact element that
+                // triggered the download. Falls back to a toolbar-adjacent
+                // position for programmatic (non-element) download triggers.
+                if viewModel.showDownloadPrompt, let request = viewModel.pendingDownload {
+                    let position = downloadPopupPosition(in: geo.size)
+                    BrowserDownloadPromptView(
+                        request: request,
+                        onDownload: { viewModel.startDetectedDownload() },
+                        onCancel: { viewModel.cancelDetectedDownload() }
+                    )
+                    .position(x: position.x, y: position.y)
+                    .offset(y: position.y < 150 ? 96 : -86)
+                    .zIndex(30)
+                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: viewModel.downloadAnchorPoint)
+                }
+
+                // Proxy status indicator (non-interactive pill, toolbar-adjacent)
+                if viewModel.proxySession.isProxyActive, let label = viewModel.proxySession.proxyLabel {
+                    VStack {
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Image(systemName: "network")
+                            Text(label)
+                                .font(.caption2.bold())
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.thinMaterial, in: Capsule())
+                        .padding(.bottom, 10)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, 12)
+                    .allowsHitTesting(false)
+                }
             }
 
             // Tab grid — animated overlay (slides up like a sheet)
-            if tabManager.isTabGridPresented {
+            if tabManager.isTabGridPresented, viewModel.browserMode == .web {
                 BrowserTabGridView()
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .zIndex(20)
@@ -144,24 +162,35 @@ public struct BrowserView: View {
         VStack(spacing: 0) {
             statusRow
 
-            BrowserAddressBar(
-                text: $viewModel.inputURLText,
-                isFieldFocused: $viewModel.isAddressFieldFocused,
-                displayHost: viewModel.currentURL?.host ?? "",
-                isLoading: viewModel.isLoading,
-                progress: viewModel.estimatedProgress,
-                faviconURL: tabManager.activeTab?.faviconURL,
-                isSecure: viewModel.currentURL?.scheme == "https",
-                blockedCount: viewModel.blockedRequestCount,
-                suggestions: viewModel.suggestions,
-                onCommit: { viewModel.handleSearchOrNavigate() },
-                onReload: { viewModel.reloadOrStop() },
-                onFocusChange: { focused in viewModel.isAddressFieldFocused = focused },
-                onSelectSuggestion: { viewModel.selectSuggestion($0) },
-                onClearSuggestions: { viewModel.dismissSuggestions() }
-            )
+            if viewModel.browserMode == .directory {
+                DirectoryAddressBar(
+                    text: $directoryViewModel.inputText,
+                    isLoading: directoryViewModel.isLoading,
+                    isProxied: directoryViewModel.isProxied,
+                    proxyLabel: directoryViewModel.proxyLabel,
+                    onCommit: { directoryViewModel.load(input: directoryViewModel.inputText) },
+                    onReload: { directoryViewModel.reload() }
+                )
+            } else {
+                BrowserAddressBar(
+                    text: $viewModel.inputURLText,
+                    isFieldFocused: $viewModel.isAddressFieldFocused,
+                    displayHost: viewModel.currentURL?.host ?? "",
+                    isLoading: viewModel.isLoading,
+                    progress: viewModel.estimatedProgress,
+                    faviconURL: tabManager.activeTab?.faviconURL,
+                    isSecure: viewModel.currentURL?.scheme == "https",
+                    blockedCount: viewModel.blockedRequestCount,
+                    suggestions: viewModel.suggestions,
+                    onCommit: { viewModel.handleSearchOrNavigate() },
+                    onReload: { viewModel.reloadOrStop() },
+                    onFocusChange: { focused in viewModel.isAddressFieldFocused = focused },
+                    onSelectSuggestion: { viewModel.selectSuggestion($0) },
+                    onClearSuggestions: { viewModel.dismissSuggestions() }
+                )
+            }
 
-            if viewModel.isFindInPagePresented {
+            if viewModel.browserMode != .directory, viewModel.isFindInPagePresented {
                 FindInPageBar(manager: viewModel.findInPageManager) {
                     viewModel.isFindInPagePresented = false
                 }
@@ -195,10 +224,55 @@ public struct BrowserView: View {
 
             Spacer(minLength: 0)
 
+            // Web / Directory mode switcher
+            modeSwitcher
+
             moreMenu
         }
         .padding(.horizontal, 10)
         .frame(height: 30)
+    }
+
+    /// Compact Web/Directory mode capsule. Switching hides (never destroys)
+    /// the WKWebView and swaps the chrome; both states persist.
+    private var modeSwitcher: some View {
+        HStack(spacing: 2) {
+            Button {
+                viewModel.browserMode = .web
+            } label: {
+                Image(systemName: "globe")
+                    .font(.caption2)
+                    .frame(width: 24, height: 20)
+                    .foregroundStyle(viewModel.browserMode == .web ? Color.white : Color.secondary)
+                    .background(
+                        viewModel.browserMode == .web ? Color.accentColor : Color.clear,
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Web Browser Mode")
+            .accessibilityAddTraits(viewModel.browserMode == .web ? .isSelected : [])
+
+            Button {
+                viewModel.browserMode = .directory
+            } label: {
+                Image(systemName: "folder")
+                    .font(.caption2)
+                    .frame(width: 24, height: 20)
+                    .foregroundStyle(viewModel.browserMode == .directory ? Color.white : Color.secondary)
+                    .background(
+                        viewModel.browserMode == .directory ? Color.accentColor : Color.clear,
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Directory Mode")
+            .accessibilityAddTraits(viewModel.browserMode == .directory ? .isSelected : [])
+        }
+        .padding(2)
+        .background(Color.primary.opacity(0.08), in: Capsule())
+        .animation(AppTheme.quickSpring, value: viewModel.browserMode)
+        .accessibilityElement(children: .contain)
     }
 
     private var statusTitle: String {
@@ -210,19 +284,23 @@ public struct BrowserView: View {
     // MARK: - Bottom toolbar
 
     private var bottomBar: some View {
-        BrowserToolbar(
-            canGoBack: viewModel.canGoBack,
-            canGoForward: viewModel.canGoForward,
-            tabCount: tabManager.tabs.count,
-            onBack: { viewModel.goBack() },
-            onForward: { viewModel.goForward() },
-            onShare: { viewModel.shareCurrentPage() },
-            onOpenTabs: {
-                viewModel.isAddressFieldFocused = false
-                tabManager.isTabGridPresented = true
+        if viewModel.browserMode == .directory {
+            DirectoryBottomBar(viewModel: directoryViewModel)
+        } else {
+            BrowserToolbar(
+                canGoBack: viewModel.canGoBack,
+                canGoForward: viewModel.canGoForward,
+                tabCount: tabManager.tabs.count,
+                onBack: { viewModel.goBack() },
+                onForward: { viewModel.goForward() },
+                onShare: { viewModel.shareCurrentPage() },
+                onOpenTabs: {
+                    viewModel.isAddressFieldFocused = false
+                    tabManager.isTabGridPresented = true
+                }
+            ) {
+                moreMenu
             }
-        ) {
-            moreMenu
         }
     }
 

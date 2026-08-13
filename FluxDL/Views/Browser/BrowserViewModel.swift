@@ -94,6 +94,19 @@ public final class BrowserViewModel: ObservableObject {
     @Published public var suggestions: [URLSuggestion] = []
     @Published public var isReaderMode: Bool = false
 
+    /// Whether the Browser tab shows the web browser or the open-directory
+    /// browser. Both worlds keep their full state; switching never destroys
+    /// the active tab's WKWebView.
+    @Published public var browserMode: BrowserMode = .web
+
+    /// Mode switch callback used by the "Open in Web Browser" fallback —
+    /// hands the URL to the existing web navigation path.
+    public func openInWebBrowser(_ url: URL) {
+        browserMode = .web
+        inputURLText = url.absoluteString
+        handleSearchOrNavigate()
+    }
+
     /// Convenience mirror of `pendingDownload` for the pre-existing API surface.
     public var detectedDownloadURL: URL? {
         get { pendingDownload?.url }
