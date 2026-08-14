@@ -37,7 +37,7 @@ public struct UpdateAlert: Identifiable, Equatable {
 public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var selectedTheme: AppThemeMode
     @Published public private(set) var isCheckingUpdates: Bool = false
-    @Published public private(set) var updateAlert: UpdateAlert?
+    @Published public var updateAlert: UpdateAlert?
     
     public let settingsService: SettingsServiceProtocol
     private let themeService: ThemeServiceProtocol
