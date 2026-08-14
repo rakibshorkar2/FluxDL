@@ -35,6 +35,19 @@ public struct BrowserView: View {
             .onPreferenceChange(BrowserWindowOriginKey.self) { origin in
                 viewModel.browserWindowOrigin = origin
             }
+
+            // Tab grid — full-screen layer ABOVE the chrome. It must not live
+            // inside the content ZStack: safeAreaInset chrome renders above the
+            // base content, so a grid that ignores safe areas slid under the
+            // address bar (cards hidden, touches swallowed by the chrome).
+            // As an overlay it covers the whole screen — chrome included — and
+            // its own navigation bar stays fully visible and interactive.
+            .overlay {
+                if tabManager.isTabGridPresented, viewModel.browserMode == .web {
+                    BrowserTabGridView()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .animation(AppTheme.defaultSpring, value: tabManager.isTabGridPresented)
         }
         .sheet(isPresented: $viewModel.isBookmarksPresented) {
@@ -146,13 +159,6 @@ public struct BrowserView: View {
                 }
             }
 
-            // Tab grid — animated overlay (slides up like a sheet)
-            if tabManager.isTabGridPresented, viewModel.browserMode == .web {
-                BrowserTabGridView()
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(20)
-                    .ignoresSafeArea()
-            }
         }
     }
 

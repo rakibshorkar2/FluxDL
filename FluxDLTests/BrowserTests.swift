@@ -151,6 +151,46 @@ final class BrowserTests: XCTestCase {
         XCTAssertNotNil(tabManager.tabs.first?.url)
     }
     
+    /// Closing the ACTIVE tab must select the nearest neighbor (never leave
+    /// activeTabId dangling on a removed tab).
+    @MainActor
+    func testClosingActiveTabSelectsNeighbor() {
+        let tabManager = BrowserTabManager.shared
+        let originalID = tabManager.activeTabId
+        
+        let a = tabManager.createNewTab(url: URL(string: "https://a.com"))
+        let b = tabManager.createNewTab(url: URL(string: "https://b.com"))
+        XCTAssertEqual(tabManager.activeTabId, b)
+        
+        // Close the active (last) tab → selection falls back to its neighbor.
+        tabManager.closeTab(id: b)
+        XCTAssertEqual(tabManager.activeTabId, a)
+        XCTAssertNotNil(tabManager.activeTab)
+        
+        // Close the now-active tab → selection falls back to the original tab.
+        tabManager.closeTab(id: a)
+        XCTAssertEqual(tabManager.activeTabId, originalID)
+        XCTAssertNotNil(tabManager.activeTab)
+    }
+    
+    /// Closing the last remaining tab must never leave the manager tabless:
+    /// a fresh Google home tab is created and becomes active.
+    @MainActor
+    func testClosingLastTabAutoCreatesFallback() {
+        let tabManager = BrowserTabManager.shared
+        tabManager.closeAllTabs()
+        XCTAssertEqual(tabManager.tabs.count, 1)
+        
+        let soloID = tabManager.activeTabId
+        tabManager.closeTab(id: soloID)
+        
+        XCTAssertEqual(tabManager.tabs.count, 1)
+        XCTAssertEqual(tabManager.tabs.first?.url, URL(string: "https://google.com"))
+        XCTAssertEqual(tabManager.activeTabId, tabManager.tabs.first?.id)
+        XCTAssertNotEqual(tabManager.activeTabId, soloID)
+        XCTAssertNotNil(tabManager.activeTab)
+    }
+    
     @MainActor
     func testSettingsRestoreTabsToggleDefaultsTrue() {
         let defaults = UserDefaults.standard
