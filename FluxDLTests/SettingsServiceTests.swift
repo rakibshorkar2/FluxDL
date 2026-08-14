@@ -18,7 +18,7 @@ final class SettingsServiceTests: XCTestCase {
     func testAppMetadataValues() {
         XCTAssertEqual(sut.appName, "FluxDL")
         XCTAssertEqual(sut.developerName, "RAKIB")
-        XCTAssertEqual(sut.versionString, "2.0.1")
+        XCTAssertEqual(sut.versionString, "2.0.2")
         XCTAssertEqual(sut.buildString, "1")
         XCTAssertNotNil(sut.githubURL)
     }
@@ -28,11 +28,11 @@ final class SettingsServiceTests: XCTestCase {
     func testVersionStringMatchesBundle() {
         let bundleVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         XCTAssertEqual(sut.versionString, bundleVersion)
-        XCTAssertEqual(sut.versionString, "2.0.1")
+        XCTAssertEqual(sut.versionString, "2.0.2")
     }
     
     func testVersionParsesAsSemanticVersion() {
-        XCTAssertEqual(SemanticVersion(rawValue: sut.versionString), SemanticVersion(major: 2, minor: 0, patch: 1))
+        XCTAssertEqual(SemanticVersion(rawValue: sut.versionString), SemanticVersion(major: 2, minor: 0, patch: 2))
     }
     
     // MARK: - Global haptic preference (Settings → Haptic Feedback)

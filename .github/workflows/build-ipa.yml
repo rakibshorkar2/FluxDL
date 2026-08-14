@@ -90,14 +90,14 @@ jobs:
           else
             echo "Warning: OpenSSL.framework not found in build products"
           fi
-          zip -r "FluxDL-v2.0.1.${BUILD_NUMBER}.ipa" Payload
-          echo "Successfully created FluxDL-v2.0.1.${BUILD_NUMBER}.ipa"
+          zip -r "FluxDL-v2.0.2.${BUILD_NUMBER}.ipa" Payload
+          echo "Successfully created FluxDL-v2.0.2.${BUILD_NUMBER}.ipa"
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: FluxDL-Unsigned-IPA
-          path: "FluxDL-v2.0.1.${{ github.run_number }}.ipa"
+          path: "FluxDL-v2.0.2.${{ github.run_number }}.ipa"
           retention-days: 30
 
       - name: Create GitHub Release with New Build Number
@@ -106,15 +106,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           BUILD_NUMBER=${{ github.run_number }}
-          TAG="v2.0.1.${BUILD_NUMBER}"
-          IPA="FluxDL-v2.0.1.${BUILD_NUMBER}.ipa"
+          TAG="v2.0.2.${BUILD_NUMBER}"
+          IPA="FluxDL-v2.0.2.${BUILD_NUMBER}.ipa"
           echo "Creating release ${TAG} with asset ${IPA}"
           if gh release view "${TAG}" --json tagName --jq .tagName >/dev/null 2>&1; then
             echo "Release ${TAG} already exists — uploading asset to it"
             gh release upload "${TAG}" "${IPA}" --clobber
           else
             gh release create "${TAG}" "${IPA}" \
-              --title "FluxDL v2.0.1 build ${BUILD_NUMBER}" \
+              --title "FluxDL v2.0.2 build ${BUILD_NUMBER}" \
               --notes "Automatic unsigned IPA release for build ${BUILD_NUMBER} (GitHub Actions run #${BUILD_NUMBER})." \
               --generate-notes
           fi
