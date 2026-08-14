@@ -279,8 +279,8 @@ public struct DirectoryFolderScanProgressView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
-                    if !progress.currentFolder.isEmpty {
-                        Text(progress.currentFolder)
+                    if let current = progress.currentFolder, !current.isEmpty {
+                        Text(current)
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
