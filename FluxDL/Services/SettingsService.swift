@@ -24,12 +24,13 @@ public protocol SettingsServiceProtocol: AnyObject {
 public final class SettingsService: SettingsServiceProtocol {
     public let appName: String = "FluxDL"
     public let developerName: String = "RAKIB"
-    public let versionString: String = "1.0.0"
-    public let buildString: String = "1"
+    public let versionString: String
+    public let buildString: String
     public let githubURL: URL? = URL(string: "https://github.com/rakibshorkar2/FluxDL")
     public let privacyURL: URL? = URL(string: "https://github.com/rakibshorkar2/FluxDL/blob/main/PRIVACY.md")
     public let termsURL: URL? = URL(string: "https://github.com/rakibshorkar2/FluxDL/blob/main/TERMS.md")
     
+    private let versionService: AppVersionServiceProtocol
     private let themeKey = "fluxdl_theme_preference"
     /// Legacy key written by older builds — read as a fallback only.
     private let legacyThemeKey = "fluxdl_app_theme_mode"
@@ -53,11 +54,27 @@ public final class SettingsService: SettingsServiceProtocol {
         }
     }
     
-    public init() {}
+    public init(versionService: AppVersionServiceProtocol = AppVersionService()) {
+        self.versionService = versionService
+        self.versionString = versionService.versionString
+        self.buildString = versionService.buildString
+    }
     
     public func checkForUpdates() async -> String {
-        // Asynchronous check simulation without blocking thread
-        try? await Task.sleep(nanoseconds: 500_000_000)
-        return "FluxDL v1.0.0 (Build 1) is currently up to date."
+        // Real GitHub Releases check through the shared update checker.
+        let checker = UpdateChecker()
+        do {
+            let result = try await checker.checkForUpdates(forceRefresh: true)
+            if result.updateAvailable {
+                return "FluxDL \(result.latestRelease.version) is available."
+            }
+            return "FluxDL v\(versionString) is up to date."
+        } catch UpdateCheckError.rateLimited {
+            return "GitHub API rate limit reached. Please try again later."
+        } catch UpdateCheckError.cancelled {
+            return "Update check cancelled."
+        } catch {
+            return "Couldn't check for updates. Please check your Internet connection and try again."
+        }
     }
 }

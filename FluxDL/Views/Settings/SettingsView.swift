@@ -477,14 +477,8 @@ private struct AboutCard: View {
         SettingsCard {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(AppTheme.primaryGradient)
-                            .frame(width: 54, height: 54)
-                        Image(systemName: "arrow.down.circle.fill")
-                            .font(.title)
-                            .foregroundColor(.white)
-                    }
+                    AppIconView()
+                        .accessibilityLabel("FluxDL app icon")
                     VStack(alignment: .leading, spacing: 2) {
                         Text(viewModel.settingsService.appName)
                             .font(.title2.bold())
@@ -507,10 +501,6 @@ private struct AboutCard: View {
                         Text(viewModel.settingsService.versionString).font(.body.weight(.medium))
                     }
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Build").font(.caption).foregroundStyle(.secondary)
-                        Text(viewModel.settingsService.buildString).font(.body.weight(.medium))
-                    }
                 }
 
                 Divider()
@@ -538,7 +528,7 @@ private struct AboutCard: View {
                         } else {
                             Image(systemName: "arrow.triangle.2.circlepath")
                         }
-                        Text(viewModel.isCheckingUpdates ? "Checking..." : "Check for Updates")
+                        Text(viewModel.isCheckingUpdates ? "Checking…" : "Check for Updates")
                             .fontWeight(.semibold)
                         Spacer()
                     }
@@ -547,16 +537,86 @@ private struct AboutCard: View {
                                 in: RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
                     .foregroundStyle(Color.blue)
                 }
+                .disabled(viewModel.isCheckingUpdates)
+                .accessibilityLabel(viewModel.isCheckingUpdates ? "Checking for updates" : "Check for Updates")
+            }
+        }
+        .alert(item: $viewModel.updateAlert) { alert in
+            Self.alert(for: alert.kind, currentVersion: viewModel.settingsService.versionString, openURL: openURL)
+        }
+    }
 
-                if let msg = viewModel.updateStatusMessage {
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
+    private static func alert(for kind: UpdateAlert.Kind, currentVersion: String, openURL: OpenURLAction) -> Alert {
+        switch kind {
+        case .upToDate:
+            return Alert(
+                title: Text("You're Up to Date"),
+                message: Text("FluxDL \(currentVersion) is the latest version."),
+                dismissButton: .default(Text("OK"))
+            )
+        case .updateAvailable(let release):
+            var message = "FluxDL \(release.version) is available.\n\nYou are currently using \(currentVersion)."
+            let notes = ReleaseNotesSanitizer.plainText(release.releaseNotes)
+            if !notes.isEmpty {
+                message += "\n\nWhat's New\n\(notes)"
+            }
+            if let ipa = release.ipaAsset {
+                message += "\n\nIncludes downloadable asset: \(ipa.name)"
+            }
+            return Alert(
+                title: Text("Update Available"),
+                message: Text(message),
+                primaryButton: .default(Text("View Update")) {
+                    openURL(release.releaseURL)
+                },
+                secondaryButton: .cancel(Text("Later"))
+            )
+        case .unableToDetermine:
+            return Alert(
+                title: Text("Update Check"),
+                message: Text("Unable to determine the latest FluxDL version."),
+                dismissButton: .default(Text("OK"))
+            )
+        case .networkError:
+            return Alert(
+                title: Text("Couldn't Check for Updates"),
+                message: Text("Please check your Internet connection and try again."),
+                dismissButton: .default(Text("OK"))
+            )
+        case .rateLimited:
+            return Alert(
+                title: Text("Couldn't Check for Updates"),
+                message: Text("GitHub's API rate limit was reached. Please try again later."),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+    }
+}
+
+// MARK: - App Icon
+
+private struct AppIconView: View {
+    @State private var icon: UIImage?
+
+    var body: some View {
+        Group {
+            if let icon {
+                Image(uiImage: icon)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(AppTheme.primaryGradient)
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.title)
+                        .foregroundColor(.white)
                 }
             }
         }
+        .frame(width: 64, height: 64)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .task { icon = AppIconLoader.loadAppIcon() }
     }
 }
 
@@ -619,6 +679,7 @@ public struct SettingsView: View {
             // Opaque solid background — no extra compositing layer
             .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("Settings")
+            .onDisappear { viewModel.cancelUpdateCheck() }
         }
     }
 }

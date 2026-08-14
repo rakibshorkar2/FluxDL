@@ -160,6 +160,12 @@
 		AA4E00072C60000100000007 /* FluxDLWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BB4E00062C60000100000006 /* FluxDLWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA4E00082C60000100000008 /* TorrentBackgroundManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */; };
 		AA4E00092C60000100000009 /* TorrentCompletionTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */; };
+		AA1000752C60000100000075 /* SemanticVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000752C60000100000075 /* SemanticVersion.swift */; };
+		AA1000762C60000100000076 /* AppVersionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000762C60000100000076 /* AppVersionService.swift */; };
+		AA1000772C60000100000077 /* GitHubReleaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000772C60000100000077 /* GitHubReleaseService.swift */; };
+		AA1000782C60000100000078 /* AppIconLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000782C60000100000078 /* AppIconLoader.swift */; };
+		AA2000132C60000100000013 /* SemanticVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000132C60000100000013 /* SemanticVersionTests.swift */; };
+		AA2000142C60000100000014 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000142C60000100000014 /* UpdateCheckerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -269,6 +275,10 @@
 		BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardDownloadBanner.swift; sourceTree = "<group>"; };
 		BB1000732C60000100000073 /* DownloadHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryView.swift; sourceTree = "<group>"; };
 		BB1000742C60000100000074 /* DownloadHistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryViewModel.swift; sourceTree = "<group>"; };
+		BB1000752C60000100000075 /* SemanticVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticVersion.swift; sourceTree = "<group>"; };
+		BB1000762C60000100000076 /* AppVersionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionService.swift; sourceTree = "<group>"; };
+		BB1000772C60000100000077 /* GitHubReleaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubReleaseService.swift; sourceTree = "<group>"; };
+		BB1000782C60000100000078 /* AppIconLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconLoader.swift; sourceTree = "<group>"; };
 		BB10005B2C6000010000005B /* TorrentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentView.swift; sourceTree = "<group>"; };
 		BB10005C2C6000010000005C /* TorrentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentViewModel.swift; sourceTree = "<group>"; };
 		BB10005D2C6000010000005D /* TorrentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentService.swift; sourceTree = "<group>"; };
@@ -299,6 +309,8 @@
 		BB2000102C60000100000010 /* MockKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockKeychainStore.swift; sourceTree = "<group>"; };
 		BB2000112C60000100000011 /* DownloadHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryTests.swift; sourceTree = "<group>"; };
 		BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsLiveApplyTests.swift; sourceTree = "<group>"; };
+		BB2000132C60000100000013 /* SemanticVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticVersionTests.swift; sourceTree = "<group>"; };
+		BB2000142C60000100000014 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
 		BB3000012C60000100000001 /* ProxyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyView.swift; sourceTree = "<group>"; };
 		BB3000022C60000100000002 /* ProxyViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyViewModel.swift; sourceTree = "<group>"; };
 		BB3000032C60000100000003 /* ProxyStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyStatusCard.swift; sourceTree = "<group>"; };
@@ -433,6 +445,10 @@
 				BB1000032C60000100000003 /* SettingsService.swift */,
 				BB1000042C60000100000004 /* HapticService.swift */,
 				BB1000052C60000100000005 /* ThemeService.swift */,
+				BB1000752C60000100000075 /* SemanticVersion.swift */,
+				BB1000762C60000100000076 /* AppVersionService.swift */,
+				BB1000772C60000100000077 /* GitHubReleaseService.swift */,
+				BB1000782C60000100000078 /* AppIconLoader.swift */,
 				BB1000132C60000100000013 /* DownloadRepository.swift */,
 				BB1000142C60000100000014 /* FileManagementService.swift */,
 				BB1000152C60000100000015 /* DownloadEngine.swift */,
@@ -745,6 +761,8 @@
 				BB2000102C60000100000010 /* MockKeychainStore.swift */,
 				BB2000112C60000100000011 /* DownloadHistoryTests.swift */,
 				BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */,
+				BB2000132C60000100000013 /* SemanticVersionTests.swift */,
+				BB2000142C60000100000014 /* UpdateCheckerTests.swift */,
 				B3E000012C60000100000001 /* ProxyUITests.swift */,
 				D555000D2C6000010000000D /* DirectoryParserTests.swift */,
 				FF10000A2C9000010000000A /* FolderDownloadTests.swift */,
@@ -1098,6 +1116,10 @@
 				FF1000032C90000100000003 /* FolderDownloadModels.swift in Sources */,
 				FF1000052C90000100000005 /* FolderDownloadCoordinator.swift in Sources */,
 				FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */,
+				AA1000752C60000100000075 /* SemanticVersion.swift in Sources */,
+				AA1000762C60000100000076 /* AppVersionService.swift in Sources */,
+				AA1000772C60000100000077 /* GitHubReleaseService.swift in Sources */,
+				AA1000782C60000100000078 /* AppIconLoader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1130,6 +1152,8 @@
 				D554000D2C6000010000000D /* DirectoryParserTests.swift in Sources */,
 				FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */,
 				D55900022C60000100000002 /* DirectorySearchTests.swift in Sources */,
+				AA2000132C60000100000013 /* SemanticVersionTests.swift in Sources */,
+				AA2000142C60000100000014 /* UpdateCheckerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1310,7 +1334,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1338,7 +1362,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1356,7 +1380,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -1374,7 +1398,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -1391,7 +1415,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -1408,7 +1432,7 @@
 				CODE_SIGNING_REQUIRED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -1433,7 +1457,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL.Widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1459,7 +1483,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL.Widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
