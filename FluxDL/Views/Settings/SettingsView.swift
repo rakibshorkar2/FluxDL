@@ -472,6 +472,12 @@ private struct PowerNetworkCard: View {
 private struct AboutCard: View {
     @ObservedObject var viewModel: SettingsViewModel
     let openURL: OpenURLAction
+    let onDeveloperProfileTap: () -> Void
+
+    private func presentDeveloperProfile() {
+        ServiceContainer.shared.hapticService.selectionChanged()
+        onDeveloperProfileTap()
+    }
 
     var body: some View {
         SettingsCard {
@@ -487,6 +493,12 @@ private struct AboutCard: View {
                             Text(viewModel.settingsService.developerName)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(Color.accentColor)
+                                .contentShape(Rectangle())
+                                .onTapGesture(count: 2) { presentDeveloperProfile() }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("Developer \(viewModel.settingsService.developerName). Double tap to view developer profile.")
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityAction { presentDeveloperProfile() }
                         }
                         .font(.subheadline)
                     }
@@ -509,12 +521,14 @@ private struct AboutCard: View {
                     SettingsLinkRow(label: "GitHub Repository", icon: "link", detail: "rakibshorkar2/FluxDL") {
                         if let url = viewModel.settingsService.githubURL { openURL(url) }
                     }
-                    SettingsLinkRow(label: "Licenses", icon: "doc.text", detail: "MIT") {}
-                    SettingsLinkRow(label: "Privacy Policy", icon: "hand.raised.fill") {
-                        if let url = viewModel.settingsService.privacyURL { openURL(url) }
+                    SettingsNavigationRow(label: "Licenses", icon: "doc.text", detail: "\(LegalDocuments.licenseEntries.count) components") {
+                        LicensesView()
                     }
-                    SettingsLinkRow(label: "Terms of Service", icon: "checkmark.shield.fill") {
-                        if let url = viewModel.settingsService.termsURL { openURL(url) }
+                    SettingsNavigationRow(label: "Privacy Policy", icon: "hand.raised.fill") {
+                        PrivacyPolicyView()
+                    }
+                    SettingsNavigationRow(label: "Terms of Service", icon: "checkmark.shield.fill") {
+                        TermsOfServiceView()
                     }
                 }
 
@@ -641,11 +655,36 @@ private struct SettingsLinkRow: View {
     }
 }
 
+// MARK: - Navigation Row (pushes a native destination inside the Settings stack)
+private struct SettingsNavigationRow<Destination: View>: View {
+    let label: String
+    let icon: String
+    var detail: String? = nil
+    @ViewBuilder let destination: Destination
+
+    var body: some View {
+        NavigationLink {
+            destination
+        } label: {
+            HStack {
+                Label(label, systemImage: icon).foregroundStyle(.primary)
+                Spacer()
+                if let d = detail {
+                    Text(d).font(.caption).foregroundStyle(.secondary)
+                }
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+            }
+        }
+    }
+}
+
 // MARK: - Main SettingsView
 
 public struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isDeveloperProfilePresented = false
 
     public init() {}
 
@@ -670,7 +709,9 @@ public struct SettingsView: View {
                     PowerNetworkCard()
 
                     // 6. About (bottom)
-                    AboutCard(viewModel: viewModel, openURL: openURL)
+                    AboutCard(viewModel: viewModel, openURL: openURL) {
+                        isDeveloperProfilePresented = true
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
@@ -681,5 +722,15 @@ public struct SettingsView: View {
             .navigationTitle("Settings")
             .onDisappear { viewModel.cancelUpdateCheck() }
         }
+        .overlay {
+            if isDeveloperProfilePresented {
+                DeveloperProfileOverlay(isPresented: $isDeveloperProfilePresented)
+                    .zIndex(10)
+            }
+        }
+        .animation(
+            reduceMotion ? .linear(duration: 0.1) : .spring(response: 0.4, dampingFraction: 0.82),
+            value: isDeveloperProfilePresented
+        )
     }
 }

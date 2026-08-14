@@ -22,6 +22,9 @@
 		AA10000D2C6000010000000D /* BrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10000D2C6000010000000D /* BrowserViewModel.swift */; };
 		AA1000102C60000100000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000102C60000100000010 /* SettingsView.swift */; };
 		AA1000112C60000100000011 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000112C60000100000011 /* SettingsViewModel.swift */; };
+		D55B00012C60000100000001 /* LegalDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55B00022C60000100000002 /* LegalDocuments.swift */; };
+		D55C00012C60000100000001 /* LegalDocumentViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55C00022C60000100000002 /* LegalDocumentViews.swift */; };
+		D55D00012C60000100000001 /* DeveloperProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55D00022C60000100000002 /* DeveloperProfileView.swift */; };
 		AA1000122C60000100000012 /* DownloadTaskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000122C60000100000012 /* DownloadTaskModel.swift */; };
 		AA1000132C60000100000013 /* DownloadRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000132C60000100000013 /* DownloadRepository.swift */; };
 		AA1000142C60000100000014 /* FileManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000142C60000100000014 /* FileManagementService.swift */; };
@@ -129,6 +132,7 @@
 		FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */; };
 		FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF10000A2C9000010000000A /* FolderDownloadTests.swift */; };
 		D55900022C60000100000002 /* DirectorySearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55900012C60000100000001 /* DirectorySearchTests.swift */; };
+		D55E00022C60000100000002 /* SettingsAboutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55E00012C60000100000001 /* SettingsAboutTests.swift */; };
 		AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000F2C6000010000000F /* ProxyStateTests.swift */; };
 		AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000102C60000100000010 /* MockKeychainStore.swift */; };
 		AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */; };
@@ -217,6 +221,9 @@
 		BB10000D2C6000010000000D /* BrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserViewModel.swift; sourceTree = "<group>"; };
 		BB1000102C60000100000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BB1000112C60000100000011 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		D55B00022C60000100000002 /* LegalDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocuments.swift; sourceTree = "<group>"; };
+		D55C00022C60000100000002 /* LegalDocumentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocumentViews.swift; sourceTree = "<group>"; };
+		D55D00022C60000100000002 /* DeveloperProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperProfileView.swift; sourceTree = "<group>"; };
 		BB1000122C60000100000012 /* DownloadTaskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadTaskModel.swift; sourceTree = "<group>"; };
 		BB1000702C60000100000070 /* DownloadHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryEntry.swift; sourceTree = "<group>"; };
 		BB1000132C60000100000013 /* DownloadRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRepository.swift; sourceTree = "<group>"; };
@@ -360,6 +367,7 @@
 		FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadGroupCard.swift; sourceTree = "<group>"; };
 		FF10000A2C9000010000000A /* FolderDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadTests.swift; sourceTree = "<group>"; };
 		D55900012C60000100000001 /* DirectorySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchTests.swift; sourceTree = "<group>"; };
+		D55E00012C60000100000001 /* SettingsAboutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAboutTests.swift; sourceTree = "<group>"; };
 		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -449,6 +457,7 @@
 				BB1000762C60000100000076 /* AppVersionService.swift */,
 				BB1000772C60000100000077 /* GitHubReleaseService.swift */,
 				BB1000782C60000100000078 /* AppIconLoader.swift */,
+				D55B00022C60000100000002 /* LegalDocuments.swift */,
 				BB1000132C60000100000013 /* DownloadRepository.swift */,
 				BB1000142C60000100000014 /* FileManagementService.swift */,
 				BB1000152C60000100000015 /* DownloadEngine.swift */,
@@ -733,6 +742,8 @@
 			children = (
 				BB1000102C60000100000010 /* SettingsView.swift */,
 				BB1000112C60000100000011 /* SettingsViewModel.swift */,
+				D55C00022C60000100000002 /* LegalDocumentViews.swift */,
+				D55D00022C60000100000002 /* DeveloperProfileView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -767,6 +778,7 @@
 				D555000D2C6000010000000D /* DirectoryParserTests.swift */,
 				FF10000A2C9000010000000A /* FolderDownloadTests.swift */,
 				D55900012C60000100000001 /* DirectorySearchTests.swift */,
+				D55E00012C60000100000001 /* SettingsAboutTests.swift */,
 			);
 			path = FluxDLTests;
 			sourceTree = "<group>";
@@ -1011,6 +1023,9 @@
 				AA10000D2C6000010000000D /* BrowserViewModel.swift in Sources */,
 				AA1000102C60000100000010 /* SettingsView.swift in Sources */,
 				AA1000112C60000100000011 /* SettingsViewModel.swift in Sources */,
+				D55B00012C60000100000001 /* LegalDocuments.swift in Sources */,
+				D55C00012C60000100000001 /* LegalDocumentViews.swift in Sources */,
+				D55D00012C60000100000001 /* DeveloperProfileView.swift in Sources */,
 				AA1000122C60000100000012 /* DownloadTaskModel.swift in Sources */,
 				AA1000132C60000100000013 /* DownloadRepository.swift in Sources */,
 				AA1000142C60000100000014 /* FileManagementService.swift in Sources */,
@@ -1154,6 +1169,7 @@
 				D55900022C60000100000002 /* DirectorySearchTests.swift in Sources */,
 				AA2000132C60000100000013 /* SemanticVersionTests.swift in Sources */,
 				AA2000142C60000100000014 /* UpdateCheckerTests.swift in Sources */,
+				D55E00022C60000100000002 /* SettingsAboutTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
