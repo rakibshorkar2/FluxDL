@@ -243,7 +243,7 @@ public final class GeminiDirectorySearchService: DirectorySearchAIProviding {
 
     private func decodeIntent(from data: Data) throws -> DirectorySearchIntent {
         guard let envelope = try? JSONDecoder().decode(GeminiResponse.self, from: data),
-              let text = envelope.candidates?.first?.content.parts.first?.text,
+              let text = envelope.candidates?.first?.content?.parts.first?.text,
               !text.isEmpty,
               let intentData = text.data(using: .utf8) else {
             throw GeminiDirectorySearchError.invalidResponse

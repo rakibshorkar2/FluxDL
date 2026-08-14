@@ -109,6 +109,7 @@ public struct DirectoryAISearchView: View {
 
     // MARK: - Scope + index status
 
+    @ViewBuilder
     private var statusBar: some View {
         HStack(spacing: 6) {
             Label("Entire directory", systemImage: "folder")

@@ -25,7 +25,7 @@ public enum BrowserMode: String, CaseIterable, Sendable {
 }
 
 /// File/folder classification of a directory entry.
-public enum DirectoryItemType: String, CaseIterable, Sendable {
+public enum DirectoryItemType: String, CaseIterable, Codable, Sendable {
     case directory
     case video
     case audio

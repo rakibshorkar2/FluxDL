@@ -305,19 +305,18 @@ public enum DirectoryQueryParser {
 
     public static func parse(_ raw: String) -> DirectorySearchQuery {
         var query = DirectorySearchQuery()
-        let lowered = raw.lowercased()
-        var text = lowered
+        var text = raw.lowercased()
 
         // Size constraints first — removed from the free-text stream.
-        if let match = firstMatch(pattern: sizePattern, in: lowered),
-           let bytes = bytes(from: match, in: lowered) {
+        if let match = firstMatch(pattern: sizePattern, in: text),
+           let bytes = bytes(from: match, in: text) {
             query.minSizeBytes = bytes
-            text = text.replacingCharacters(in: match.range, with: " ")
+            text = removing(match.range, from: text)
         }
-        if let match = firstMatch(pattern: sizeSmallPattern, in: lowered),
-           let bytes = bytes(from: match, in: lowered) {
+        if let match = firstMatch(pattern: sizeSmallPattern, in: text),
+           let bytes = bytes(from: match, in: text) {
             query.maxSizeBytes = bytes
-            text = text.replacingCharacters(in: match.range, with: " ")
+            text = removing(match.range, from: text)
         }
 
         var tokens = DirectoryFilenameNormalizer.tokens(from: text)
@@ -396,6 +395,15 @@ public enum DirectoryQueryParser {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         return regex.firstMatch(in: text, options: [], range: range)
+    }
+
+    /// Removes the matched range from the string. Stale ranges (e.g. after
+    /// an earlier removal shifted indices) are rejected safely.
+    private static func removing(_ nsRange: NSRange, from text: String) -> String {
+        guard let range = Range(nsRange, in: text) else { return text }
+        var result = text
+        result.removeSubrange(range)
+        return result
     }
 
     private static func bytes(from match: NSTextCheckingResult, in text: String) -> Int64? {
