@@ -33,7 +33,7 @@ private struct SettingsCard<Content: View>: View {
 // MARK: - General & Haptic (TOP CARD)
 private struct GeneralSettingsCard: View {
     @ObservedObject var viewModel: SettingsViewModel
-    @AppStorage("fluxdl_haptics_enabled") private var hapticsEnabled: Bool = true
+    @AppStorage(HapticService.hapticsEnabledKey) private var hapticsEnabled: Bool = true
 
     var body: some View {
         SettingsCard {
