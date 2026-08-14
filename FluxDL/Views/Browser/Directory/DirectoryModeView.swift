@@ -32,6 +32,13 @@ public struct DirectoryModeView: View {
         .sheet(item: $viewModel.folderDownloadRequest) { _ in
             DirectoryFolderDownloadPreview(viewModel: viewModel)
         }
+        .sheet(isPresented: $viewModel.isScanningFolder) {
+            DirectoryFolderScanProgressView(
+                folderName: viewModel.scanningFolderName ?? "",
+                progress: viewModel.crawlProgress,
+                onCancel: { viewModel.cancelFolderCrawl() }
+            )
+        }
         .sheet(isPresented: $viewModel.isBookmarksPresented) {
             bookmarksSheet
         }
@@ -79,7 +86,9 @@ public struct DirectoryModeView: View {
                     onDownload: { viewModel.download(items: [$0]) },
                     onShare: { viewModel.share($0) },
                     onCopyName: { viewModel.copyName($0) },
-                    onResolveSize: { viewModel.resolveSize($0) }
+                    onResolveSize: { viewModel.resolveSize($0) },
+                    onDownloadFolder: { viewModel.startFolderDownload($0) },
+                    onBookmark: { viewModel.bookmark($0) }
                 )
             } else {
                 DirectoryListView(
@@ -91,7 +100,9 @@ public struct DirectoryModeView: View {
                     onDownload: { viewModel.download(items: [$0]) },
                     onShare: { viewModel.share($0) },
                     onCopyName: { viewModel.copyName($0) },
-                    onResolveSize: { viewModel.resolveSize($0) }
+                    onResolveSize: { viewModel.resolveSize($0) },
+                    onDownloadFolder: { viewModel.startFolderDownload($0) },
+                    onBookmark: { viewModel.bookmark($0) }
                 )
             }
         }

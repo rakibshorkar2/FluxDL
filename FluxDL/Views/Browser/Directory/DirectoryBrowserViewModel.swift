@@ -37,6 +37,26 @@ public struct DirectoryFolderDownloadRequest: Identifiable, Equatable {
     public var selectedIDs: Set<UUID>
     public let failedFolders: [String]
     public var wasCancelled: Bool
+    /// Number of directories successfully scanned (including the root).
+    public let foldersScanned: Int
+
+    public init(
+        folderName: String,
+        folderURL: URL,
+        files: [CrawledFile],
+        selectedIDs: Set<UUID>,
+        failedFolders: [String],
+        wasCancelled: Bool,
+        foldersScanned: Int = 0
+    ) {
+        self.folderName = folderName
+        self.folderURL = folderURL
+        self.files = files
+        self.selectedIDs = selectedIDs
+        self.failedFolders = failedFolders
+        self.wasCancelled = wasCancelled
+        self.foldersScanned = foldersScanned
+    }
 
     public var selectedFiles: [CrawledFile] {
         files.filter { selectedIDs.contains($0.id) }
@@ -86,6 +106,8 @@ public final class DirectoryBrowserViewModel: ObservableObject {
     @Published public var playbackRequest: DirectoryPlaybackRequest?
     @Published public var folderDownloadRequest: DirectoryFolderDownloadRequest?
     @Published public var crawlProgress = DirectoryCrawlProgress()
+    @Published public var isScanningFolder = false
+    @Published public var scanningFolderName: String?
 
     @Published public var isBookmarksPresented = false
     @Published public var isHistoryPresented = false
@@ -102,6 +124,7 @@ public final class DirectoryBrowserViewModel: ObservableObject {
     private let bookmarks = BookmarkManager.shared
     private let engine = ServiceContainer.shared.downloadEngine
     private let queueManager = ServiceContainer.shared.queueManager
+    private let folderCoordinator = ServiceContainer.shared.folderDownloadCoordinator
 
     private let layoutKey = "fluxdl_directory_layout"
     private let sortKey = "fluxdl_directory_sort"
@@ -372,46 +395,68 @@ public final class DirectoryBrowserViewModel: ObservableObject {
     }
 
     public func downloadFolderPreview(_ request: DirectoryFolderDownloadRequest) {
-        var queued = 0
-        var duplicates = 0
-        for file in request.selectedFiles {
-            if queueManager.isDuplicate(url: file.url, in: engine) {
-                duplicates += 1
-                continue
-            }
-            engine.startDownload(url: file.url, filename: file.name)
-            queued += 1
-        }
         folderDownloadRequest = nil
-        if queued > 0 {
-            showToast("\(queued) file\(queued == 1 ? "" : "s") added to downloads")
-        } else if duplicates > 0 {
-            showToast("All selected files are already in downloads")
+
+        // Duplicate folder protection: an identical active folder download is
+        // never duplicated silently.
+        if folderCoordinator.hasActiveGroup(forRoot: request.folderURL) {
+            showToast("\(request.folderName) is already being downloaded")
+            return
+        }
+
+        let created = folderCoordinator.startFolderDownload(
+            folderName: request.folderName,
+            rootURL: request.folderURL,
+            files: request.selectedFiles
+        )
+        if created {
+            let count = request.selectedFiles.count
+            showToast("\(request.folderName) added — \(count) file\(count == 1 ? "" : "s")")
+        } else {
+            showToast("Could not start folder download")
         }
     }
 
     // MARK: - Folder crawling
 
-    public func startFolderCrawl(_ item: DirectoryItem) {
+    /// Starts a recursive scan of a directory and presents the folder
+    /// download preview when it finishes. The scan is cancellable; on
+    /// cancellation no download tasks are created.
+    public func startFolderDownload(_ item: DirectoryItem) {
         guard item.type == .directory else { return }
+        guard folderDownloadRequest == nil else { return }
         crawlProgress = DirectoryCrawlProgress()
+        scanningFolderName = item.name
+        isScanningFolder = true
         crawler.crawl(root: item.url) { [weak self] result in
             guard let self else { return }
             self.crawlProgress = DirectoryCrawlProgress()
-            self.folderDownloadRequest = DirectoryFolderDownloadRequest(
+            self.isScanningFolder = false
+            guard result.outcome == .finished else {
+                self.showToast("Folder scan cancelled")
+                return
+            }
+            let request = DirectoryFolderDownloadRequest(
                 folderName: item.name,
                 folderURL: item.url,
                 files: result.files,
                 selectedIDs: Self.defaultSelection(for: result.files),
                 failedFolders: result.failedFolders,
-                wasCancelled: result.outcome == .cancelled
+                wasCancelled: false,
+                foldersScanned: result.foldersScanned
             )
+            // Present the preview after the scan sheet dismisses.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                self?.folderDownloadRequest = request
+            }
         }
     }
 
     public func cancelFolderCrawl() {
         crawler.cancel()
         crawlProgress = DirectoryCrawlProgress()
+        isScanningFolder = false
+        scanningFolderName = nil
     }
 
     /// Videos/archives and high-res named files are pre-selected, matching
@@ -485,6 +530,14 @@ public final class DirectoryBrowserViewModel: ObservableObject {
     public func isCurrentBookmarked() -> Bool {
         guard let url = currentURL else { return false }
         return bookmarks.isBookmarked(urlString: url.absoluteString)
+    }
+
+    /// Bookmarks an arbitrary directory item (file or folder) without
+    /// leaving the current view. Shares the existing BookmarkManager
+    /// database with the "Bookmark Current Folder" action.
+    public func bookmark(_ item: DirectoryItem) {
+        bookmarks.addBookmark(title: item.name, urlString: item.url.absoluteString)
+        showToast("Bookmarked \(item.name)")
     }
 
     // MARK: - Proxy

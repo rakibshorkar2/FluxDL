@@ -27,7 +27,18 @@ public final class DownloadsViewModel: ObservableObject {
     @Published public var filterState: DownloadFilterState {
         didSet { filterState.save(); applyFilter() }
     }
-    @Published public private(set) var displayedTasks: [DownloadTaskModel] = []
+    /// Unified list: standalone tasks + folder download groups.
+    @Published public private(set) var displayedItems: [DownloadDisplayItem] = []
+    /// Folder groups the user expanded (children visible).
+    @Published public private(set) var expandedGroupIDs: Set<UUID> = []
+
+    /// Standalone tasks currently displayed (folder children are hidden and
+    /// rendered inside their group card). Kept for batch/legacy use.
+    public var displayedTasks: [DownloadTaskModel] {
+        displayedItems.compactMap {
+            if case .task(let task) = $0 { return task } else { return nil }
+        }
+    }
 
     // Convenience counts for badge display
     @Published public private(set) var countByFilter: [DownloadStatusFilter: Int] = [:]
@@ -77,11 +88,15 @@ public final class DownloadsViewModel: ObservableObject {
     public let storageManager: StorageManagerProtocol
     public let queueManager: QueueManagerProtocol
     public let historyManager: DownloadHistoryManager
+    public let folderCoordinator: FolderDownloadCoordinator
     private let clipboardService: ClipboardServiceProtocol
     private let hapticService: HapticServiceProtocol
     private var cancellables = Set<AnyCancellable>()
 
     private var _allTasks: [DownloadTaskModel] = []
+    /// Group IDs already seen, so newly created groups auto-expand exactly
+    /// once instead of on every filter/sort change.
+    private var seenGroupIDs: Set<UUID> = []
 
     /// Guards against double-starts from rapid repeated taps on the
     /// clipboard banner Download button.
@@ -95,6 +110,7 @@ public final class DownloadsViewModel: ObservableObject {
         storageManager:     StorageManagerProtocol         = ServiceContainer.shared.storageManager,
         queueManager:       QueueManagerProtocol           = ServiceContainer.shared.queueManager,
         historyManager:     DownloadHistoryManager         = ServiceContainer.shared.downloadHistoryManager,
+        folderCoordinator:  FolderDownloadCoordinator      = ServiceContainer.shared.folderDownloadCoordinator,
         clipboardService:   ClipboardServiceProtocol       = ServiceContainer.shared.clipboardService,
         hapticService:      HapticServiceProtocol          = ServiceContainer.shared.hapticService
     ) {
@@ -103,6 +119,7 @@ public final class DownloadsViewModel: ObservableObject {
         self.storageManager      = storageManager
         self.queueManager        = queueManager
         self.historyManager      = historyManager
+        self.folderCoordinator   = folderCoordinator
         self.clipboardService    = clipboardService
         self.hapticService       = hapticService
         self.filterState         = DownloadFilterState.load()
@@ -113,6 +130,14 @@ public final class DownloadsViewModel: ObservableObject {
                 self?._allTasks = tasks
                 self?.applyFilter()
                 self?.computeCounts(tasks)
+            }
+            .store(in: &cancellables)
+
+        // Folder group metadata changes (create/remove) re-run the list.
+        folderCoordinator.$groups
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.applyFilter()
             }
             .store(in: &cancellables)
 
@@ -134,7 +159,18 @@ public final class DownloadsViewModel: ObservableObject {
     // MARK: ── Filter helpers ──────────────────────────────────────────────
 
     private func applyFilter() {
-        displayedTasks = applyFilterAndSort(_allTasks, state: filterState)
+        // Children of folder groups are hidden from the flat list; the group
+        // itself appears as one expandable row.
+        let standalone = _allTasks.filter { $0.folderGroupID == nil }
+        var items: [DownloadDisplayItem] = standalone.map { .task($0) }
+        for group in folderCoordinator.groups {
+            items.append(.folder(folderCoordinator.snapshot(for: group)))
+            if !seenGroupIDs.contains(group.id) {
+                seenGroupIDs.insert(group.id)
+                expandedGroupIDs.insert(group.id)
+            }
+        }
+        displayedItems = applyFilterAndSortItems(items, state: filterState)
     }
 
     private func computeCounts(_ tasks: [DownloadTaskModel]) {
@@ -373,6 +409,59 @@ public final class DownloadsViewModel: ObservableObject {
         isSelectionMode = false
         refreshStorageInfo(forceDiskScan: true)
         hapticService.notificationOccurred(.error)
+    }
+
+    // MARK: ── Folder download groups ──────────────────────────────────────
+
+    public func toggleGroupExpanded(id: UUID) {
+        if expandedGroupIDs.contains(id) {
+            expandedGroupIDs.remove(id)
+        } else {
+            expandedGroupIDs.insert(id)
+        }
+        hapticService.selectionChanged()
+    }
+
+    public func pauseFolder(id: UUID) {
+        folderCoordinator.pauseFolder(id: id)
+        queueManager.scheduleNextTasks(in: downloadEngine)
+        hapticService.impactOccurred(.light)
+    }
+
+    public func resumeFolder(id: UUID) {
+        folderCoordinator.resumeFolder(id: id)
+        queueManager.scheduleNextTasks(in: downloadEngine)
+        hapticService.impactOccurred(.light)
+    }
+
+    public func retryFailedFolder(id: UUID) {
+        folderCoordinator.retryFailedFolder(id: id)
+        queueManager.scheduleNextTasks(in: downloadEngine)
+        hapticService.impactOccurred(.light)
+    }
+
+    public func cancelFolder(id: UUID) {
+        folderCoordinator.cancelFolder(id: id)
+        queueManager.scheduleNextTasks(in: downloadEngine)
+        hapticService.impactOccurred(.light)
+    }
+
+    /// Removes a folder group. `deleteFiles` also wipes the folder's
+    /// directory tree from disk.
+    public func removeFolder(id: UUID, deleteFiles: Bool) {
+        folderCoordinator.removeFolder(id: id, deleteFiles: deleteFiles)
+        expandedGroupIDs.remove(id)
+        queueManager.scheduleNextTasks(in: downloadEngine)
+        refreshStorageInfo(forceDiskScan: true)
+        hapticService.notificationOccurred(.error)
+    }
+
+    /// Detaches one child download from its folder group; the task stays in
+    /// Downloads as a normal standalone download.
+    public func removeChildFromFolder(taskID: UUID, groupID: UUID) {
+        folderCoordinator.removeChild(taskID: taskID, from: groupID)
+        queueManager.scheduleNextTasks(in: downloadEngine)
+        hapticService.selectionChanged()
     }
 
     // MARK: ── Computed helpers ────────────────────────────────────────────

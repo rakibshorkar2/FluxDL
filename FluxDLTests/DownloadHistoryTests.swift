@@ -143,7 +143,13 @@ private final class MockHistoryEngine: DownloadEngineProtocol {
     }
 
     @discardableResult
-    func startDownload(url: URL, filename: String?) -> UUID { UUID() }
+    func startDownload(
+        url: URL,
+        filename: String? = nil,
+        folderGroupID: UUID? = nil,
+        relativePath: String? = nil,
+        destinationDirectoryPath: String? = nil
+    ) -> UUID { UUID() }
     func pauseDownload(id: UUID) {}
     func resumeDownload(id: UUID) {}
     func cancelDownload(id: UUID) {}

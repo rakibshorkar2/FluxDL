@@ -111,6 +111,18 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
     // ── Tags (future) ────────────────────────────────────────────────────────
     public var tags: [String]
 
+    // ── Folder download group membership (optional) ───────────────────────────
+    /// When set, this task is a child of the folder download group with this
+    /// ID. `nil` for ordinary standalone downloads.
+    public var folderGroupID: UUID?
+    /// Path of this child relative to the folder's destination directory
+    /// (e.g. `"Extras/Trailer.mp4"`). `nil` for standalone downloads.
+    public var relativePath: String?
+    /// Absolute path of the folder's destination directory. Folder children
+    /// are saved under this directory (preserving `relativePath`), instead of
+    /// the smart-routing root. `nil` for standalone downloads.
+    public var destinationDirectoryPath: String?
+
     // MARK: Computed helpers
 
     public var progress: Double {
@@ -195,7 +207,10 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         sha256Hash: String? = nil,
         md5Hash: String? = nil,
         retryHistory: [RetryRecord] = [],
-        tags: [String] = []
+        tags: [String] = [],
+        folderGroupID: UUID? = nil,
+        relativePath: String? = nil,
+        destinationDirectoryPath: String? = nil
     ) {
         self.id                       = id
         self.url                      = url
@@ -232,6 +247,9 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         self.md5Hash                  = md5Hash
         self.retryHistory             = retryHistory
         self.tags                     = tags
+        self.folderGroupID            = folderGroupID
+        self.relativePath             = relativePath
+        self.destinationDirectoryPath = destinationDirectoryPath
     }
 
     // MARK: Codable — backward-compatible decode (old JSON missing new keys)
@@ -247,6 +265,7 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         case mimeType, serverName, redirectCount, responseHeaders
         case sha256Hash, md5Hash
         case retryHistory, tags
+        case folderGroupID, relativePath, destinationDirectoryPath
     }
 
     public init(from decoder: Decoder) throws {
@@ -287,5 +306,8 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         md5Hash                 = try c.decodeIfPresent(String.self, forKey: .md5Hash)
         retryHistory            = try c.decodeIfPresent([RetryRecord].self, forKey: .retryHistory) ?? []
         tags                    = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+        folderGroupID           = try c.decodeIfPresent(UUID.self, forKey: .folderGroupID)
+        relativePath            = try c.decodeIfPresent(String.self, forKey: .relativePath)
+        destinationDirectoryPath = try c.decodeIfPresent(String.self, forKey: .destinationDirectoryPath)
     }
 }

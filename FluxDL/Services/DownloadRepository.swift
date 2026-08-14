@@ -5,6 +5,8 @@ public protocol DownloadRepositoryProtocol: AnyObject {
     func saveTasks(_ tasks: [DownloadTaskModel])
     func loadHistory() -> [DownloadHistoryEntry]
     func saveHistory(_ entries: [DownloadHistoryEntry])
+    func loadFolderGroups() -> [DownloadFolderGroup]
+    func saveFolderGroups(_ groups: [DownloadFolderGroup])
 }
 
 public final class DownloadRepository: DownloadRepositoryProtocol {
@@ -12,12 +14,14 @@ public final class DownloadRepository: DownloadRepositoryProtocol {
     private let metadataDirectoryURL: URL
     private let tasksFileURL: URL
     private let historyFileURL: URL
+    private let folderGroupsFileURL: URL
     
     public init() {
         let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first ?? fileManager.temporaryDirectory
         self.metadataDirectoryURL = documents.appendingPathComponent("FluxDL_Metadata", isDirectory: true)
         self.tasksFileURL = metadataDirectoryURL.appendingPathComponent("downloads.json")
         self.historyFileURL = metadataDirectoryURL.appendingPathComponent("downloadHistory.json")
+        self.folderGroupsFileURL = metadataDirectoryURL.appendingPathComponent("folderGroups.json")
         ensureDirectoryExists()
     }
     
@@ -62,6 +66,25 @@ public final class DownloadRepository: DownloadRepositoryProtocol {
             try data.write(to: historyFileURL, options: .atomic)
         } catch {
             print("Failed to save download history metadata: \(error)")
+        }
+    }
+
+    public func loadFolderGroups() -> [DownloadFolderGroup] {
+        guard fileManager.fileExists(atPath: folderGroupsFileURL.path),
+              let data = try? Data(contentsOf: folderGroupsFileURL),
+              let groups = try? JSONDecoder().decode([DownloadFolderGroup].self, from: data) else {
+            return []
+        }
+        return groups
+    }
+
+    public func saveFolderGroups(_ groups: [DownloadFolderGroup]) {
+        ensureDirectoryExists()
+        do {
+            let data = try JSONEncoder().encode(groups)
+            try data.write(to: folderGroupsFileURL, options: .atomic)
+        } catch {
+            print("Failed to save folder groups metadata: \(error)")
         }
     }
 }

@@ -285,27 +285,54 @@ public struct DownloadsView: View {
     private var taskList: some View {
         ScrollView {
             LazyVStack(spacing: 14) {
-                if viewModel.displayedTasks.isEmpty {
+                if viewModel.displayedItems.isEmpty {
                     emptyState
                 } else {
-                    ForEach(viewModel.displayedTasks) { task in
-                        EquatableDownloadItemCard(
-                            task:             task,
-                            isSelectionMode:  viewModel.isSelectionMode,
-                            isSelected:       viewModel.selectedIDs.contains(task.id),
-                            onPause:          { viewModel.pauseTask(id: task.id) },
-                            onResume:         { viewModel.resumeTask(id: task.id) },
-                            onCancel:         { viewModel.cancelTask(id: task.id) },
-                            onRetry:          { viewModel.retryTask(id: task.id) },
-                            onDelete:         { deleteFile in viewModel.deleteTask(id: task.id, deleteFile: deleteFile) },
-                            onShare:          { viewModel.shareTask(task: task) },
-                            onChangePriority: { p in viewModel.changeTaskPriority(id: task.id, newPriority: p) },
-                            onShowInfo:       { viewModel.taskForInfoSheet = task },
-                            onUpdateURL:      { viewModel.taskForUpdateURLSheet = task },
-                            onShowMirrors:    { viewModel.taskForMirrorSheet = task },
-                            onShowDiagnostics:{ viewModel.taskForDiagnosticsSheet = task },
-                            onToggleSelect:   { viewModel.toggleSelection(id: task.id) }
-                        )
+                    ForEach(viewModel.displayedItems) { item in
+                        switch item {
+                        case .task(let task):
+                            EquatableDownloadItemCard(
+                                task:             task,
+                                isSelectionMode:  viewModel.isSelectionMode,
+                                isSelected:       viewModel.selectedIDs.contains(task.id),
+                                onPause:          { viewModel.pauseTask(id: task.id) },
+                                onResume:         { viewModel.resumeTask(id: task.id) },
+                                onCancel:         { viewModel.cancelTask(id: task.id) },
+                                onRetry:          { viewModel.retryTask(id: task.id) },
+                                onDelete:         { deleteFile in viewModel.deleteTask(id: task.id, deleteFile: deleteFile) },
+                                onShare:          { viewModel.shareTask(task: task) },
+                                onChangePriority: { p in viewModel.changeTaskPriority(id: task.id, newPriority: p) },
+                                onShowInfo:       { viewModel.taskForInfoSheet = task },
+                                onUpdateURL:      { viewModel.taskForUpdateURLSheet = task },
+                                onShowMirrors:    { viewModel.taskForMirrorSheet = task },
+                                onShowDiagnostics:{ viewModel.taskForDiagnosticsSheet = task },
+                                onToggleSelect:   { viewModel.toggleSelection(id: task.id) }
+                            )
+
+                        case .folder(let snapshot):
+                            FolderDownloadGroupCard(
+                                snapshot: snapshot,
+                                isExpanded: viewModel.expandedGroupIDs.contains(snapshot.id),
+                                onToggleExpanded: { viewModel.toggleGroupExpanded(id: snapshot.id) },
+                                onPauseGroup: { viewModel.pauseFolder(id: snapshot.id) },
+                                onResumeGroup: { viewModel.resumeFolder(id: snapshot.id) },
+                                onRetryGroup: { viewModel.retryFailedFolder(id: snapshot.id) },
+                                onCancelGroup: { viewModel.cancelFolder(id: snapshot.id) },
+                                onRemoveGroup: { deleteFiles in
+                                    viewModel.removeFolder(id: snapshot.id, deleteFiles: deleteFiles)
+                                },
+                                onPauseChild: { id in viewModel.pauseTask(id: id) },
+                                onResumeChild: { id in viewModel.resumeTask(id: id) },
+                                onRetryChild: { id in viewModel.retryTask(id: id) },
+                                onCancelChild: { id in viewModel.cancelTask(id: id) },
+                                onDeleteChild: { id, deleteFile in
+                                    viewModel.deleteTask(id: id, deleteFile: deleteFile)
+                                },
+                                onRemoveChild: { id in
+                                    viewModel.removeChildFromFolder(taskID: id, groupID: snapshot.id)
+                                }
+                            )
+                        }
                     }
                 }
             }

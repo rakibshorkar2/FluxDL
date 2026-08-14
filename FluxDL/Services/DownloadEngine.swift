@@ -9,7 +9,13 @@ public protocol DownloadEngineProtocol: AnyObject {
     var tasks: [DownloadTaskModel] { get }
     var session: URLSession { get }
 
-    func startDownload(url: URL, filename: String?) -> UUID
+    func startDownload(
+        url: URL,
+        filename: String? = nil,
+        folderGroupID: UUID? = nil,
+        relativePath: String? = nil,
+        destinationDirectoryPath: String? = nil
+    ) -> UUID
     func pauseDownload(id: UUID)
     func resumeDownload(id: UUID)
     func cancelDownload(id: UUID)
@@ -287,7 +293,13 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     }
 
     @discardableResult
-    public func startDownload(url: URL, filename: String? = nil) -> UUID {
+    public func startDownload(
+        url: URL,
+        filename: String? = nil,
+        folderGroupID: UUID? = nil,
+        relativePath: String? = nil,
+        destinationDirectoryPath: String? = nil
+    ) -> UUID {
         // Fail-closed proxy routing: when the downloads route is requested
         // but the proxy is not usable (starting, failed, adapter broken),
         // the download FAILS with a proxy error instead of silently starting
@@ -309,6 +321,9 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         )
         model.startedAt = Date()
         model.queuePosition = tasks.count
+        model.folderGroupID = folderGroupID
+        model.relativePath = relativePath
+        model.destinationDirectoryPath = destinationDirectoryPath
         if proxyBlocked {
             model.errorMessage = "Proxy route is not ready (connecting or failed). Downloads require the proxy — no direct fallback."
         }
@@ -979,7 +994,17 @@ extension DownloadEngine: URLSessionDownloadDelegate {
             }
 
             do {
-                let finalURL = try self.fileManagerService.moveFile(from: copyURL, to: self.tasks[idx].filename)
+                let finalURL: URL
+                if let folderPath = self.tasks[idx].destinationDirectoryPath,
+                   let relative = self.tasks[idx].relativePath {
+                    finalURL = try self.fileManagerService.moveFile(
+                        from: copyURL,
+                        toRelativePath: relative,
+                        inDirectory: URL(fileURLWithPath: folderPath, isDirectory: true)
+                    )
+                } else {
+                    finalURL = try self.fileManagerService.moveFile(from: copyURL, to: self.tasks[idx].filename)
+                }
 
                 let realFileSize = (try? FileManager.default
                     .attributesOfItem(atPath: finalURL.path)[.size] as? Int64) ?? copiedFileSize

@@ -5,6 +5,16 @@ public protocol FileManagementServiceProtocol: AnyObject {
     var downloadsDirectoryURL: URL { get }
     func destinationURL(for filename: String) -> URL
     func moveFile(from tempURL: URL, to filename: String) throws -> URL
+    /// Root directory for a folder download group (Downloads/<folderName>/).
+    func folderDestinationURL(for folderName: String) -> URL
+    /// Destination for a relative path (e.g. "Extras/Trailer.mp4") inside a
+    /// folder directory, creating intermediate directories as needed.
+    func destinationURL(forRelativePath relativePath: String, inDirectory directoryURL: URL) -> URL
+    /// Moves a completed file to its relative path inside a folder directory.
+    func moveFile(from tempURL: URL, toRelativePath relativePath: String, inDirectory directoryURL: URL) throws -> URL
+    /// Removes a folder download's directory tree, but only when the path is
+    /// safely contained inside the app's Downloads directory.
+    func removeFolderDownloadDirectory(at url: URL)
     func fileExists(at url: URL) -> Bool
     func deleteFile(at url: URL) throws
     func shareFile(url: URL, from viewController: UIViewController?)
@@ -73,6 +83,88 @@ public final class FileManagementService: FileManagementServiceProtocol {
         }
         try fileManager.moveItem(at: tempURL, to: destURL)
         return destURL
+    }
+
+    // MARK: Folder download destinations
+
+    /// Root directory of a folder download group. Never subject to smart
+    /// routing — the folder hierarchy must be preserved verbatim.
+    public func folderDestinationURL(for folderName: String) -> URL {
+        downloadsDirectoryURL.appendingPathComponent(
+            Self.sanitizedPathComponent(folderName),
+            isDirectory: true
+        )
+    }
+
+    /// Resolves the destination for a relative path (e.g. "Extras/Trailer.mp4")
+    /// inside a folder directory, creating intermediate directories. Every
+    /// component is sanitized so "..", "/" and empty segments can never
+    /// escape the folder root.
+    public func destinationURL(forRelativePath relativePath: String, inDirectory directoryURL: URL) -> URL {
+        let components = relativePath
+            .split(separator: "/")
+            .map(String.init)
+            .map(Self.sanitizedPathComponent)
+            .filter { !$0.isEmpty }
+        guard !components.isEmpty else { return directoryURL }
+
+        let parent = components.dropLast().reduce(directoryURL) { url, component in
+            let dir = url.appendingPathComponent(component, isDirectory: true)
+            if !fileManager.fileExists(atPath: dir.path) {
+                try? fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
+            }
+            return dir
+        }
+        let lastComponent = components.last ?? ""
+        var targetURL = parent.appendingPathComponent(lastComponent)
+
+        // Collision handling — mirrors destinationURL(for:).
+        let nameWithoutExt = targetURL.deletingPathExtension().lastPathComponent
+        let ext = targetURL.pathExtension
+        var count = 1
+        while fileManager.fileExists(atPath: targetURL.path) {
+            let newName = ext.isEmpty ? "\(nameWithoutExt)_\(count)" : "\(nameWithoutExt)_\(count).\(ext)"
+            targetURL = parent.appendingPathComponent(newName)
+            count += 1
+        }
+        return targetURL
+    }
+
+    /// Moves a completed download into its relative path inside the folder
+    /// directory, preserving the server-side hierarchy.
+    public func moveFile(from tempURL: URL, toRelativePath relativePath: String, inDirectory directoryURL: URL) throws -> URL {
+        let destURL = destinationURL(forRelativePath: relativePath, inDirectory: directoryURL)
+        if fileManager.fileExists(atPath: destURL.path) {
+            try fileManager.removeItem(at: destURL)
+        }
+        try fileManager.moveItem(at: tempURL, to: destURL)
+        return destURL
+    }
+
+    /// Deletes a folder download's directory tree. Fail-closed: the path
+    /// must live inside the app's Downloads directory or nothing happens.
+    public func removeFolderDownloadDirectory(at url: URL) {
+        let root = downloadsDirectoryURL.standardizedFileURL.path
+        let target = url.standardizedFileURL.path
+        guard target.hasPrefix(root + "/"),
+              fileManager.fileExists(atPath: target) else { return }
+        try? fileManager.removeItem(at: url)
+    }
+
+    /// Sanitizes a single path component for filesystem use: separators and
+    /// control characters are replaced, "." / ".." collapse to a safe token,
+    /// and absurd lengths are clipped. Display naming is untouched — this
+    /// only affects storage paths.
+    public static func sanitizedPathComponent(_ raw: String) -> String {
+        var component = raw.components(separatedBy: CharacterSet(charactersIn: "/\u{0}\n\r\t:")).joined(separator: "_")
+        component = component.trimmingCharacters(in: .whitespacesAndNewlines)
+        if component.isEmpty || component == "." || component == ".." {
+            component = "_"
+        }
+        if component.count > 150 {
+            component = String(component.prefix(150))
+        }
+        return component
     }
     
     public func fileExists(at url: URL) -> Bool {

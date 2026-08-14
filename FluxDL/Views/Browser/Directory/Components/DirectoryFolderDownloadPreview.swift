@@ -101,9 +101,15 @@ public struct DirectoryFolderDownloadPreview: View {
                 Text(request.folderName)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                Text("\(request.files.count) files • \(DirectoryItemFormatter.string(fromBytes: totalBytes) ?? "size unknown")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 5) {
+                    Text("\(request.files.count) files")
+                    if request.foldersScanned > 0 {
+                        Text("• \(request.foldersScanned) folder\(request.foldersScanned == 1 ? "" : "s")")
+                    }
+                    Text("• \(DirectoryItemFormatter.string(fromBytes: totalBytes) ?? "size unknown")")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Spacer()
             if !request.failedFolders.isEmpty {
@@ -232,5 +238,67 @@ public struct DirectoryFolderDownloadPreview: View {
         .padding(.vertical, 10)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
+    }
+}
+
+/// Presented while the recursive folder crawl is running. Dismissing it
+/// cancels the scan; no download tasks are created when cancelled.
+public struct DirectoryFolderScanProgressView: View {
+    let folderName: String
+    let progress: DirectoryCrawlProgress
+    let onCancel: () -> Void
+
+    public init(folderName: String, progress: DirectoryCrawlProgress, onCancel: @escaping () -> Void) {
+        self.folderName = folderName
+        self.progress = progress
+        self.onCancel = onCancel
+    }
+
+    public var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(Color.accentColor)
+
+                VStack(spacing: 6) {
+                    Text("Scanning \(folderName)")
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                    Text("Recursively discovering files and subfolders…")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+
+                VStack(spacing: 4) {
+                    Text("\(progress.filesFound) files")
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                    Text("\(progress.visitedFolders) folder\(progress.visitedFolders == 1 ? "" : "s") scanned")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                    if !progress.currentFolder.isEmpty {
+                        Text(progress.currentFolder)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 24)
+                    }
+                }
+
+                Button("Cancel", role: .destructive) {
+                    onCancel()
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .navigationTitle("Folder Download")
+            .navigationBarTitleDisplayMode(.inline)
+            .interactiveDismissDisabled()
+        }
+        .presentationDetents([.medium])
     }
 }

@@ -21,6 +21,9 @@ public final class ServiceContainer: ObservableObject {
     public let liveActivityManager: LiveActivityManagerProtocol
     public let backgroundKeepAliveService: BackgroundKeepAliveServiceProtocol
     public let downloadEngine: DownloadEngineProtocol
+    /// Owns folder download groups (metadata + orchestration only). All
+    /// actual file downloading stays inside `downloadEngine`.
+    public let folderDownloadCoordinator: FolderDownloadCoordinator
     public let torrentService: TorrentService
     /// Owns the torrent subsystem's background lifecycle (keep-alive claim +
     /// Live Activities), isolated from the downloads/browser machinery.
@@ -86,6 +89,12 @@ let powerMon = PowerNetworkMonitor()
             ServiceContainer.shared.queueManager.scheduleNextTasks(in: engine)
         }
         self.downloadEngine = engine
+
+        self.folderDownloadCoordinator = FolderDownloadCoordinator(
+            engine: engine,
+            repository: downloadRepository,
+            fileManagerService: fileManagementService
+        )
 
         downloadHistoryManager.startObserving(engine: engine)
 

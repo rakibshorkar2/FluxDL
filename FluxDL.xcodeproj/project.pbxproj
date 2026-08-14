@@ -1,4 +1,4 @@
-// !$*UTF8*$!
+﻿// !$*UTF8*$!
 {
 	archiveVersion = 1;
 	classes = {
@@ -118,6 +118,10 @@
 		D554000B2C6000010000000B /* DirectoryMediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */; };
 		D554000C2C6000010000000C /* DirectoryModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000C2C6000010000000C /* DirectoryModeView.swift */; };
 		D554000D2C6000010000000D /* DirectoryParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000D2C6000010000000D /* DirectoryParserTests.swift */; };
+		EE1000012C60000100000001 /* FolderDownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2000012C60000100000001 /* FolderDownloadModels.swift */; };
+		FF1000052C90000100000005 /* FolderDownloadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */; };
+		FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */; };
+		FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF10000A2C9000010000000A /* FolderDownloadTests.swift */; };
 		AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000F2C6000010000000F /* ProxyStateTests.swift */; };
 		AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000102C60000100000010 /* MockKeychainStore.swift */; };
 		AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */; };
@@ -326,6 +330,10 @@
 		D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryMediaPlayerView.swift; sourceTree = "<group>"; };
 		D555000C2C6000010000000C /* DirectoryModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryModeView.swift; sourceTree = "<group>"; };
 		D555000D2C6000010000000D /* DirectoryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryParserTests.swift; sourceTree = "<group>"; };
+		EE2000012C60000100000001 /* FolderDownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadModels.swift; sourceTree = "<group>"; };
+		FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadCoordinator.swift; sourceTree = "<group>"; };
+		FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadGroupCard.swift; sourceTree = "<group>"; };
+		FF10000A2C9000010000000A /* FolderDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadTests.swift; sourceTree = "<group>"; };
 		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -399,6 +407,7 @@
 			children = (
 				BB1000122C60000100000012 /* DownloadTaskModel.swift */,
 				BB1000702C60000100000070 /* DownloadHistoryEntry.swift */,
+				EE2000012C60000100000001 /* FolderDownloadModels.swift */,
 				BB3000072C60000100000007 /* ProxyModels.swift */,
 			);
 			path = Models;
@@ -430,6 +439,7 @@
 				BB1000532C60000100000053 /* DownloadMirrorManager.swift */,
 				BB1000542C60000100000054 /* DownloadVerification.swift */,
 				BB1000552C60000100000055 /* DownloadBatchManager.swift */,
+				FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */,
 				GG10000F2C6000010000000F /* Torrent */,
 				GG3000032C60000100000003 /* Proxy */,
 			);
@@ -592,6 +602,7 @@
 				BB1000592C60000100000059 /* MirrorPickerSheet.swift */,
 				BB10005A2C6000010000005A /* DuplicateResolutionSheet.swift */,
 				BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */,
+				FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -708,6 +719,7 @@
 				BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */,
 				B3E000012C60000100000001 /* ProxyUITests.swift */,
 				D555000D2C6000010000000D /* DirectoryParserTests.swift */,
+				FF10000A2C9000010000000A /* FolderDownloadTests.swift */,
 			);
 			path = FluxDLTests;
 			sourceTree = "<group>";
@@ -1048,6 +1060,9 @@
 				D554000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift in Sources */,
 				D554000B2C6000010000000B /* DirectoryMediaPlayerView.swift in Sources */,
 				D554000C2C6000010000000C /* DirectoryModeView.swift in Sources */,
+				EE1000012C60000100000001 /* FolderDownloadModels.swift in Sources */,
+				FF1000052C90000100000005 /* FolderDownloadCoordinator.swift in Sources */,
+				FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1078,6 +1093,7 @@
 				AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */,
 				A3E000012C60000100000001 /* ProxyUITests.swift in Sources */,
 				D554000D2C6000010000000D /* DirectoryParserTests.swift in Sources */,
+				FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

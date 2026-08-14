@@ -110,6 +110,113 @@ public struct DownloadFilterState: Codable, Equatable {
     }
 }
 
+// MARK: - DownloadDisplayItem
+
+/// One row of the Downloads tab: either a standalone task or an expandable
+/// folder download group.
+public enum DownloadDisplayItem: Identifiable, Equatable {
+    case task(DownloadTaskModel)
+    case folder(FolderGroupSnapshot)
+
+    public var id: UUID {
+        switch self {
+        case .task(let task): return task.id
+        case .folder(let snapshot): return snapshot.id
+        }
+    }
+
+    var sortName: String {
+        switch self {
+        case .task(let task): return task.filename
+        case .folder(let snapshot): return snapshot.group.name
+        }
+    }
+
+    var sortDate: Date {
+        switch self {
+        case .task(let task): return task.createdAt
+        case .folder(let snapshot): return snapshot.group.createdAt
+        }
+    }
+
+    var sortLastUpdated: Date {
+        switch self {
+        case .task(let task): return task.completedAt ?? task.startedAt ?? task.createdAt
+        case .folder(let snapshot):
+            let latest = snapshot.children.compactMap { $0.task.completedAt ?? $0.task.startedAt }.max()
+            return latest ?? snapshot.group.createdAt
+        }
+    }
+
+    var sortSize: Int64 {
+        switch self {
+        case .task(let task): return task.totalBytes > 0 ? task.totalBytes : task.downloadedBytes
+        case .folder(let snapshot): return snapshot.totalBytes > 0 ? snapshot.totalBytes : snapshot.downloadedBytes
+        }
+    }
+
+    var sortProgress: Double {
+        switch self {
+        case .task(let task): return task.progress
+        case .folder(let snapshot): return snapshot.progress
+        }
+    }
+
+    var sortStatus: String {
+        switch self {
+        case .task(let task): return task.status.rawValue
+        case .folder(let snapshot): return snapshot.state.rawValue
+        }
+    }
+
+    var sortFileType: String {
+        switch self {
+        case .task(let task): return (task.filename as NSString).pathExtension.lowercased()
+        case .folder: return "folder"
+        }
+    }
+}
+
+// MARK: - Filter + Sort Function (display items)
+
+/// Pure function — no actors, no side effects. Safe to call on any thread.
+/// Applies the Downloads filter/sort to the unified list of standalone tasks
+/// and folder download groups.
+public func applyFilterAndSortItems(
+    _ items: [DownloadDisplayItem],
+    state: DownloadFilterState
+) -> [DownloadDisplayItem] {
+    let filtered = items.filter { item in
+        switch item {
+        case .task(let task): return state.filter.matches(task.status)
+        case .folder(let snapshot): return snapshot.matchesFilter(state.filter)
+        }
+    }
+
+    let sorted = filtered.sorted { a, b -> Bool in
+        let ascending: Bool
+        switch state.sortKey {
+        case .name:
+            ascending = a.sortName.localizedStandardCompare(b.sortName) == .orderedAscending
+        case .dateAdded:
+            ascending = a.sortDate < b.sortDate
+        case .lastUpdated:
+            ascending = a.sortLastUpdated < b.sortLastUpdated
+        case .size:
+            ascending = a.sortSize < b.sortSize
+        case .progress:
+            ascending = a.sortProgress < b.sortProgress
+        case .status:
+            ascending = a.sortStatus < b.sortStatus
+        case .fileType:
+            ascending = a.sortFileType < b.sortFileType
+        }
+        return state.direction == .ascending ? ascending : !ascending
+    }
+
+    return sorted
+}
+
 // MARK: - Filter + Sort Function
 
 /// Pure function — no actors, no side effects. Safe to call on any thread.

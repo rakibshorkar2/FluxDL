@@ -8,13 +8,24 @@ public struct CrawledFile: Identifiable, Equatable, Sendable {
     public let url: URL
     public let sizeBytes: Int64?
     public let type: DirectoryItemType
+    /// Server-side path relative to the scanned root, e.g. `"Extras/Trailer.mp4"`.
+    /// Empty for files directly inside the root folder.
+    public let relativePath: String
 
-    public init(id: UUID = UUID(), name: String, url: URL, sizeBytes: Int64?, type: DirectoryItemType) {
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        url: URL,
+        sizeBytes: Int64?,
+        type: DirectoryItemType,
+        relativePath: String = ""
+    ) {
         self.id = id
         self.name = name
         self.url = url
         self.sizeBytes = sizeBytes
         self.type = type
+        self.relativePath = relativePath
     }
 }
 
@@ -86,11 +97,19 @@ public final class DirectoryFolderCrawler: ObservableObject {
         public let files: [CrawledFile]
         public let failedFolders: [String]
         public let outcome: CrawlOutcome
+        /// Number of directories successfully visited (including the root).
+        public let foldersScanned: Int
 
-        public init(files: [CrawledFile], failedFolders: [String], outcome: CrawlOutcome) {
+        public init(
+            files: [CrawledFile],
+            failedFolders: [String],
+            outcome: CrawlOutcome,
+            foldersScanned: Int = 0
+        ) {
             self.files = files
             self.failedFolders = failedFolders
             self.outcome = outcome
+            self.foldersScanned = foldersScanned
         }
     }
 
@@ -125,18 +144,38 @@ public final class DirectoryFolderCrawler: ObservableObject {
             let state = CrawlState(maxFiles: self.maxFiles)
             let rootHost = root.host?.lowercased() ?? ""
             let rootPath = self.normalizedPath(root.path)
-            await self.crawlFolder(url: root, rootHost: rootHost, rootPath: rootPath, depth: 0, state: state)
+            await self.crawlFolder(
+                url: root,
+                rootHost: rootHost,
+                rootPath: rootPath,
+                relativePrefix: "",
+                depth: 0,
+                state: state
+            )
             let files = await state.files
             let failed = await state.failed
+            let visited = await state.snapshot().visited
             let outcome: CrawlOutcome = Task.isCancelled ? .cancelled : .finished
-            completion(CrawlResult(files: files, failedFolders: failed, outcome: outcome))
+            completion(CrawlResult(
+                files: files,
+                failedFolders: failed,
+                outcome: outcome,
+                foldersScanned: visited
+            ))
             self.crawlTask = nil
         }
     }
 
     // MARK: - Recursion
 
-    private func crawlFolder(url: URL, rootHost: String, rootPath: String, depth: Int, state: CrawlState) async {
+    private func crawlFolder(
+        url: URL,
+        rootHost: String,
+        rootPath: String,
+        relativePrefix: String,
+        depth: Int,
+        state: CrawlState
+    ) async {
         guard !Task.isCancelled else { return }
         guard depth <= maxDepth else { return }
 
@@ -167,7 +206,13 @@ public final class DirectoryFolderCrawler: ObservableObject {
         let folderEntries = entries.filter { $0.type == .directory }
 
         for entry in fileEntries {
-            let file = CrawledFile(name: entry.name, url: entry.url, sizeBytes: entry.sizeBytes, type: entry.type)
+            let file = CrawledFile(
+                name: entry.name,
+                url: entry.url,
+                sizeBytes: entry.sizeBytes,
+                type: entry.type,
+                relativePath: relativePrefix + entry.name
+            )
             if !(await state.addFile(file)) { break }
         }
 
@@ -190,6 +235,7 @@ public final class DirectoryFolderCrawler: ObservableObject {
                         url: folder.url,
                         rootHost: rootHost,
                         rootPath: rootPath,
+                        relativePrefix: relativePrefix + folder.name + "/",
                         depth: depth + 1,
                         state: state
                     )

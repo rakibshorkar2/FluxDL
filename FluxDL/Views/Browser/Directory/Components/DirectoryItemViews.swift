@@ -14,6 +14,8 @@ public struct DirectoryItemRow: View {
     let onShare: () -> Void
     let onCopyName: () -> Void
     let onResolveSize: () -> Void
+    let onDownloadFolder: () -> Void
+    let onBookmark: () -> Void
 
     public init(
         item: DirectoryItem,
@@ -25,7 +27,9 @@ public struct DirectoryItemRow: View {
         onDownload: @escaping () -> Void,
         onShare: @escaping () -> Void,
         onCopyName: @escaping () -> Void = {},
-        onResolveSize: @escaping () -> Void = {}
+        onResolveSize: @escaping () -> Void = {},
+        onDownloadFolder: @escaping () -> Void = {},
+        onBookmark: @escaping () -> Void = {}
     ) {
         self.item = item
         self.isSelected = isSelected
@@ -37,6 +41,8 @@ public struct DirectoryItemRow: View {
         self.onShare = onShare
         self.onCopyName = onCopyName
         self.onResolveSize = onResolveSize
+        self.onDownloadFolder = onDownloadFolder
+        self.onBookmark = onBookmark
     }
 
     public var body: some View {
@@ -97,6 +103,22 @@ public struct DirectoryItemRow: View {
                     .accessibilityLabel("Download \(item.name)")
                 }
 
+                if item.type == .directory {
+                    Button {
+                        onDownloadFolder()
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.title3)
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 32, height: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSelecting)
+                    .opacity(isSelecting ? 0 : 1)
+                    .accessibilityLabel("Download \(item.name) folder")
+                }
+
                 if !isSelecting {
                     Menu {
                         if item.type.isPlayableMedia {
@@ -106,7 +128,13 @@ public struct DirectoryItemRow: View {
                                 Label("Play", systemImage: "play.circle")
                             }
                         }
-                        if item.type != .directory {
+                        if item.type == .directory {
+                            Button {
+                                onDownloadFolder()
+                            } label: {
+                                Label("Download Folder", systemImage: "folder.badge.plus")
+                            }
+                        } else {
                             Button {
                                 onDownload()
                             } label: {
@@ -124,6 +152,11 @@ public struct DirectoryItemRow: View {
                                     Label("Get Size", systemImage: "ruler")
                                 }
                             }
+                        }
+                        Button {
+                            onBookmark()
+                        } label: {
+                            Label("Bookmark", systemImage: "bookmark")
                         }
                         Button {
                             onShare()
@@ -168,7 +201,13 @@ public struct DirectoryItemRow: View {
             Text(item.name)
                 .font(.footnote)
                 .textSelection(.enabled)
-            if item.type != .directory {
+            if item.type == .directory {
+                Button {
+                    onDownloadFolder()
+                } label: {
+                    Label("Download Folder", systemImage: "folder.badge.plus")
+                }
+            } else {
                 Button {
                     onDownload()
                 } label: {
@@ -181,6 +220,11 @@ public struct DirectoryItemRow: View {
                         Label("Get Size", systemImage: "ruler")
                     }
                 }
+            }
+            Button {
+                onBookmark()
+            } label: {
+                Label("Bookmark", systemImage: "bookmark")
             }
             Button {
                 onShare()
@@ -212,6 +256,8 @@ public struct DirectoryGridCell: View {
     let onShare: () -> Void
     let onCopyName: () -> Void
     let onResolveSize: () -> Void
+    let onDownloadFolder: () -> Void
+    let onBookmark: () -> Void
 
     public init(
         item: DirectoryItem,
@@ -222,7 +268,9 @@ public struct DirectoryGridCell: View {
         onDownload: @escaping () -> Void,
         onShare: @escaping () -> Void,
         onCopyName: @escaping () -> Void = {},
-        onResolveSize: @escaping () -> Void = {}
+        onResolveSize: @escaping () -> Void = {},
+        onDownloadFolder: @escaping () -> Void = {},
+        onBookmark: @escaping () -> Void = {}
     ) {
         self.item = item
         self.isSelected = isSelected
@@ -233,6 +281,8 @@ public struct DirectoryGridCell: View {
         self.onShare = onShare
         self.onCopyName = onCopyName
         self.onResolveSize = onResolveSize
+        self.onDownloadFolder = onDownloadFolder
+        self.onBookmark = onBookmark
     }
 
     public var body: some View {
@@ -289,7 +339,13 @@ public struct DirectoryGridCell: View {
             Text(item.name)
                 .font(.footnote)
                 .textSelection(.enabled)
-            if item.type != .directory {
+            if item.type == .directory {
+                Button {
+                    onDownloadFolder()
+                } label: {
+                    Label("Download Folder", systemImage: "folder.badge.plus")
+                }
+            } else {
                 Button {
                     onDownload()
                 } label: {
@@ -302,6 +358,11 @@ public struct DirectoryGridCell: View {
                         Label("Get Size", systemImage: "ruler")
                     }
                 }
+            }
+            Button {
+                onBookmark()
+            } label: {
+                Label("Bookmark", systemImage: "bookmark")
             }
             Button {
                 onShare()
@@ -328,6 +389,8 @@ public struct DirectoryListView: View {
     let onShare: (DirectoryItem) -> Void
     let onCopyName: (DirectoryItem) -> Void
     let onResolveSize: (DirectoryItem) -> Void
+    let onDownloadFolder: (DirectoryItem) -> Void
+    let onBookmark: (DirectoryItem) -> Void
 
     public init(
         items: [DirectoryItem],
@@ -338,7 +401,9 @@ public struct DirectoryListView: View {
         onDownload: @escaping (DirectoryItem) -> Void,
         onShare: @escaping (DirectoryItem) -> Void,
         onCopyName: @escaping (DirectoryItem) -> Void,
-        onResolveSize: @escaping (DirectoryItem) -> Void
+        onResolveSize: @escaping (DirectoryItem) -> Void,
+        onDownloadFolder: @escaping (DirectoryItem) -> Void = { _ in },
+        onBookmark: @escaping (DirectoryItem) -> Void = { _ in }
     ) {
         self.items = items
         self.isSelecting = isSelecting
@@ -349,6 +414,8 @@ public struct DirectoryListView: View {
         self.onShare = onShare
         self.onCopyName = onCopyName
         self.onResolveSize = onResolveSize
+        self.onDownloadFolder = onDownloadFolder
+        self.onBookmark = onBookmark
     }
 
     public var body: some View {
@@ -364,7 +431,9 @@ public struct DirectoryListView: View {
                         onDownload: { onDownload(item) },
                         onShare: { onShare(item) },
                         onCopyName: { onCopyName(item) },
-                        onResolveSize: { onResolveSize(item) }
+                        onResolveSize: { onResolveSize(item) },
+                        onDownloadFolder: { onDownloadFolder(item) },
+                        onBookmark: { onBookmark(item) }
                     )
                     Divider()
                         .padding(.leading, 66)
@@ -387,6 +456,8 @@ public struct DirectoryGridView: View {
     let onShare: (DirectoryItem) -> Void
     let onCopyName: (DirectoryItem) -> Void
     let onResolveSize: (DirectoryItem) -> Void
+    let onDownloadFolder: (DirectoryItem) -> Void
+    let onBookmark: (DirectoryItem) -> Void
 
     public init(
         items: [DirectoryItem],
@@ -397,7 +468,9 @@ public struct DirectoryGridView: View {
         onDownload: @escaping (DirectoryItem) -> Void,
         onShare: @escaping (DirectoryItem) -> Void,
         onCopyName: @escaping (DirectoryItem) -> Void,
-        onResolveSize: @escaping (DirectoryItem) -> Void
+        onResolveSize: @escaping (DirectoryItem) -> Void,
+        onDownloadFolder: @escaping (DirectoryItem) -> Void = { _ in },
+        onBookmark: @escaping (DirectoryItem) -> Void = { _ in }
     ) {
         self.items = items
         self.isSelecting = isSelecting
@@ -408,6 +481,8 @@ public struct DirectoryGridView: View {
         self.onShare = onShare
         self.onCopyName = onCopyName
         self.onResolveSize = onResolveSize
+        self.onDownloadFolder = onDownloadFolder
+        self.onBookmark = onBookmark
     }
 
     private let columns = [
@@ -427,7 +502,9 @@ public struct DirectoryGridView: View {
                         onDownload: { onDownload(item) },
                         onShare: { onShare(item) },
                         onCopyName: { onCopyName(item) },
-                        onResolveSize: { onResolveSize(item) }
+                        onResolveSize: { onResolveSize(item) },
+                        onDownloadFolder: { onDownloadFolder(item) },
+                        onBookmark: { onBookmark(item) }
                     )
                 }
             }
