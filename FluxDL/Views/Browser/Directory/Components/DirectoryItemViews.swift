@@ -8,6 +8,8 @@ public struct DirectoryItemRow: View {
     let isSelected: Bool
     let isSelecting: Bool
     let isSearchMode: Bool
+    /// Transient highlight when the row is a freshly located AI search result.
+    let isHighlighted: Bool
     let onOpen: () -> Void
     let onToggleSelection: () -> Void
     let onDownload: () -> Void
@@ -22,6 +24,7 @@ public struct DirectoryItemRow: View {
         isSelected: Bool,
         isSelecting: Bool,
         isSearchMode: Bool = false,
+        isHighlighted: Bool = false,
         onOpen: @escaping () -> Void,
         onToggleSelection: @escaping () -> Void,
         onDownload: @escaping () -> Void,
@@ -35,6 +38,7 @@ public struct DirectoryItemRow: View {
         self.isSelected = isSelected
         self.isSelecting = isSelecting
         self.isSearchMode = isSearchMode
+        self.isHighlighted = isHighlighted
         self.onOpen = onOpen
         self.onToggleSelection = onToggleSelection
         self.onDownload = onDownload
@@ -184,11 +188,15 @@ public struct DirectoryItemRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .id(item.id)
         .background(
             isSelected
                 ? Color.accentColor.opacity(0.12)
-                : Color.clear
+                : isHighlighted
+                    ? Color.accentColor.opacity(0.25)
+                    : Color.clear
         )
+        .accessibilityAddTraits(isHighlighted ? .isSelected : [])
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.35)
                 .onEnded { _ in
@@ -250,6 +258,8 @@ public struct DirectoryGridCell: View {
     let item: DirectoryItem
     let isSelected: Bool
     let isSelecting: Bool
+    /// Transient highlight when the cell is a freshly located AI search result.
+    let isHighlighted: Bool
     let onOpen: () -> Void
     let onToggleSelection: () -> Void
     let onDownload: () -> Void
@@ -263,6 +273,7 @@ public struct DirectoryGridCell: View {
         item: DirectoryItem,
         isSelected: Bool,
         isSelecting: Bool,
+        isHighlighted: Bool = false,
         onOpen: @escaping () -> Void,
         onToggleSelection: @escaping () -> Void,
         onDownload: @escaping () -> Void,
@@ -275,6 +286,7 @@ public struct DirectoryGridCell: View {
         self.item = item
         self.isSelected = isSelected
         self.isSelecting = isSelecting
+        self.isHighlighted = isHighlighted
         self.onOpen = onOpen
         self.onToggleSelection = onToggleSelection
         self.onDownload = onDownload
@@ -323,10 +335,22 @@ public struct DirectoryGridCell: View {
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color(uiColor: .tertiarySystemFill))
+                    .fill(
+                        isSelected
+                            ? Color.accentColor.opacity(0.12)
+                            : isHighlighted
+                                ? Color.accentColor.opacity(0.25)
+                                : Color(uiColor: .tertiarySystemFill)
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(isHighlighted && !isSelected ? Color.accentColor : .clear, lineWidth: 1.5)
             )
         }
         .buttonStyle(.plain)
+        .id(item.id)
+        .accessibilityAddTraits(isHighlighted ? .isSelected : [])
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.35)
                 .onEnded { _ in
@@ -383,6 +407,8 @@ public struct DirectoryListView: View {
     let items: [DirectoryItem]
     let isSelecting: Bool
     let selectedIDs: Set<UUID>
+    /// When set, the listing scrolls to and highlights that item (AI search).
+    let highlightedItemID: UUID?
     let onOpen: (DirectoryItem) -> Void
     let onToggleSelection: (DirectoryItem) -> Void
     let onDownload: (DirectoryItem) -> Void
@@ -396,6 +422,7 @@ public struct DirectoryListView: View {
         items: [DirectoryItem],
         isSelecting: Bool,
         selectedIDs: Set<UUID>,
+        highlightedItemID: UUID? = nil,
         onOpen: @escaping (DirectoryItem) -> Void,
         onToggleSelection: @escaping (DirectoryItem) -> Void,
         onDownload: @escaping (DirectoryItem) -> Void,
@@ -408,6 +435,7 @@ public struct DirectoryListView: View {
         self.items = items
         self.isSelecting = isSelecting
         self.selectedIDs = selectedIDs
+        self.highlightedItemID = highlightedItemID
         self.onOpen = onOpen
         self.onToggleSelection = onToggleSelection
         self.onDownload = onDownload
@@ -419,29 +447,38 @@ public struct DirectoryListView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(items) { item in
-                    DirectoryItemRow(
-                        item: item,
-                        isSelected: selectedIDs.contains(item.id),
-                        isSelecting: isSelecting,
-                        onOpen: { onOpen(item) },
-                        onToggleSelection: { onToggleSelection(item) },
-                        onDownload: { onDownload(item) },
-                        onShare: { onShare(item) },
-                        onCopyName: { onCopyName(item) },
-                        onResolveSize: { onResolveSize(item) },
-                        onDownloadFolder: { onDownloadFolder(item) },
-                        onBookmark: { onBookmark(item) }
-                    )
-                    Divider()
-                        .padding(.leading, 66)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(items) { item in
+                        DirectoryItemRow(
+                            item: item,
+                            isSelected: selectedIDs.contains(item.id),
+                            isSelecting: isSelecting,
+                            isHighlighted: highlightedItemID == item.id,
+                            onOpen: { onOpen(item) },
+                            onToggleSelection: { onToggleSelection(item) },
+                            onDownload: { onDownload(item) },
+                            onShare: { onShare(item) },
+                            onCopyName: { onCopyName(item) },
+                            onResolveSize: { onResolveSize(item) },
+                            onDownloadFolder: { onDownloadFolder(item) },
+                            onBookmark: { onBookmark(item) }
+                        )
+                        Divider()
+                            .padding(.leading, 66)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: highlightedItemID) { id in
+                guard let id else { return }
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    proxy.scrollTo(id, anchor: .center)
                 }
             }
-            .padding(.vertical, 4)
         }
-        .scrollDismissesKeyboard(.interactively)
     }
 }
 
@@ -450,6 +487,8 @@ public struct DirectoryGridView: View {
     let items: [DirectoryItem]
     let isSelecting: Bool
     let selectedIDs: Set<UUID>
+    /// When set, the grid scrolls to and highlights that item (AI search).
+    let highlightedItemID: UUID?
     let onOpen: (DirectoryItem) -> Void
     let onToggleSelection: (DirectoryItem) -> Void
     let onDownload: (DirectoryItem) -> Void
@@ -463,6 +502,7 @@ public struct DirectoryGridView: View {
         items: [DirectoryItem],
         isSelecting: Bool,
         selectedIDs: Set<UUID>,
+        highlightedItemID: UUID? = nil,
         onOpen: @escaping (DirectoryItem) -> Void,
         onToggleSelection: @escaping (DirectoryItem) -> Void,
         onDownload: @escaping (DirectoryItem) -> Void,
@@ -475,6 +515,7 @@ public struct DirectoryGridView: View {
         self.items = items
         self.isSelecting = isSelecting
         self.selectedIDs = selectedIDs
+        self.highlightedItemID = highlightedItemID
         self.onOpen = onOpen
         self.onToggleSelection = onToggleSelection
         self.onDownload = onDownload
@@ -490,27 +531,36 @@ public struct DirectoryGridView: View {
     ]
 
     public var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(items) { item in
-                    DirectoryGridCell(
-                        item: item,
-                        isSelected: selectedIDs.contains(item.id),
-                        isSelecting: isSelecting,
-                        onOpen: { onOpen(item) },
-                        onToggleSelection: { onToggleSelection(item) },
-                        onDownload: { onDownload(item) },
-                        onShare: { onShare(item) },
-                        onCopyName: { onCopyName(item) },
-                        onResolveSize: { onResolveSize(item) },
-                        onDownloadFolder: { onDownloadFolder(item) },
-                        onBookmark: { onBookmark(item) }
-                    )
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(items) { item in
+                        DirectoryGridCell(
+                            item: item,
+                            isSelected: selectedIDs.contains(item.id),
+                            isSelecting: isSelecting,
+                            isHighlighted: highlightedItemID == item.id,
+                            onOpen: { onOpen(item) },
+                            onToggleSelection: { onToggleSelection(item) },
+                            onDownload: { onDownload(item) },
+                            onShare: { onShare(item) },
+                            onCopyName: { onCopyName(item) },
+                            onResolveSize: { onResolveSize(item) },
+                            onDownloadFolder: { onDownloadFolder(item) },
+                            onBookmark: { onBookmark(item) }
+                        )
+                    }
+                }
+                .padding(10)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: highlightedItemID) { id in
+                guard let id else { return }
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    proxy.scrollTo(id, anchor: .center)
                 }
             }
-            .padding(10)
         }
-        .scrollDismissesKeyboard(.interactively)
     }
 }
 

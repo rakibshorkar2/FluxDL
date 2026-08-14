@@ -113,9 +113,17 @@ public final class DirectoryBrowserViewModel: ObservableObject {
     @Published public var isHistoryPresented = false
     @Published public var toastMessage: String?
 
+    // MARK: - Global AI search
+
+    @Published public var isAISearchPresented = false
+    /// Transient visual highlight of a search result after navigation.
+    @Published public var highlightedItemID: UUID?
+
     private var backStack: [URL] = []
     private var loadTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
+    private var highlightTask: Task<Void, Never>?
+    private var pendingHighlightURLString: String?
     private var cancellables = Set<AnyCancellable>()
 
     private let client = DirectoryHTTPClient.shared
@@ -126,14 +134,23 @@ public final class DirectoryBrowserViewModel: ObservableObject {
     private let queueManager = ServiceContainer.shared.queueManager
     private let folderCoordinator = ServiceContainer.shared.folderDownloadCoordinator
 
+    /// Search index subsystem for Directory Mode (background crawl, cache,
+    /// local + AI search). One instance serves both the directory session and
+    /// the AI Search sheet so indexing state stays in sync.
+    public let searchService: DirectorySearchService
+    /// The Open Directory root the search index belongs to (host root when
+    /// the user started at `/`, else the first loaded directory).
+    public private(set) var searchIndexRoot: URL?
+
     private let layoutKey = "fluxdl_directory_layout"
     private let sortKey = "fluxdl_directory_sort"
     private let categoryKey = "fluxdl_directory_category"
 
     // MARK: - Init
 
-    public init(crawler: DirectoryFolderCrawler? = nil) {
+    public init(crawler: DirectoryFolderCrawler? = nil, searchService: DirectorySearchService? = nil) {
         self.crawler = crawler ?? DirectoryFolderCrawler()
+        self.searchService = searchService ?? DirectorySearchService()
         isGridView = UserDefaults.standard.bool(forKey: layoutKey)
         if let raw = UserDefaults.standard.string(forKey: sortKey),
            let option = DirectorySortOption(rawValue: raw) {
@@ -261,6 +278,8 @@ public final class DirectoryBrowserViewModel: ObservableObject {
             }
             updateNavigationState()
             history.addHistory(title: titleForHistory(url: result.finalURL), urlString: result.finalURL.absoluteString)
+            updateSearchIndexRootIfNeeded(result.finalURL)
+            applyPendingHighlightIfNeeded()
         } else {
             isLoading = false
             items = []
@@ -538,6 +557,65 @@ public final class DirectoryBrowserViewModel: ObservableObject {
     public func bookmark(_ item: DirectoryItem) {
         bookmarks.addBookmark(title: item.name, urlString: item.url.absoluteString)
         showToast("Bookmarked \(item.name)")
+    }
+
+    // MARK: - Global AI search (result navigation + highlight)
+
+    /// The index root tracks the user's Open Directory session: the host root
+    /// when a `/` was loaded, otherwise the first loaded directory. Loading a
+    /// different host (or a new `/`) switches the session to that new root —
+    /// indexes from different roots never mix.
+    private func updateSearchIndexRootIfNeeded(_ loadedURL: URL) {
+        let shouldSwitch: Bool
+        if let current = searchIndexRoot {
+            shouldSwitch = loadedURL.host?.lowercased() != current.host?.lowercased()
+                || loadedURL.path == "/"
+        } else {
+            shouldSwitch = true
+        }
+        guard shouldSwitch else { return }
+        searchIndexRoot = loadedURL
+        // Background indexing only — the listing itself is untouched and the
+        // UI stays fully responsive. Cached indexes load instantly.
+        searchService.ensureIndex(for: loadedURL)
+    }
+
+    /// Navigates Directory Mode to a search result's parent folder and
+    /// schedules a transient highlight of the matching file. No download.
+    public func openSearchResult(_ result: DirectorySearchResult) {
+        isAISearchPresented = false
+        guard let parentURL = URL(string: result.entry.parentDirectoryURL) else {
+            showToast("Could not open folder for \(result.entry.filename)")
+            return
+        }
+        pendingHighlightURLString = result.entry.absoluteURL
+        load(url: parentURL)
+        showToast("Searching folder for \(result.entry.filename)")
+    }
+
+    /// Applies a pending search-result highlight to the freshly loaded
+    /// listing (matched by URL, so a freshly parsed item gets the highlight)
+    /// and clears it automatically after a short period.
+    private func applyPendingHighlightIfNeeded() {
+        guard let pending = pendingHighlightURLString else { return }
+        pendingHighlightURLString = nil
+        guard let item = items.first(where: { $0.url.absoluteString == pending }) else {
+            showToast("\(pending) is not in the current folder listing")
+            return
+        }
+        highlightedItemID = item.id
+        highlightTask?.cancel()
+        highlightTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            guard !Task.isCancelled else { return }
+            self?.highlightedItemID = nil
+        }
+    }
+
+    /// Removes the transient search-result highlight immediately.
+    public func clearHighlight() {
+        highlightTask?.cancel()
+        highlightedItemID = nil
     }
 
     // MARK: - Proxy

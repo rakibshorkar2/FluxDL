@@ -5,11 +5,20 @@ import SwiftUI
 /// via the mode toggle — the WKWebView itself stays alive underneath, hidden.
 public struct DirectoryModeView: View {
     @ObservedObject var viewModel: DirectoryBrowserViewModel
+    @StateObject private var aiSearchViewModel: DirectoryAISearchViewModel
     let onOpenInWebBrowser: (URL) -> Void
+
+    private let haptics = ServiceContainer.shared.hapticService
 
     public init(viewModel: DirectoryBrowserViewModel, onOpenInWebBrowser: @escaping (URL) -> Void) {
         self.viewModel = viewModel
         self.onOpenInWebBrowser = onOpenInWebBrowser
+        _aiSearchViewModel = StateObject(
+            wrappedValue: DirectoryAISearchViewModel(
+                searchService: viewModel.searchService,
+                rootURL: viewModel.searchIndexRoot ?? URL(string: "http://localhost/")!
+            )
+        )
     }
 
     public var body: some View {
@@ -45,6 +54,9 @@ public struct DirectoryModeView: View {
         .sheet(isPresented: $viewModel.isHistoryPresented) {
             historySheet
         }
+        .sheet(isPresented: $viewModel.isAISearchPresented) {
+            aiSearchSheet
+        }
         .overlay(alignment: .bottom) { toastOverlay }
     }
 
@@ -72,7 +84,10 @@ public struct DirectoryModeView: View {
             }
             DirectoryCategoryPicker(category: $viewModel.category)
             if !viewModel.isSelecting {
-                DirectoryFilterBar(text: $viewModel.filterText)
+                HStack(spacing: 8) {
+                    DirectoryFilterBar(text: $viewModel.filterText)
+                    aiSearchButton
+                }
             }
             Divider()
 
@@ -81,6 +96,7 @@ public struct DirectoryModeView: View {
                     items: viewModel.displayItems,
                     isSelecting: viewModel.isSelecting,
                     selectedIDs: viewModel.selectedIDs,
+                    highlightedItemID: viewModel.highlightedItemID,
                     onOpen: { open($0) },
                     onToggleSelection: { viewModel.toggleSelection($0) },
                     onDownload: { viewModel.download(items: [$0]) },
@@ -95,6 +111,7 @@ public struct DirectoryModeView: View {
                     items: viewModel.displayItems,
                     isSelecting: viewModel.isSelecting,
                     selectedIDs: viewModel.selectedIDs,
+                    highlightedItemID: viewModel.highlightedItemID,
                     onOpen: { open($0) },
                     onToggleSelection: { viewModel.toggleSelection($0) },
                     onDownload: { viewModel.download(items: [$0]) },
@@ -106,6 +123,44 @@ public struct DirectoryModeView: View {
                 )
             }
         }
+    }
+
+    /// Additive global search entry — sits beside the existing current-directory
+    /// `Filter files` bar and opens the AI Search sheet. Never replaces it.
+    private var aiSearchButton: some View {
+        Button {
+            haptics.selectionChanged()
+            aiSearchViewModel.updateRoot(viewModel.searchIndexRoot)
+            viewModel.isAISearchPresented = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "sparkles")
+                    .font(.caption)
+                Text("AI Search")
+                    .font(.caption.weight(.medium))
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 34)
+            .background(
+                Color.accentColor.opacity(0.12),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+            )
+            .foregroundStyle(Color.accentColor)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("AI Search — search the entire directory")
+    }
+
+    private var aiSearchSheet: some View {
+        DirectoryAISearchView(
+            viewModel: aiSearchViewModel,
+            onOpenResult: { viewModel.openSearchResult($0) },
+            onDownload: { viewModel.download(items: [$0]) },
+            onPlay: { viewModel.play($0) },
+            onShare: { viewModel.share($0) },
+            onCopyName: { viewModel.copyName($0) },
+            onBookmark: { viewModel.bookmark($0) }
+        )
     }
 
     private func open(_ item: DirectoryItem) {

@@ -117,11 +117,18 @@
 		D554000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift */; };
 		D554000B2C6000010000000B /* DirectoryMediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */; };
 		D554000C2C6000010000000C /* DirectoryModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000C2C6000010000000C /* DirectoryModeView.swift */; };
+		D55800012C60000100000001 /* DirectorySearchModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700012C60000100000001 /* DirectorySearchModels.swift */; };
+		D55800022C60000100000002 /* DirectorySearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700022C60000100000002 /* DirectorySearchIndex.swift */; };
+		D55800032C60000100000003 /* DirectorySearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700032C60000100000003 /* DirectorySearchService.swift */; };
+		D55800042C60000100000004 /* GeminiDirectorySearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700042C60000100000004 /* GeminiDirectorySearchService.swift */; };
+		D55800052C60000100000005 /* DirectoryAISearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700052C60000100000005 /* DirectoryAISearchViewModel.swift */; };
+		D55800062C60000100000006 /* DirectoryAISearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700062C60000100000006 /* DirectoryAISearchView.swift */; };
 		D554000D2C6000010000000D /* DirectoryParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000D2C6000010000000D /* DirectoryParserTests.swift */; };
 		FF1000032C90000100000003 /* FolderDownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000042C90000100000004 /* FolderDownloadModels.swift */; };
 		FF1000052C90000100000005 /* FolderDownloadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */; };
 		FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */; };
 		FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF10000A2C9000010000000A /* FolderDownloadTests.swift */; };
+		D55900022C60000100000002 /* DirectorySearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55900012C60000100000001 /* DirectorySearchTests.swift */; };
 		AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000F2C6000010000000F /* ProxyStateTests.swift */; };
 		AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000102C60000100000010 /* MockKeychainStore.swift */; };
 		AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */; };
@@ -329,11 +336,18 @@
 		D555000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryFolderDownloadPreview.swift; sourceTree = "<group>"; };
 		D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryMediaPlayerView.swift; sourceTree = "<group>"; };
 		D555000C2C6000010000000C /* DirectoryModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryModeView.swift; sourceTree = "<group>"; };
+		D55700012C60000100000001 /* DirectorySearchModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchModels.swift; sourceTree = "<group>"; };
+		D55700022C60000100000002 /* DirectorySearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchIndex.swift; sourceTree = "<group>"; };
+		D55700032C60000100000003 /* DirectorySearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchService.swift; sourceTree = "<group>"; };
+		D55700042C60000100000004 /* GeminiDirectorySearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiDirectorySearchService.swift; sourceTree = "<group>"; };
+		D55700052C60000100000005 /* DirectoryAISearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAISearchViewModel.swift; sourceTree = "<group>"; };
+		D55700062C60000100000006 /* DirectoryAISearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAISearchView.swift; sourceTree = "<group>"; };
 		D555000D2C6000010000000D /* DirectoryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryParserTests.swift; sourceTree = "<group>"; };
 		FF1000042C90000100000004 /* FolderDownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadModels.swift; sourceTree = "<group>"; };
 		FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadCoordinator.swift; sourceTree = "<group>"; };
 		FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadGroupCard.swift; sourceTree = "<group>"; };
 		FF10000A2C9000010000000A /* FolderDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadTests.swift; sourceTree = "<group>"; };
+		D55900012C60000100000001 /* DirectorySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchTests.swift; sourceTree = "<group>"; };
 		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -647,6 +661,7 @@
 				D55600022C60000100000002 /* Models */,
 				D55600032C60000100000003 /* Services */,
 				D55600042C60000100000004 /* Components */,
+				D55A00012C60000100000001 /* AI */,
 				D55500072C60000100000007 /* DirectoryBrowserViewModel.swift */,
 				D555000C2C6000010000000C /* DirectoryModeView.swift */,
 			);
@@ -682,6 +697,19 @@
 				D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */,
 			);
 			path = Components;
+			sourceTree = "<group>";
+		};
+		D55A00012C60000100000001 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				D55700012C60000100000001 /* DirectorySearchModels.swift */,
+				D55700022C60000100000002 /* DirectorySearchIndex.swift */,
+				D55700032C60000100000003 /* DirectorySearchService.swift */,
+				D55700042C60000100000004 /* GeminiDirectorySearchService.swift */,
+				D55700052C60000100000005 /* DirectoryAISearchViewModel.swift */,
+				D55700062C60000100000006 /* DirectoryAISearchView.swift */,
+			);
+			path = AI;
 			sourceTree = "<group>";
 		};
 		GG10000C2C6000010000000C /* Settings */ = {
@@ -720,6 +748,7 @@
 				B3E000012C60000100000001 /* ProxyUITests.swift */,
 				D555000D2C6000010000000D /* DirectoryParserTests.swift */,
 				FF10000A2C9000010000000A /* FolderDownloadTests.swift */,
+				D55900012C60000100000001 /* DirectorySearchTests.swift */,
 			);
 			path = FluxDLTests;
 			sourceTree = "<group>";
@@ -1060,6 +1089,12 @@
 				D554000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift in Sources */,
 				D554000B2C6000010000000B /* DirectoryMediaPlayerView.swift in Sources */,
 				D554000C2C6000010000000C /* DirectoryModeView.swift in Sources */,
+				D55800012C60000100000001 /* DirectorySearchModels.swift in Sources */,
+				D55800022C60000100000002 /* DirectorySearchIndex.swift in Sources */,
+				D55800032C60000100000003 /* DirectorySearchService.swift in Sources */,
+				D55800042C60000100000004 /* GeminiDirectorySearchService.swift in Sources */,
+				D55800052C60000100000005 /* DirectoryAISearchViewModel.swift in Sources */,
+				D55800062C60000100000006 /* DirectoryAISearchView.swift in Sources */,
 				FF1000032C90000100000003 /* FolderDownloadModels.swift in Sources */,
 				FF1000052C90000100000005 /* FolderDownloadCoordinator.swift in Sources */,
 				FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */,
@@ -1094,6 +1129,7 @@
 				A3E000012C60000100000001 /* ProxyUITests.swift in Sources */,
 				D554000D2C6000010000000D /* DirectoryParserTests.swift in Sources */,
 				FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */,
+				D55900022C60000100000002 /* DirectorySearchTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

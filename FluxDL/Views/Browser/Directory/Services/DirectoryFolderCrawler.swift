@@ -11,6 +11,10 @@ public struct CrawledFile: Identifiable, Equatable, Sendable {
     /// Server-side path relative to the scanned root, e.g. `"Extras/Trailer.mp4"`.
     /// Empty for files directly inside the root folder.
     public let relativePath: String
+    /// Last-modified date when the server exposed one (used by the search index).
+    public let modifiedDate: Date?
+    /// MIME type when the server exposed one (used by the search index).
+    public let mimeType: String?
 
     public init(
         id: UUID = UUID(),
@@ -18,7 +22,9 @@ public struct CrawledFile: Identifiable, Equatable, Sendable {
         url: URL,
         sizeBytes: Int64?,
         type: DirectoryItemType,
-        relativePath: String = ""
+        relativePath: String = "",
+        modifiedDate: Date? = nil,
+        mimeType: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -26,6 +32,8 @@ public struct CrawledFile: Identifiable, Equatable, Sendable {
         self.sizeBytes = sizeBytes
         self.type = type
         self.relativePath = relativePath
+        self.modifiedDate = modifiedDate
+        self.mimeType = mimeType
     }
 }
 
@@ -124,6 +132,10 @@ public final class DirectoryFolderCrawler: ObservableObject {
         self.client = client
     }
 
+    /// The file cap of a single crawl. Indexes built from a crawl whose file
+    /// count reaches this limit are partial.
+    public var maximumFileLimit: Int { maxFiles }
+
     public var isCrawling: Bool { crawlTask != nil }
 
     public func cancel() {
@@ -211,7 +223,9 @@ public final class DirectoryFolderCrawler: ObservableObject {
                 url: entry.url,
                 sizeBytes: entry.sizeBytes,
                 type: entry.type,
-                relativePath: relativePrefix + entry.name
+                relativePath: relativePrefix + entry.name,
+                modifiedDate: entry.modifiedDate,
+                mimeType: entry.mimeType
             )
             if !(await state.addFile(file)) { break }
         }
