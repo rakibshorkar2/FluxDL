@@ -9,12 +9,12 @@ public protocol DownloadEngineProtocol: AnyObject {
     var tasks: [DownloadTaskModel] { get }
     var session: URLSession { get }
 
-    func startDownload(
+func startDownload(
         url: URL,
-        filename: String? = nil,
-        folderGroupID: UUID? = nil,
-        relativePath: String? = nil,
-        destinationDirectoryPath: String? = nil
+        filename: String?,
+        folderGroupID: UUID?,
+        relativePath: String?,
+        destinationDirectoryPath: String?
     ) -> UUID
     func pauseDownload(id: UUID)
     func resumeDownload(id: UUID)
@@ -25,6 +25,23 @@ public protocol DownloadEngineProtocol: AnyObject {
     func changePriority(for taskId: UUID, to newPriority: DownloadPriority)
     func moveTask(from sourceIndex: Int, to destinationIndex: Int)
     func updateURL(_ newURL: URL, for id: UUID)
+}
+
+// MARK: - Convenience overload (defaults live here, not in the requirement)
+
+public extension DownloadEngineProtocol {
+    /// Starts a standalone single-file download. Folder downloads pass the
+    /// extra parameters through the full requirement instead.
+    @discardableResult
+    func startDownload(url: URL, filename: String? = nil) -> UUID {
+        startDownload(
+            url: url,
+            filename: filename,
+            folderGroupID: nil,
+            relativePath: nil,
+            destinationDirectoryPath: nil
+        )
+    }
 }
 
 // MARK: - Internal Progress Snapshot (lives on delegate queue, no actor needed)
