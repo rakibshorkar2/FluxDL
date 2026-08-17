@@ -294,7 +294,9 @@ public struct WebViewContainer: UIViewRepresentable {
         /// Strong reference: guarantees the observed web view stays alive
         /// until this coordinator detaches, so KVO observers are always
         /// removed from a live object (never from a deallocated one).
-        private var observedWebView: WKWebView?
+        /// `fileprivate` so the container can verify the coordinator is
+        /// attached to the view it is updating.
+        fileprivate var observedWebView: WKWebView?
         private var cancellables = Set<AnyCancellable>()
         
         /// File extensions that trigger the "Download File?" popup.
