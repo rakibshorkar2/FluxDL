@@ -1,0 +1,5 @@
+{
+    "url": "https://github.com/jpsim/Yams/releases/download/{TAG}/Yams-{TAG}.tar.gz",
+    "integrity": "",
+    "strip_prefix": "Yams-{TAG}"
+}

@@ -1,0 +1,1583 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA1000012C60000100000001 /* FluxDLApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000012C60000100000001 /* FluxDLApp.swift */; };
+		AA1000022C60000100000002 /* ServiceContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000022C60000100000002 /* ServiceContainer.swift */; };
+		AA1000032C60000100000003 /* SettingsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000032C60000100000003 /* SettingsService.swift */; };
+		AA1000042C60000100000004 /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000042C60000100000004 /* HapticService.swift */; };
+		AA1000052C60000100000005 /* ThemeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000052C60000100000005 /* ThemeService.swift */; };
+		AA1000062C60000100000006 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000062C60000100000006 /* AppTheme.swift */; };
+		AA1000072C60000100000007 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000072C60000100000007 /* GlassCard.swift */; };
+		AA1000082C60000100000008 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000082C60000100000008 /* StatusBadge.swift */; };
+		AA1000092C60000100000009 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000092C60000100000009 /* MainTabView.swift */; };
+		AA10000A2C6000010000000A /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10000A2C6000010000000A /* DownloadsView.swift */; };
+		AA10000B2C6000010000000B /* DownloadsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10000B2C6000010000000B /* DownloadsViewModel.swift */; };
+		AA10000C2C6000010000000C /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10000C2C6000010000000C /* BrowserView.swift */; };
+		AA10000D2C6000010000000D /* BrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10000D2C6000010000000D /* BrowserViewModel.swift */; };
+		AA1000102C60000100000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000102C60000100000010 /* SettingsView.swift */; };
+		AA1000112C60000100000011 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000112C60000100000011 /* SettingsViewModel.swift */; };
+		D55B00012C60000100000001 /* LegalDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55B00022C60000100000002 /* LegalDocuments.swift */; };
+		D55C00012C60000100000001 /* LegalDocumentViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55C00022C60000100000002 /* LegalDocumentViews.swift */; };
+		D55D00012C60000100000001 /* DeveloperProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55D00022C60000100000002 /* DeveloperProfileView.swift */; };
+		AA1000122C60000100000012 /* DownloadTaskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000122C60000100000012 /* DownloadTaskModel.swift */; };
+		AA1000132C60000100000013 /* DownloadRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000132C60000100000013 /* DownloadRepository.swift */; };
+		AA1000142C60000100000014 /* FileManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000142C60000100000014 /* FileManagementService.swift */; };
+		AA1000152C60000100000015 /* DownloadEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000152C60000100000015 /* DownloadEngine.swift */; };
+		AA1000162C60000100000016 /* DownloadItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000162C60000100000016 /* DownloadItemCard.swift */; };
+		AA1000172C60000100000017 /* AddDownloadSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000172C60000100000017 /* AddDownloadSheet.swift */; };
+		AA1000182C60000100000018 /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000182C60000100000018 /* StorageManager.swift */; };
+		AA1000192C60000100000019 /* QueueManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000192C60000100000019 /* QueueManager.swift */; };
+		AA10001A2C6000010000001A /* StorageHeaderCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10001A2C6000010000001A /* StorageHeaderCard.swift */; };
+		AA10001B2C6000010000001B /* QueueSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10001B2C6000010000001B /* QueueSettingsSheet.swift */; };
+		AA10001C2C6000010000001C /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10001C2C6000010000001C /* NotificationService.swift */; };
+		AA10001D2C6000010000001D /* DownloadRestorationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10001D2C6000010000001D /* DownloadRestorationService.swift */; };
+		AA10001E2C6000010000001E /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10001E2C6000010000001E /* LiveActivityManager.swift */; };
+		AA10001F2C6000010000001F /* ClipboardService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10001F2C6000010000001F /* ClipboardService.swift */; };
+		AA1000202C60000100000020 /* ChecksumVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000202C60000100000020 /* ChecksumVerifier.swift */; };
+		AA1000212C60000100000021 /* PowerNetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000212C60000100000021 /* PowerNetworkMonitor.swift */; };
+		AA1000222C60000100000022 /* WebViewContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000222C60000100000022 /* WebViewContainer.swift */; };
+		AA1000232C60000100000023 /* URLFilenameExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000232C60000100000023 /* URLFilenameExtractor.swift */; };
+		AA1000242C60000100000024 /* BackgroundKeepAliveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000242C60000100000024 /* BackgroundKeepAliveService.swift */; };
+		AA1000302C60000100000030 /* BrowserSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000302C60000100000030 /* BrowserSettings.swift */; };
+		AA1000312C60000100000031 /* BookmarkModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000312C60000100000031 /* BookmarkModel.swift */; };
+		AA1000322C60000100000032 /* BrowserHistoryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000322C60000100000032 /* BrowserHistoryItem.swift */; };
+		AA1000332C60000100000033 /* BrowserTabModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000332C60000100000033 /* BrowserTabModel.swift */; };
+		AA1000342C60000100000034 /* BookmarkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000342C60000100000034 /* BookmarkManager.swift */; };
+		AA1000352C60000100000035 /* BrowserHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000352C60000100000035 /* BrowserHistoryManager.swift */; };
+		AA1000362C60000100000036 /* AdBlockEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000362C60000100000036 /* AdBlockEngine.swift */; };
+		AA1000372C60000100000037 /* FindInPageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000372C60000100000037 /* FindInPageManager.swift */; };
+		AA1000382C60000100000038 /* BrowserTabManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000382C60000100000038 /* BrowserTabManager.swift */; };
+		AA1000392C60000100000039 /* BrowserAddressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000392C60000100000039 /* BrowserAddressBar.swift */; };
+		AA1000662C60000100000066 /* BrowserToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000662C60000100000066 /* BrowserToolbar.swift */; };
+		AA10003A2C6000010000003A /* BrowserTabGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003A2C6000010000003A /* BrowserTabGridView.swift */; };
+		AA10003B2C6000010000003B /* BrowserBookmarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003B2C6000010000003B /* BrowserBookmarksView.swift */; };
+		AA10003C2C6000010000003C /* BrowserHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003C2C6000010000003C /* BrowserHistoryView.swift */; };
+		AA10003D2C6000010000003D /* FindInPageBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003D2C6000010000003D /* FindInPageBar.swift */; };
+		AA10003E2C6000010000003E /* BrowserSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003E2C6000010000003E /* BrowserSettingsSheet.swift */; };
+		AA10003F2C6000010000003F /* BrowserTabPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10003F2C6000010000003F /* BrowserTabPersistence.swift */; };
+		AA1000402C60000100000040 /* BrowserConnectivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000402C60000100000040 /* BrowserConnectivityMonitor.swift */; };
+		AA1000412C60000100000041 /* BrowserProxySession.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000412C60000100000041 /* BrowserProxySession.swift */; };
+		AA1000422C60000100000042 /* BrowserFaviconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000422C60000100000042 /* BrowserFaviconView.swift */; };
+		AA1000432C60000100000043 /* BrowserErrorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000432C60000100000043 /* BrowserErrorView.swift */; };
+		FF1000012C90000100000001 /* BrowserDownloadPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000022C90000100000002 /* BrowserDownloadPromptView.swift */; };
+		FF3000012D00000100000001 /* BrowserTorrentLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3000022D00000100000002 /* BrowserTorrentLink.swift */; };
+		FF3000032D00000100000003 /* BrowserTorrentPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF3000042D00000100000004 /* BrowserTorrentPromptView.swift */; };
+		AA1000442C60000100000044 /* BrowserEditBookmarkSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000442C60000100000044 /* BrowserEditBookmarkSheet.swift */; };
+		AA1000502C60000100000050 /* DownloadFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000502C60000100000050 /* DownloadFilters.swift */; };
+		AA1000512C60000100000051 /* DownloadMetadataCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000512C60000100000051 /* DownloadMetadataCapture.swift */; };
+		AA1000522C60000100000052 /* DownloadDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000522C60000100000052 /* DownloadDiagnostics.swift */; };
+		AA1000532C60000100000053 /* DownloadMirrorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000532C60000100000053 /* DownloadMirrorManager.swift */; };
+		AA1000542C60000100000054 /* DownloadVerification.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000542C60000100000054 /* DownloadVerification.swift */; };
+		AA1000552C60000100000055 /* DownloadBatchManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000552C60000100000055 /* DownloadBatchManager.swift */; };
+		AA1000562C60000100000056 /* DownloadInfoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000562C60000100000056 /* DownloadInfoSheet.swift */; };
+		AA1000572C60000100000057 /* DownloadDiagnosticsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000572C60000100000057 /* DownloadDiagnosticsSheet.swift */; };
+		AA1000582C60000100000058 /* UpdateURLSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000582C60000100000058 /* UpdateURLSheet.swift */; };
+		AA1000592C60000100000059 /* MirrorPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000592C60000100000059 /* MirrorPickerSheet.swift */; };
+		AA10005A2C6000010000005A /* DuplicateResolutionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005A2C6000010000005A /* DuplicateResolutionSheet.swift */; };
+		AA10005B2C6000010000005B /* TorrentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005B2C6000010000005B /* TorrentView.swift */; };
+		AA10005C2C6000010000005C /* TorrentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005C2C6000010000005C /* TorrentViewModel.swift */; };
+		AA10005D2C6000010000005D /* TorrentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005D2C6000010000005D /* TorrentService.swift */; };
+		AA10005E2C6000010000005E /* TorrentTaskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005E2C6000010000005E /* TorrentTaskModel.swift */; };
+		DD1000012D10000100000001 /* TorrentRemovalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1000022D10000100000002 /* TorrentRemovalCoordinator.swift */; };
+		DD1000032D10000100000003 /* TorrentManualPauseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1000042D10000100000004 /* TorrentManualPauseStore.swift */; };
+		AA10005F2C6000010000005F /* TorrentItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005F2C6000010000005F /* TorrentItemCard.swift */; };
+		AA1000602C60000100000060 /* AddTorrentSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000602C60000100000060 /* AddTorrentSheet.swift */; };
+		AA1000612C60000100000061 /* TorrentDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000612C60000100000061 /* TorrentDetailSheet.swift */; };
+		AA1000652C60000100000065 /* TorrentSettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000652C60000100000065 /* TorrentSettingsSheet.swift */; };
+		AA1000702C60000100000070 /* DownloadHistoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000702C60000100000070 /* DownloadHistoryEntry.swift */; };
+		AA1000712C60000100000071 /* DownloadHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000712C60000100000071 /* DownloadHistoryManager.swift */; };
+		AA1000722C60000100000072 /* ClipboardDownloadBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */; };
+		AA1000732C60000100000073 /* DownloadHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000732C60000100000073 /* DownloadHistoryView.swift */; };
+		AA1000742C60000100000074 /* DownloadHistoryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000742C60000100000074 /* DownloadHistoryViewModel.swift */; };
+		AA1000622C60000100000062 /* LibTorrent.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB1000632C60000100000063 /* LibTorrent.framework */; };
+		AA1000632C60000100000063 /* LibTorrent.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = BB1000632C60000100000063 /* LibTorrent.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		AA2000012C60000100000001 /* SettingsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000012C60000100000001 /* SettingsServiceTests.swift */; };
+		AA2000022C60000100000002 /* NavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000022C60000100000002 /* NavigationTests.swift */; };
+		AA2000032C60000100000003 /* DownloadEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000032C60000100000003 /* DownloadEngineTests.swift */; };
+		AA2000042C60000100000004 /* QueueManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000042C60000100000004 /* QueueManagerTests.swift */; };
+		AA2000052C60000100000005 /* DownloadRestorationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000052C60000100000005 /* DownloadRestorationTests.swift */; };
+		AA2000062C60000100000006 /* BrowserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000062C60000100000006 /* BrowserTests.swift */; };
+		AA2000072C60000100000007 /* ChecksumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000072C60000100000007 /* ChecksumTests.swift */; };
+		AA2000082C60000100000008 /* PowerNetworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000082C60000100000008 /* PowerNetworkTests.swift */; };
+		AA2000092C60000100000009 /* URLFilenameExtractorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000092C60000100000009 /* URLFilenameExtractorTests.swift */; };
+		AA20000A2C6000010000000A /* BackgroundKeepAliveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000A2C6000010000000A /* BackgroundKeepAliveTests.swift */; };
+		AA20000B2C6000010000000B /* ProxyConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000B2C6000010000000B /* ProxyConfigurationTests.swift */; };
+		AA20000C2C6000010000000C /* ProxyYAMLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000C2C6000010000000C /* ProxyYAMLParserTests.swift */; };
+		AA20000D2C6000010000000D /* ProxyPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000D2C6000010000000D /* ProxyPersistenceTests.swift */; };
+		AA20000E2C6000010000000E /* ProxyTesterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000E2C6000010000000E /* ProxyTesterTests.swift */; };
+		D54E00012C60000100000001 /* ProxyAdapterDataPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54E00022C60000100000002 /* ProxyAdapterDataPathTests.swift */; };
+		D55400012C60000100000001 /* DirectoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500012C60000100000001 /* DirectoryModels.swift */; };
+		D55400022C60000100000002 /* DirectoryHTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500022C60000100000002 /* DirectoryHTMLParser.swift */; };
+		D55400032C60000100000003 /* DirectoryHTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500032C60000100000003 /* DirectoryHTTPClient.swift */; };
+		D55400042C60000100000004 /* DirectoryFolderCrawler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500042C60000100000004 /* DirectoryFolderCrawler.swift */; };
+		D55400052C60000100000005 /* DirectoryHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500052C60000100000005 /* DirectoryHistoryManager.swift */; };
+		D55400062C60000100000006 /* DirectoryThumbnailLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500062C60000100000006 /* DirectoryThumbnailLoader.swift */; };
+		D55400072C60000100000007 /* DirectoryBrowserViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500072C60000100000007 /* DirectoryBrowserViewModel.swift */; };
+		D55400082C60000100000008 /* DirectoryChromeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500082C60000100000008 /* DirectoryChromeViews.swift */; };
+		D55400092C60000100000009 /* DirectoryItemViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55500092C60000100000009 /* DirectoryItemViews.swift */; };
+		D554000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift */; };
+		D554000B2C6000010000000B /* DirectoryMediaPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */; };
+		D554000C2C6000010000000C /* DirectoryModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000C2C6000010000000C /* DirectoryModeView.swift */; };
+		D55800012C60000100000001 /* DirectorySearchModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700012C60000100000001 /* DirectorySearchModels.swift */; };
+		D55800022C60000100000002 /* DirectorySearchIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700022C60000100000002 /* DirectorySearchIndex.swift */; };
+		D55800032C60000100000003 /* DirectorySearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700032C60000100000003 /* DirectorySearchService.swift */; };
+		D55800042C60000100000004 /* GeminiDirectorySearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700042C60000100000004 /* GeminiDirectorySearchService.swift */; };
+		D55800052C60000100000005 /* DirectoryAISearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700052C60000100000005 /* DirectoryAISearchViewModel.swift */; };
+		D55800062C60000100000006 /* DirectoryAISearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55700062C60000100000006 /* DirectoryAISearchView.swift */; };
+		D554000D2C6000010000000D /* DirectoryParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D555000D2C6000010000000D /* DirectoryParserTests.swift */; };
+		FF1000032C90000100000003 /* FolderDownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000042C90000100000004 /* FolderDownloadModels.swift */; };
+		FF1000052C90000100000005 /* FolderDownloadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */; };
+		FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */; };
+		FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF10000A2C9000010000000A /* FolderDownloadTests.swift */; };
+		D55900022C60000100000002 /* DirectorySearchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55900012C60000100000001 /* DirectorySearchTests.swift */; };
+		D55E00022C60000100000002 /* SettingsAboutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55E00012C60000100000001 /* SettingsAboutTests.swift */; };
+		AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB20000F2C6000010000000F /* ProxyStateTests.swift */; };
+		AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000102C60000100000010 /* MockKeychainStore.swift */; };
+		AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */; };
+		AA2000112C60000100000011 /* DownloadHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000112C60000100000011 /* DownloadHistoryTests.swift */; };
+		AA3000012C60000100000001 /* ProxyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000012C60000100000001 /* ProxyView.swift */; };
+		AA3000022C60000100000002 /* ProxyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000022C60000100000002 /* ProxyViewModel.swift */; };
+		AA3000032C60000100000003 /* ProxyStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000032C60000100000003 /* ProxyStatusCard.swift */; };
+		AA3000042C60000100000004 /* ProxyProfileRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000042C60000100000004 /* ProxyProfileRow.swift */; };
+		AA3000052C60000100000005 /* AddEditProxySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000052C60000100000005 /* AddEditProxySheet.swift */; };
+		AA3000062C60000100000006 /* ProxyYAMLImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000062C60000100000006 /* ProxyYAMLImportView.swift */; };
+		AA3000072C60000100000007 /* ProxyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000072C60000100000007 /* ProxyModels.swift */; };
+		AA3000082C60000100000008 /* ProxyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000082C60000100000008 /* ProxyService.swift */; };
+		AA3000092C60000100000009 /* SOCKS5Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3000092C60000100000009 /* SOCKS5Client.swift */; };
+		AA30000A2C6000010000000A /* ProxyYAMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000A2C6000010000000A /* ProxyYAMLParser.swift */; };
+		AA30000B2C6000010000000B /* ProxyKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000B2C6000010000000B /* ProxyKeychainStore.swift */; };
+		A3E000012C60000100000001 /* ProxyUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3E000012C60000100000001 /* ProxyUITests.swift */; };
+		AA1000642C60000100000064 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB1000642C60000100000064 /* Assets.xcassets */; };
+		AA30000C2C6000010000000C /* ProxyTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000C2C6000010000000C /* ProxyTransport.swift */; };
+		AA30000D2C6000010000000D /* ProxyTester.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000D2C6000010000000D /* ProxyTester.swift */; };
+		AA30000E2C6000010000000E /* ProxySessionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30000E2C6000010000000E /* ProxySessionProvider.swift */; };
+		AA30000F2C6000010000000F /* DefaultProxies.yaml in Resources */ = {isa = PBXBuildFile; fileRef = BB30000F2C6000010000000F /* DefaultProxies.yaml */; };
+		AA4000032C60000100000003 /* Yams in Sources */ = {isa = PBXBuildFile; productRef = AA4000022C60000100000002 /* Yams */; };
+		AA4E00012C60000100000001 /* TorrentBackgroundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00012C60000100000001 /* TorrentBackgroundManager.swift */; };
+		AA4E00022C60000100000002 /* TorrentCompletionTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00022C60000100000002 /* TorrentCompletionTracker.swift */; };
+		AA4E00032C60000100000003 /* TorrentActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */; };
+		AA4E00042C60000100000004 /* TorrentActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */; };
+		AA4E00052C60000100000005 /* FluxDLWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00042C60000100000004 /* FluxDLWidgetsBundle.swift */; };
+		AA4E00062C60000100000006 /* TorrentLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00052C60000100000005 /* TorrentLiveActivity.swift */; };
+		AA4E00072C60000100000007 /* FluxDLWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BB4E00062C60000100000006 /* FluxDLWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AA4E00082C60000100000008 /* TorrentBackgroundManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */; };
+		AA4E00092C60000100000009 /* TorrentCompletionTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */; };
+		DD1000052D10000100000005 /* TorrentServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1000062D10000100000006 /* TorrentServiceTests.swift */; };
+		AA1000752C60000100000075 /* SemanticVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000752C60000100000075 /* SemanticVersion.swift */; };
+		AA1000762C60000100000076 /* AppVersionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000762C60000100000076 /* AppVersionService.swift */; };
+		AA1000772C60000100000077 /* GitHubReleaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000772C60000100000077 /* GitHubReleaseService.swift */; };
+		AA1000782C60000100000078 /* AppIconLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000782C60000100000078 /* AppIconLoader.swift */; };
+		AA2000132C60000100000013 /* SemanticVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000132C60000100000013 /* SemanticVersionTests.swift */; };
+		AA2000142C60000100000014 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000142C60000100000014 /* UpdateCheckerTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		CC1000012C60000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD1000012C60000100000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE1000012C60000100000001;
+			remoteInfo = FluxDL;
+		};
+		CC1000022C60000100000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB1000622C60000100000062 /* LibTorrent.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = D15147642AE6AE9C000407AE;
+			remoteInfo = LibTorrent;
+		};
+		CC3E00012C60000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD1000012C60000100000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE1000012C60000100000001;
+			remoteInfo = FluxDL;
+		};
+		CC4E00012C60000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD1000012C60000100000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EE4E00012C60000100000001;
+			remoteInfo = FluxDLWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		BB1000002C60000100000000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB1000642C60000100000064 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BB1000012C60000100000001 /* FluxDLApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxDLApp.swift; sourceTree = "<group>"; };
+		BB1000022C60000100000002 /* ServiceContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceContainer.swift; sourceTree = "<group>"; };
+		BB1000032C60000100000003 /* SettingsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsService.swift; sourceTree = "<group>"; };
+		BB1000042C60000100000004 /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
+		BB1000052C60000100000005 /* ThemeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeService.swift; sourceTree = "<group>"; };
+		BB1000062C60000100000006 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		BB1000072C60000100000007 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
+		BB1000082C60000100000008 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		BB1000092C60000100000009 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		BB10000A2C6000010000000A /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
+		BB10000B2C6000010000000B /* DownloadsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsViewModel.swift; sourceTree = "<group>"; };
+		BB10000C2C6000010000000C /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
+		BB10000D2C6000010000000D /* BrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserViewModel.swift; sourceTree = "<group>"; };
+		BB1000102C60000100000010 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BB1000112C60000100000011 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		D55B00022C60000100000002 /* LegalDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocuments.swift; sourceTree = "<group>"; };
+		D55C00022C60000100000002 /* LegalDocumentViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocumentViews.swift; sourceTree = "<group>"; };
+		D55D00022C60000100000002 /* DeveloperProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeveloperProfileView.swift; sourceTree = "<group>"; };
+		BB1000122C60000100000012 /* DownloadTaskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadTaskModel.swift; sourceTree = "<group>"; };
+		BB1000702C60000100000070 /* DownloadHistoryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryEntry.swift; sourceTree = "<group>"; };
+		BB1000132C60000100000013 /* DownloadRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRepository.swift; sourceTree = "<group>"; };
+		BB1000142C60000100000014 /* FileManagementService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileManagementService.swift; sourceTree = "<group>"; };
+		BB1000152C60000100000015 /* DownloadEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadEngine.swift; sourceTree = "<group>"; };
+		BB1000162C60000100000016 /* DownloadItemCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadItemCard.swift; sourceTree = "<group>"; };
+		BB1000172C60000100000017 /* AddDownloadSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddDownloadSheet.swift; sourceTree = "<group>"; };
+		BB1000182C60000100000018 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageManager.swift; sourceTree = "<group>"; };
+		BB1000192C60000100000019 /* QueueManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueManager.swift; sourceTree = "<group>"; };
+		BB10001A2C6000010000001A /* StorageHeaderCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageHeaderCard.swift; sourceTree = "<group>"; };
+		BB10001B2C6000010000001B /* QueueSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueSettingsSheet.swift; sourceTree = "<group>"; };
+		BB10001C2C6000010000001C /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		BB10001D2C6000010000001D /* DownloadRestorationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRestorationService.swift; sourceTree = "<group>"; };
+		BB10001E2C6000010000001E /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		BB10001F2C6000010000001F /* ClipboardService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardService.swift; sourceTree = "<group>"; };
+		BB1000202C60000100000020 /* ChecksumVerifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecksumVerifier.swift; sourceTree = "<group>"; };
+		BB1000212C60000100000021 /* PowerNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerNetworkMonitor.swift; sourceTree = "<group>"; };
+		BB1000222C60000100000022 /* WebViewContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewContainer.swift; sourceTree = "<group>"; };
+		BB1000232C60000100000023 /* URLFilenameExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLFilenameExtractor.swift; sourceTree = "<group>"; };
+		BB1000242C60000100000024 /* BackgroundKeepAliveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundKeepAliveService.swift; sourceTree = "<group>"; };
+		BB1000302C60000100000030 /* BrowserSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BrowserSettings.swift; sourceTree = "<group>"; };
+		BB1000312C60000100000031 /* BookmarkModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BookmarkModel.swift; sourceTree = "<group>"; };
+		BB1000322C60000100000032 /* BrowserHistoryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BrowserHistoryItem.swift; sourceTree = "<group>"; };
+		BB1000332C60000100000033 /* BrowserTabModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BrowserTabModel.swift; sourceTree = "<group>"; };
+		BB1000342C60000100000034 /* BookmarkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BookmarkManager.swift; sourceTree = "<group>"; };
+		BB1000352C60000100000035 /* BrowserHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserHistoryManager.swift; sourceTree = "<group>"; };
+		BB1000362C60000100000036 /* AdBlockEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/AdBlockEngine.swift; sourceTree = "<group>"; };
+		BB1000372C60000100000037 /* FindInPageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/FindInPageManager.swift; sourceTree = "<group>"; };
+		BB1000382C60000100000038 /* BrowserTabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserTabManager.swift; sourceTree = "<group>"; };
+		BB1000392C60000100000039 /* BrowserAddressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserAddressBar.swift; sourceTree = "<group>"; };
+		BB1000662C60000100000066 /* BrowserToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserToolbar.swift; sourceTree = "<group>"; };
+		BB10003A2C6000010000003A /* BrowserTabGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserTabGridView.swift; sourceTree = "<group>"; };
+		BB10003B2C6000010000003B /* BrowserBookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserBookmarksView.swift; sourceTree = "<group>"; };
+		BB10003C2C6000010000003C /* BrowserHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserHistoryView.swift; sourceTree = "<group>"; };
+		BB10003D2C6000010000003D /* FindInPageBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/FindInPageBar.swift; sourceTree = "<group>"; };
+		BB10003E2C6000010000003E /* BrowserSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserSettingsSheet.swift; sourceTree = "<group>"; };
+		BB10003F2C6000010000003F /* BrowserTabPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserTabPersistence.swift; sourceTree = "<group>"; };
+		BB1000402C60000100000040 /* BrowserConnectivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserConnectivityMonitor.swift; sourceTree = "<group>"; };
+		BB1000412C60000100000041 /* BrowserProxySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserProxySession.swift; sourceTree = "<group>"; };
+		BB1000422C60000100000042 /* BrowserFaviconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserFaviconView.swift; sourceTree = "<group>"; };
+		BB1000432C60000100000043 /* BrowserErrorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserErrorView.swift; sourceTree = "<group>"; };
+		FF1000022C90000100000002 /* BrowserDownloadPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserDownloadPromptView.swift; sourceTree = "<group>"; };
+		FF3000022D00000100000002 /* BrowserTorrentLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/BrowserTorrentLink.swift; sourceTree = "<group>"; };
+		FF3000042D00000100000004 /* BrowserTorrentPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserTorrentPromptView.swift; sourceTree = "<group>"; };
+		BB1000442C60000100000044 /* BrowserEditBookmarkSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components/BrowserEditBookmarkSheet.swift; sourceTree = "<group>"; };
+		BB1000502C60000100000050 /* DownloadFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadFilters.swift; sourceTree = "<group>"; };
+		BB1000512C60000100000051 /* DownloadMetadataCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadMetadataCapture.swift; sourceTree = "<group>"; };
+		BB1000712C60000100000071 /* DownloadHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryManager.swift; sourceTree = "<group>"; };
+		BB1000522C60000100000052 /* DownloadDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadDiagnostics.swift; sourceTree = "<group>"; };
+		BB1000532C60000100000053 /* DownloadMirrorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadMirrorManager.swift; sourceTree = "<group>"; };
+		BB1000542C60000100000054 /* DownloadVerification.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadVerification.swift; sourceTree = "<group>"; };
+		BB1000552C60000100000055 /* DownloadBatchManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadBatchManager.swift; sourceTree = "<group>"; };
+		BB1000562C60000100000056 /* DownloadInfoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadInfoSheet.swift; sourceTree = "<group>"; };
+		BB1000572C60000100000057 /* DownloadDiagnosticsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadDiagnosticsSheet.swift; sourceTree = "<group>"; };
+		BB1000582C60000100000058 /* UpdateURLSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateURLSheet.swift; sourceTree = "<group>"; };
+		BB1000592C60000100000059 /* MirrorPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorPickerSheet.swift; sourceTree = "<group>"; };
+		BB10005A2C6000010000005A /* DuplicateResolutionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuplicateResolutionSheet.swift; sourceTree = "<group>"; };
+		BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardDownloadBanner.swift; sourceTree = "<group>"; };
+		BB1000732C60000100000073 /* DownloadHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryView.swift; sourceTree = "<group>"; };
+		BB1000742C60000100000074 /* DownloadHistoryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryViewModel.swift; sourceTree = "<group>"; };
+		BB1000752C60000100000075 /* SemanticVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticVersion.swift; sourceTree = "<group>"; };
+		BB1000762C60000100000076 /* AppVersionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionService.swift; sourceTree = "<group>"; };
+		BB1000772C60000100000077 /* GitHubReleaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubReleaseService.swift; sourceTree = "<group>"; };
+		BB1000782C60000100000078 /* AppIconLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconLoader.swift; sourceTree = "<group>"; };
+		BB10005B2C6000010000005B /* TorrentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentView.swift; sourceTree = "<group>"; };
+		BB10005C2C6000010000005C /* TorrentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentViewModel.swift; sourceTree = "<group>"; };
+		BB10005D2C6000010000005D /* TorrentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentService.swift; sourceTree = "<group>"; };
+		BB10005E2C6000010000005E /* TorrentTaskModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentTaskModel.swift; sourceTree = "<group>"; };
+		DD1000022D10000100000002 /* TorrentRemovalCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentRemovalCoordinator.swift; sourceTree = "<group>"; };
+		DD1000042D10000100000004 /* TorrentManualPauseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentManualPauseStore.swift; sourceTree = "<group>"; };
+		BB10005F2C6000010000005F /* TorrentItemCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentItemCard.swift; sourceTree = "<group>"; };
+		BB1000602C60000100000060 /* AddTorrentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTorrentSheet.swift; sourceTree = "<group>"; };
+		BB1000612C60000100000061 /* TorrentDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentDetailSheet.swift; sourceTree = "<group>"; };
+		BB1000652C60000100000065 /* TorrentSettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentSettingsSheet.swift; sourceTree = "<group>"; };
+		BB1000622C60000100000062 /* LibTorrent.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = LibTorrent.xcodeproj; path = "Submodules/LibTorrent-Swift/LibTorrent.xcodeproj"; sourceTree = "<group>"; };
+		BB1000632C60000100000063 /* LibTorrent.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = LibTorrent.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB1000992C60000100000099 /* FluxDL.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FluxDL.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB2000012C60000100000001 /* SettingsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsServiceTests.swift; sourceTree = "<group>"; };
+		BB2000022C60000100000002 /* NavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationTests.swift; sourceTree = "<group>"; };
+		BB2000032C60000100000003 /* DownloadEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadEngineTests.swift; sourceTree = "<group>"; };
+		BB2000042C60000100000004 /* QueueManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueManagerTests.swift; sourceTree = "<group>"; };
+		BB2000052C60000100000005 /* DownloadRestorationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRestorationTests.swift; sourceTree = "<group>"; };
+		BB2000062C60000100000006 /* BrowserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTests.swift; sourceTree = "<group>"; };
+		BB2000072C60000100000007 /* ChecksumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecksumTests.swift; sourceTree = "<group>"; };
+		BB2000082C60000100000008 /* PowerNetworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerNetworkTests.swift; sourceTree = "<group>"; };
+		BB2000092C60000100000009 /* URLFilenameExtractorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLFilenameExtractorTests.swift; sourceTree = "<group>"; };
+		BB20000A2C6000010000000A /* BackgroundKeepAliveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundKeepAliveTests.swift; sourceTree = "<group>"; };
+		BB20000B2C6000010000000B /* ProxyConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyConfigurationTests.swift; sourceTree = "<group>"; };
+		BB20000C2C6000010000000C /* ProxyYAMLParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyYAMLParserTests.swift; sourceTree = "<group>"; };
+		BB20000D2C6000010000000D /* ProxyPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyPersistenceTests.swift; sourceTree = "<group>"; };
+		BB20000E2C6000010000000E /* ProxyTesterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTesterTests.swift; sourceTree = "<group>"; };
+		D54E00022C60000100000002 /* ProxyAdapterDataPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyAdapterDataPathTests.swift; sourceTree = "<group>"; };
+		BB20000F2C6000010000000F /* ProxyStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyStateTests.swift; sourceTree = "<group>"; };
+		BB2000102C60000100000010 /* MockKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockKeychainStore.swift; sourceTree = "<group>"; };
+		BB2000112C60000100000011 /* DownloadHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHistoryTests.swift; sourceTree = "<group>"; };
+		BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsLiveApplyTests.swift; sourceTree = "<group>"; };
+		BB2000132C60000100000013 /* SemanticVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticVersionTests.swift; sourceTree = "<group>"; };
+		BB2000142C60000100000014 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
+		BB3000012C60000100000001 /* ProxyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyView.swift; sourceTree = "<group>"; };
+		BB3000022C60000100000002 /* ProxyViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyViewModel.swift; sourceTree = "<group>"; };
+		BB3000032C60000100000003 /* ProxyStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyStatusCard.swift; sourceTree = "<group>"; };
+		BB3000042C60000100000004 /* ProxyProfileRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyProfileRow.swift; sourceTree = "<group>"; };
+		BB3000052C60000100000005 /* AddEditProxySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEditProxySheet.swift; sourceTree = "<group>"; };
+		BB3000062C60000100000006 /* ProxyYAMLImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyYAMLImportView.swift; sourceTree = "<group>"; };
+		BB3000072C60000100000007 /* ProxyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyModels.swift; sourceTree = "<group>"; };
+		BB3000082C60000100000008 /* ProxyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyService.swift; sourceTree = "<group>"; };
+		BB3000092C60000100000009 /* SOCKS5Client.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SOCKS5Client.swift; sourceTree = "<group>"; };
+		BB30000A2C6000010000000A /* ProxyYAMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyYAMLParser.swift; sourceTree = "<group>"; };
+		BB30000B2C6000010000000B /* ProxyKeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyKeychainStore.swift; sourceTree = "<group>"; };
+		BB30000C2C6000010000000C /* ProxyTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTransport.swift; sourceTree = "<group>"; };
+		BB30000D2C6000010000000D /* ProxyTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyTester.swift; sourceTree = "<group>"; };
+		BB30000E2C6000010000000E /* ProxySessionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxySessionProvider.swift; sourceTree = "<group>"; };
+		BB30000F2C6000010000000F /* DefaultProxies.yaml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = DefaultProxies.yaml; sourceTree = "<group>"; };
+		BB4E00012C60000100000001 /* TorrentBackgroundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentBackgroundManager.swift; sourceTree = "<group>"; };
+		BB4E00022C60000100000002 /* TorrentCompletionTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentCompletionTracker.swift; sourceTree = "<group>"; };
+		BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentActivityAttributes.swift; sourceTree = "<group>"; };
+		BB4E00042C60000100000004 /* FluxDLWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxDLWidgetsBundle.swift; sourceTree = "<group>"; };
+		BB4E00052C60000100000005 /* TorrentLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentLiveActivity.swift; sourceTree = "<group>"; };
+		BB4E00062C60000100000006 /* FluxDLWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FluxDLWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentBackgroundManagerTests.swift; sourceTree = "<group>"; };
+		BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentCompletionTrackerTests.swift; sourceTree = "<group>"; };
+		DD1000062D10000100000006 /* TorrentServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TorrentServiceTests.swift; sourceTree = "<group>"; };
+		BB4E00092C60000100000009 /* WidgetInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B3E000012C60000100000001 /* ProxyUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyUITests.swift; sourceTree = "<group>"; };
+		D55500012C60000100000001 /* DirectoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryModels.swift; sourceTree = "<group>"; };
+		D55500022C60000100000002 /* DirectoryHTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryHTMLParser.swift; sourceTree = "<group>"; };
+		D55500032C60000100000003 /* DirectoryHTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryHTTPClient.swift; sourceTree = "<group>"; };
+		D55500042C60000100000004 /* DirectoryFolderCrawler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryFolderCrawler.swift; sourceTree = "<group>"; };
+		D55500052C60000100000005 /* DirectoryHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryHistoryManager.swift; sourceTree = "<group>"; };
+		D55500062C60000100000006 /* DirectoryThumbnailLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryThumbnailLoader.swift; sourceTree = "<group>"; };
+		D55500072C60000100000007 /* DirectoryBrowserViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryBrowserViewModel.swift; sourceTree = "<group>"; };
+		D55500082C60000100000008 /* DirectoryChromeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryChromeViews.swift; sourceTree = "<group>"; };
+		D55500092C60000100000009 /* DirectoryItemViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryItemViews.swift; sourceTree = "<group>"; };
+		D555000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryFolderDownloadPreview.swift; sourceTree = "<group>"; };
+		D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryMediaPlayerView.swift; sourceTree = "<group>"; };
+		D555000C2C6000010000000C /* DirectoryModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryModeView.swift; sourceTree = "<group>"; };
+		D55700012C60000100000001 /* DirectorySearchModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchModels.swift; sourceTree = "<group>"; };
+		D55700022C60000100000002 /* DirectorySearchIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchIndex.swift; sourceTree = "<group>"; };
+		D55700032C60000100000003 /* DirectorySearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchService.swift; sourceTree = "<group>"; };
+		D55700042C60000100000004 /* GeminiDirectorySearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiDirectorySearchService.swift; sourceTree = "<group>"; };
+		D55700052C60000100000005 /* DirectoryAISearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAISearchViewModel.swift; sourceTree = "<group>"; };
+		D55700062C60000100000006 /* DirectoryAISearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryAISearchView.swift; sourceTree = "<group>"; };
+		D555000D2C6000010000000D /* DirectoryParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryParserTests.swift; sourceTree = "<group>"; };
+		FF1000042C90000100000004 /* FolderDownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadModels.swift; sourceTree = "<group>"; };
+		FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadCoordinator.swift; sourceTree = "<group>"; };
+		FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadGroupCard.swift; sourceTree = "<group>"; };
+		FF10000A2C9000010000000A /* FolderDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadTests.swift; sourceTree = "<group>"; };
+		D55900012C60000100000001 /* DirectorySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchTests.swift; sourceTree = "<group>"; };
+		D55E00012C60000100000001 /* SettingsAboutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAboutTests.swift; sourceTree = "<group>"; };
+		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		GG1000002C60000100000000 /* Main Group */ = {
+			isa = PBXGroup;
+			children = (
+				GG1000012C60000100000001 /* FluxDL */,
+				GG2000012C60000100000001 /* FluxDLTests */,
+				GG3E00012C60000100000001 /* FluxDLUITests */,
+				GG4E00012C60000100000001 /* FluxDLWidgets */,
+				GG1000992C60000100000099 /* Products */,
+				GG1000122C60000100000012 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		GG4E00012C60000100000001 /* FluxDLWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				BB4E00042C60000100000004 /* FluxDLWidgetsBundle.swift */,
+				BB4E00052C60000100000005 /* TorrentLiveActivity.swift */,
+				BB4E00092C60000100000009 /* Info.plist */,
+			);
+			path = FluxDLWidgets;
+			sourceTree = "<group>";
+		};
+		GG4E00022C60000100000002 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				BB4E00032C60000100000003 /* TorrentActivityAttributes.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		GG1000012C60000100000001 /* FluxDL */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000002C60000100000000 /* Info.plist */,
+				BB1000642C60000100000064 /* Assets.xcassets */,
+				BB1000012C60000100000001 /* FluxDLApp.swift */,
+				GG4E00022C60000100000002 /* Shared */,
+				GG1000022C60000100000002 /* Core */,
+				GG1000032C60000100000003 /* Services */,
+				GG1000042C60000100000004 /* DesignSystem */,
+				GG1000052C60000100000005 /* Views */,
+				GG3000042C60000100000004 /* Resources */,
+			);
+			path = FluxDL;
+			sourceTree = "<group>";
+		};
+		GG1000022C60000100000002 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				GG1000062C60000100000006 /* Architecture */,
+				GG10000D2C6000010000000D /* Models */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		GG1000062C60000100000006 /* Architecture */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000022C60000100000002 /* ServiceContainer.swift */,
+			);
+			path = Architecture;
+			sourceTree = "<group>";
+		};
+		GG10000D2C6000010000000D /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000122C60000100000012 /* DownloadTaskModel.swift */,
+				BB1000702C60000100000070 /* DownloadHistoryEntry.swift */,
+				FF1000042C90000100000004 /* FolderDownloadModels.swift */,
+				BB3000072C60000100000007 /* ProxyModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		GG1000032C60000100000003 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000032C60000100000003 /* SettingsService.swift */,
+				BB1000042C60000100000004 /* HapticService.swift */,
+				BB1000052C60000100000005 /* ThemeService.swift */,
+				BB1000752C60000100000075 /* SemanticVersion.swift */,
+				BB1000762C60000100000076 /* AppVersionService.swift */,
+				BB1000772C60000100000077 /* GitHubReleaseService.swift */,
+				BB1000782C60000100000078 /* AppIconLoader.swift */,
+				D55B00022C60000100000002 /* LegalDocuments.swift */,
+				BB1000132C60000100000013 /* DownloadRepository.swift */,
+				BB1000142C60000100000014 /* FileManagementService.swift */,
+				BB1000152C60000100000015 /* DownloadEngine.swift */,
+				BB1000182C60000100000018 /* StorageManager.swift */,
+				BB1000192C60000100000019 /* QueueManager.swift */,
+				BB10001C2C6000010000001C /* NotificationService.swift */,
+				BB10001D2C6000010000001D /* DownloadRestorationService.swift */,
+				BB10001E2C6000010000001E /* LiveActivityManager.swift */,
+				BB10001F2C6000010000001F /* ClipboardService.swift */,
+				BB1000202C60000100000020 /* ChecksumVerifier.swift */,
+				BB1000212C60000100000021 /* PowerNetworkMonitor.swift */,
+				BB1000232C60000100000023 /* URLFilenameExtractor.swift */,
+				BB1000242C60000100000024 /* BackgroundKeepAliveService.swift */,
+				BB1000502C60000100000050 /* DownloadFilters.swift */,
+				BB1000512C60000100000051 /* DownloadMetadataCapture.swift */,
+				BB1000712C60000100000071 /* DownloadHistoryManager.swift */,
+				BB1000522C60000100000052 /* DownloadDiagnostics.swift */,
+				BB1000532C60000100000053 /* DownloadMirrorManager.swift */,
+				BB1000542C60000100000054 /* DownloadVerification.swift */,
+				BB1000552C60000100000055 /* DownloadBatchManager.swift */,
+				FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */,
+				GG10000F2C6000010000000F /* Torrent */,
+				GG3000032C60000100000003 /* Proxy */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		GG3000032C60000100000003 /* Proxy */ = {
+			isa = PBXGroup;
+			children = (
+				BB3000082C60000100000008 /* ProxyService.swift */,
+				BB3000092C60000100000009 /* SOCKS5Client.swift */,
+				BB30000A2C6000010000000A /* ProxyYAMLParser.swift */,
+				BB30000B2C6000010000000B /* ProxyKeychainStore.swift */,
+				BB30000C2C6000010000000C /* ProxyTransport.swift */,
+				BB30000D2C6000010000000D /* ProxyTester.swift */,
+				BB30000E2C6000010000000E /* ProxySessionProvider.swift */,
+			);
+			path = Proxy;
+			sourceTree = "<group>";
+		};
+		GG10000F2C6000010000000F /* Torrent */ = {
+			isa = PBXGroup;
+			children = (
+				BB10005D2C6000010000005D /* TorrentService.swift */,
+				BB10005E2C6000010000005E /* TorrentTaskModel.swift */,
+				BB4E00012C60000100000001 /* TorrentBackgroundManager.swift */,
+				BB4E00022C60000100000002 /* TorrentCompletionTracker.swift */,
+				DD1000022D10000100000002 /* TorrentRemovalCoordinator.swift */,
+				DD1000042D10000100000004 /* TorrentManualPauseStore.swift */,
+			);
+			path = Torrent;
+			sourceTree = "<group>";
+		};
+		GG1000042C60000100000004 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				GG1000072C60000100000007 /* Theme */,
+				GG1000082C60000100000008 /* Components */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		GG1000072C60000100000007 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000062C60000100000006 /* AppTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		GG1000082C60000100000008 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000072C60000100000007 /* GlassCard.swift */,
+				BB1000082C60000100000008 /* StatusBadge.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		GG3000042C60000100000004 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				GG3000052C60000100000005 /* Proxies */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		GG3000052C60000100000005 /* Proxies */ = {
+			isa = PBXGroup;
+			children = (
+				BB30000F2C6000010000000F /* DefaultProxies.yaml */,
+			);
+			path = Proxies;
+			sourceTree = "<group>";
+		};
+		GG1000052C60000100000005 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000092C60000100000009 /* MainTabView.swift */,
+				GG1000092C60000100000009 /* Downloads */,
+				GG10000A2C6000010000000A /* Browser */,
+				GG3000012C60000100000001 /* Proxy */,
+				GG10000C2C6000010000000C /* Settings */,
+				GG1000102C60000100000010 /* Torrent */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		GG3000012C60000100000001 /* Proxy */ = {
+			isa = PBXGroup;
+			children = (
+				BB3000012C60000100000001 /* ProxyView.swift */,
+				BB3000022C60000100000002 /* ProxyViewModel.swift */,
+				GG3000022C60000100000002 /* Components */,
+			);
+			path = Proxy;
+			sourceTree = "<group>";
+		};
+		GG3000022C60000100000002 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				BB3000032C60000100000003 /* ProxyStatusCard.swift */,
+				BB3000042C60000100000004 /* ProxyProfileRow.swift */,
+				BB3000052C60000100000005 /* AddEditProxySheet.swift */,
+				BB3000062C60000100000006 /* ProxyYAMLImportView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		GG1000102C60000100000010 /* Torrent */ = {
+			isa = PBXGroup;
+			children = (
+				BB10005B2C6000010000005B /* TorrentView.swift */,
+				BB10005C2C6000010000005C /* TorrentViewModel.swift */,
+				GG1000112C60000100000011 /* Components */,
+			);
+			path = Torrent;
+			sourceTree = "<group>";
+		};
+		GG1000112C60000100000011 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				BB10005F2C6000010000005F /* TorrentItemCard.swift */,
+				BB1000602C60000100000060 /* AddTorrentSheet.swift */,
+				BB1000612C60000100000061 /* TorrentDetailSheet.swift */,
+				BB1000652C60000100000065 /* TorrentSettingsSheet.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		GG1000122C60000100000012 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000622C60000100000062 /* LibTorrent.xcodeproj */,
+				BB1000632C60000100000063 /* LibTorrent.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		GG1000092C60000100000009 /* Downloads */ = {
+			isa = PBXGroup;
+			children = (
+				BB10000A2C6000010000000A /* DownloadsView.swift */,
+				BB10000B2C6000010000000B /* DownloadsViewModel.swift */,
+				BB1000732C60000100000073 /* DownloadHistoryView.swift */,
+				BB1000742C60000100000074 /* DownloadHistoryViewModel.swift */,
+				GG10000E2C6000010000000E /* Components */,
+			);
+			path = Downloads;
+			sourceTree = "<group>";
+		};
+		GG10000E2C6000010000000E /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000162C60000100000016 /* DownloadItemCard.swift */,
+				BB1000172C60000100000017 /* AddDownloadSheet.swift */,
+				BB10001A2C6000010000001A /* StorageHeaderCard.swift */,
+				BB10001B2C6000010000001B /* QueueSettingsSheet.swift */,
+				BB1000562C60000100000056 /* DownloadInfoSheet.swift */,
+				BB1000572C60000100000057 /* DownloadDiagnosticsSheet.swift */,
+				BB1000582C60000100000058 /* UpdateURLSheet.swift */,
+				BB1000592C60000100000059 /* MirrorPickerSheet.swift */,
+				BB10005A2C6000010000005A /* DuplicateResolutionSheet.swift */,
+				BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */,
+				FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		GG10000A2C6000010000000A /* Browser */ = {
+			isa = PBXGroup;
+			children = (
+				BB10000C2C6000010000000C /* BrowserView.swift */,
+				BB10000D2C6000010000000D /* BrowserViewModel.swift */,
+				BB1000222C60000100000022 /* WebViewContainer.swift */,
+				BB1000302C60000100000030 /* BrowserSettings.swift */,
+				BB1000312C60000100000031 /* BookmarkModel.swift */,
+				BB1000322C60000100000032 /* BrowserHistoryItem.swift */,
+				BB1000332C60000100000033 /* BrowserTabModel.swift */,
+				BB1000342C60000100000034 /* BookmarkManager.swift */,
+				BB1000352C60000100000035 /* BrowserHistoryManager.swift */,
+				BB1000362C60000100000036 /* AdBlockEngine.swift */,
+				BB1000372C60000100000037 /* FindInPageManager.swift */,
+				BB1000382C60000100000038 /* BrowserTabManager.swift */,
+				BB1000392C60000100000039 /* BrowserAddressBar.swift */,
+				BB1000662C60000100000066 /* BrowserToolbar.swift */,
+				BB10003A2C6000010000003A /* BrowserTabGridView.swift */,
+				BB10003B2C6000010000003B /* BrowserBookmarksView.swift */,
+				BB10003C2C6000010000003C /* BrowserHistoryView.swift */,
+				BB10003D2C6000010000003D /* FindInPageBar.swift */,
+				BB10003E2C6000010000003E /* BrowserSettingsSheet.swift */,
+				BB10003F2C6000010000003F /* BrowserTabPersistence.swift */,
+				BB1000402C60000100000040 /* BrowserConnectivityMonitor.swift */,
+				BB1000412C60000100000041 /* BrowserProxySession.swift */,
+				BB1000422C60000100000042 /* BrowserFaviconView.swift */,
+				BB1000432C60000100000043 /* BrowserErrorView.swift */,
+				FF1000022C90000100000002 /* BrowserDownloadPromptView.swift */,
+				FF3000022D00000100000002 /* BrowserTorrentLink.swift */,
+				FF3000042D00000100000004 /* BrowserTorrentPromptView.swift */,
+				BB1000442C60000100000044 /* BrowserEditBookmarkSheet.swift */,
+				D55600012C60000100000001 /* Directory */,
+			);
+			path = Browser;
+			sourceTree = "<group>";
+		};
+		D55600012C60000100000001 /* Directory */ = {
+			isa = PBXGroup;
+			children = (
+				D55600022C60000100000002 /* Models */,
+				D55600032C60000100000003 /* Services */,
+				D55600042C60000100000004 /* Components */,
+				D55A00012C60000100000001 /* AI */,
+				D55500072C60000100000007 /* DirectoryBrowserViewModel.swift */,
+				D555000C2C6000010000000C /* DirectoryModeView.swift */,
+			);
+			path = Directory;
+			sourceTree = "<group>";
+		};
+		D55600022C60000100000002 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				D55500012C60000100000001 /* DirectoryModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D55600032C60000100000003 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				D55500022C60000100000002 /* DirectoryHTMLParser.swift */,
+				D55500032C60000100000003 /* DirectoryHTTPClient.swift */,
+				D55500042C60000100000004 /* DirectoryFolderCrawler.swift */,
+				D55500052C60000100000005 /* DirectoryHistoryManager.swift */,
+				D55500062C60000100000006 /* DirectoryThumbnailLoader.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D55600042C60000100000004 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				D55500082C60000100000008 /* DirectoryChromeViews.swift */,
+				D55500092C60000100000009 /* DirectoryItemViews.swift */,
+				D555000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift */,
+				D555000B2C6000010000000B /* DirectoryMediaPlayerView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		D55A00012C60000100000001 /* AI */ = {
+			isa = PBXGroup;
+			children = (
+				D55700012C60000100000001 /* DirectorySearchModels.swift */,
+				D55700022C60000100000002 /* DirectorySearchIndex.swift */,
+				D55700032C60000100000003 /* DirectorySearchService.swift */,
+				D55700042C60000100000004 /* GeminiDirectorySearchService.swift */,
+				D55700052C60000100000005 /* DirectoryAISearchViewModel.swift */,
+				D55700062C60000100000006 /* DirectoryAISearchView.swift */,
+			);
+			path = AI;
+			sourceTree = "<group>";
+		};
+		GG10000C2C6000010000000C /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000102C60000100000010 /* SettingsView.swift */,
+				BB1000112C60000100000011 /* SettingsViewModel.swift */,
+				D55C00022C60000100000002 /* LegalDocumentViews.swift */,
+				D55D00022C60000100000002 /* DeveloperProfileView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		GG2000012C60000100000001 /* FluxDLTests */ = {
+			isa = PBXGroup;
+			children = (
+				BB2000012C60000100000001 /* SettingsServiceTests.swift */,
+				BB2000022C60000100000002 /* NavigationTests.swift */,
+				BB2000032C60000100000003 /* DownloadEngineTests.swift */,
+				BB2000042C60000100000004 /* QueueManagerTests.swift */,
+				BB2000052C60000100000005 /* DownloadRestorationTests.swift */,
+				BB2000062C60000100000006 /* BrowserTests.swift */,
+				BB2000072C60000100000007 /* ChecksumTests.swift */,
+				BB2000082C60000100000008 /* PowerNetworkTests.swift */,
+				BB2000092C60000100000009 /* URLFilenameExtractorTests.swift */,
+				BB20000A2C6000010000000A /* BackgroundKeepAliveTests.swift */,
+				BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */,
+				BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */,
+				DD1000062D10000100000006 /* TorrentServiceTests.swift */,
+				BB20000B2C6000010000000B /* ProxyConfigurationTests.swift */,
+				BB20000C2C6000010000000C /* ProxyYAMLParserTests.swift */,
+				BB20000D2C6000010000000D /* ProxyPersistenceTests.swift */,
+				BB20000E2C6000010000000E /* ProxyTesterTests.swift */,
+				D54E00022C60000100000002 /* ProxyAdapterDataPathTests.swift */,
+				BB20000F2C6000010000000F /* ProxyStateTests.swift */,
+				BB2000102C60000100000010 /* MockKeychainStore.swift */,
+				BB2000112C60000100000011 /* DownloadHistoryTests.swift */,
+				BB2000122C60000100000012 /* SettingsLiveApplyTests.swift */,
+				BB2000132C60000100000013 /* SemanticVersionTests.swift */,
+				BB2000142C60000100000014 /* UpdateCheckerTests.swift */,
+				B3E000012C60000100000001 /* ProxyUITests.swift */,
+				D555000D2C6000010000000D /* DirectoryParserTests.swift */,
+				FF10000A2C9000010000000A /* FolderDownloadTests.swift */,
+				D55900012C60000100000001 /* DirectorySearchTests.swift */,
+				D55E00012C60000100000001 /* SettingsAboutTests.swift */,
+			);
+			path = FluxDLTests;
+			sourceTree = "<group>";
+		};
+		GG3E00012C60000100000001 /* FluxDLUITests */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = FluxDLUITests;
+			sourceTree = "<group>";
+		};
+		GG1000992C60000100000099 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BB1000992C60000100000099 /* FluxDL.app */,
+				BB2000992C60000100000099 /* FluxDLTests.xctest */,
+				P3E000012C60000100000001 /* FluxDLUITests.xctest */,
+				BB4E00062C60000100000006 /* FluxDLWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EE1000012C60000100000001 /* FluxDL */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF1000012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDL" */;
+			buildPhases = (
+				SS1000012C60000100000001 /* Sources */,
+				E01000012C60000100000001 /* Frameworks */,
+				RR1000012C60000100000001 /* Resources */,
+				E02000012C60000100000002 /* Embed Frameworks */,
+				E04E00022C60000100000002 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DD1000012C60000100000010 /* PBXTargetDependency */,
+				DD4E00012C60000100000001 /* PBXTargetDependency */,
+			);
+			name = FluxDL;
+			packageProductDependencies = (
+				AA4000022C60000100000002 /* Yams */,
+			);
+			productName = FluxDL;
+			productReference = BB1000992C60000100000099 /* FluxDL.app */;
+			productType = "com.apple.product-type.application";
+		};
+		EE2000012C60000100000001 /* FluxDLTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF2000012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLTests" */;
+			buildPhases = (
+				SS2000012C60000100000001 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DD2000012C60000100000001 /* PBXTargetDependency */,
+			);
+			name = FluxDLTests;
+			productName = FluxDLTests;
+			productReference = BB2000992C60000100000099 /* FluxDLTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		EE3000012C60000100000001 /* FluxDLUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF3E00012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLUITests" */;
+			buildPhases = (
+				SS3E00012C60000100000001 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DD3E00012C60000100000001 /* PBXTargetDependency */,
+			);
+			name = FluxDLUITests;
+			productName = FluxDLUITests;
+			productReference = P3E000012C60000100000001 /* FluxDLUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		EE4E00012C60000100000001 /* FluxDLWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF4E00012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLWidgets" */;
+			buildPhases = (
+				SS4E00012C60000100000001 /* Sources */,
+				E04E00012C60000100000001 /* Frameworks */,
+				RR4E00012C60000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FluxDLWidgets;
+			productName = FluxDLWidgets;
+			productReference = BB4E00062C60000100000006 /* FluxDLWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DD1000012C60000100000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					EE1000012C60000100000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					EE2000012C60000100000001 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = EE1000012C60000100000001;
+					};
+					EE3000012C60000100000001 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = EE1000012C60000100000001;
+					};
+					EE4E00012C60000100000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = FF0000012C60000100000001 /* Build configuration list for PBXProject "FluxDL" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = GG1000002C60000100000000 /* Main Group */;
+			productRefGroup = GG1000992C60000100000099 /* Products */;
+			packageReferences = (
+				AA4000012C60000100000001 /* XCLocalSwiftPackageReference "Yams" */,
+			);
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EE1000012C60000100000001 /* FluxDL */,
+				EE2000012C60000100000001 /* FluxDLTests */,
+				EE3000012C60000100000001 /* FluxDLUITests */,
+				EE4E00012C60000100000001 /* FluxDLWidgets */,
+			);
+		};
+/* Begin XCLocalSwiftPackageReference section */
+		AA4000012C60000100000001 /* XCLocalSwiftPackageReference "Yams" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Submodules/Yams;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA4000022C60000100000002 /* Yams */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA4000012C60000100000001 /* XCLocalSwiftPackageReference "Yams" */;
+			productName = Yams;
+		};
+/* End XCSwiftPackageProductDependency section */
+/* End PBXProject section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E04E00022C60000100000002 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AA4E00072C60000100000007 /* FluxDLWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E02000012C60000100000002 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				AA1000632C60000100000063 /* LibTorrent.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E04E00012C60000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E01000012C60000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA1000622C60000100000062 /* LibTorrent.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXResourcesBuildPhase section */
+		RR1000012C60000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA1000642C60000100000064 /* Assets.xcassets in Resources */,
+				AA30000F2C6000010000000F /* DefaultProxies.yaml in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		RR4E00012C60000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		SS1000012C60000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA1000012C60000100000001 /* FluxDLApp.swift in Sources */,
+				AA1000022C60000100000002 /* ServiceContainer.swift in Sources */,
+				AA1000032C60000100000003 /* SettingsService.swift in Sources */,
+				AA1000042C60000100000004 /* HapticService.swift in Sources */,
+				AA1000052C60000100000005 /* ThemeService.swift in Sources */,
+				AA1000062C60000100000006 /* AppTheme.swift in Sources */,
+				AA1000072C60000100000007 /* GlassCard.swift in Sources */,
+				AA1000082C60000100000008 /* StatusBadge.swift in Sources */,
+				AA1000092C60000100000009 /* MainTabView.swift in Sources */,
+				AA10000A2C6000010000000A /* DownloadsView.swift in Sources */,
+				AA10000B2C6000010000000B /* DownloadsViewModel.swift in Sources */,
+				AA10000C2C6000010000000C /* BrowserView.swift in Sources */,
+				AA10000D2C6000010000000D /* BrowserViewModel.swift in Sources */,
+				AA1000102C60000100000010 /* SettingsView.swift in Sources */,
+				AA1000112C60000100000011 /* SettingsViewModel.swift in Sources */,
+				D55B00012C60000100000001 /* LegalDocuments.swift in Sources */,
+				D55C00012C60000100000001 /* LegalDocumentViews.swift in Sources */,
+				D55D00012C60000100000001 /* DeveloperProfileView.swift in Sources */,
+				AA1000122C60000100000012 /* DownloadTaskModel.swift in Sources */,
+				AA1000132C60000100000013 /* DownloadRepository.swift in Sources */,
+				AA1000142C60000100000014 /* FileManagementService.swift in Sources */,
+				AA1000152C60000100000015 /* DownloadEngine.swift in Sources */,
+				AA1000162C60000100000016 /* DownloadItemCard.swift in Sources */,
+				AA1000172C60000100000017 /* AddDownloadSheet.swift in Sources */,
+				AA1000182C60000100000018 /* StorageManager.swift in Sources */,
+				AA1000192C60000100000019 /* QueueManager.swift in Sources */,
+				AA10001A2C6000010000001A /* StorageHeaderCard.swift in Sources */,
+				AA10001B2C6000010000001B /* QueueSettingsSheet.swift in Sources */,
+				AA10001C2C6000010000001C /* NotificationService.swift in Sources */,
+				AA10001D2C6000010000001D /* DownloadRestorationService.swift in Sources */,
+				AA10001E2C6000010000001E /* LiveActivityManager.swift in Sources */,
+				AA10001F2C6000010000001F /* ClipboardService.swift in Sources */,
+				AA1000202C60000100000020 /* ChecksumVerifier.swift in Sources */,
+				AA1000212C60000100000021 /* PowerNetworkMonitor.swift in Sources */,
+				AA1000222C60000100000022 /* WebViewContainer.swift in Sources */,
+				AA1000232C60000100000023 /* URLFilenameExtractor.swift in Sources */,
+				AA1000242C60000100000024 /* BackgroundKeepAliveService.swift in Sources */,
+				AA1000302C60000100000030 /* BrowserSettings.swift in Sources */,
+				AA1000312C60000100000031 /* BookmarkModel.swift in Sources */,
+				AA1000322C60000100000032 /* BrowserHistoryItem.swift in Sources */,
+				AA1000332C60000100000033 /* BrowserTabModel.swift in Sources */,
+				AA1000342C60000100000034 /* BookmarkManager.swift in Sources */,
+				AA1000352C60000100000035 /* BrowserHistoryManager.swift in Sources */,
+				AA1000362C60000100000036 /* AdBlockEngine.swift in Sources */,
+				AA1000372C60000100000037 /* FindInPageManager.swift in Sources */,
+				AA1000382C60000100000038 /* BrowserTabManager.swift in Sources */,
+				AA1000392C60000100000039 /* BrowserAddressBar.swift in Sources */,
+				AA1000662C60000100000066 /* BrowserToolbar.swift in Sources */,
+				AA10003A2C6000010000003A /* BrowserTabGridView.swift in Sources */,
+				AA10003B2C6000010000003B /* BrowserBookmarksView.swift in Sources */,
+				AA10003C2C6000010000003C /* BrowserHistoryView.swift in Sources */,
+				AA10003D2C6000010000003D /* FindInPageBar.swift in Sources */,
+				AA10003E2C6000010000003E /* BrowserSettingsSheet.swift in Sources */,
+				AA10003F2C6000010000003F /* BrowserTabPersistence.swift in Sources */,
+				AA1000402C60000100000040 /* BrowserConnectivityMonitor.swift in Sources */,
+				AA1000412C60000100000041 /* BrowserProxySession.swift in Sources */,
+				AA1000422C60000100000042 /* BrowserFaviconView.swift in Sources */,
+				AA1000432C60000100000043 /* BrowserErrorView.swift in Sources */,
+				FF1000012C90000100000001 /* BrowserDownloadPromptView.swift in Sources */,
+				FF3000012D00000100000001 /* BrowserTorrentLink.swift in Sources */,
+				FF3000032D00000100000003 /* BrowserTorrentPromptView.swift in Sources */,
+				AA1000442C60000100000044 /* BrowserEditBookmarkSheet.swift in Sources */,
+				AA1000502C60000100000050 /* DownloadFilters.swift in Sources */,
+				AA1000512C60000100000051 /* DownloadMetadataCapture.swift in Sources */,
+				AA1000522C60000100000052 /* DownloadDiagnostics.swift in Sources */,
+				AA1000532C60000100000053 /* DownloadMirrorManager.swift in Sources */,
+				AA1000542C60000100000054 /* DownloadVerification.swift in Sources */,
+				AA1000552C60000100000055 /* DownloadBatchManager.swift in Sources */,
+				AA1000562C60000100000056 /* DownloadInfoSheet.swift in Sources */,
+				AA1000572C60000100000057 /* DownloadDiagnosticsSheet.swift in Sources */,
+				AA1000582C60000100000058 /* UpdateURLSheet.swift in Sources */,
+				AA1000592C60000100000059 /* MirrorPickerSheet.swift in Sources */,
+				AA10005A2C6000010000005A /* DuplicateResolutionSheet.swift in Sources */,
+				AA1000702C60000100000070 /* DownloadHistoryEntry.swift in Sources */,
+				AA1000712C60000100000071 /* DownloadHistoryManager.swift in Sources */,
+				AA1000722C60000100000072 /* ClipboardDownloadBanner.swift in Sources */,
+				AA1000732C60000100000073 /* DownloadHistoryView.swift in Sources */,
+				AA1000742C60000100000074 /* DownloadHistoryViewModel.swift in Sources */,
+				AA10005B2C6000010000005B /* TorrentView.swift in Sources */,
+				AA10005C2C6000010000005C /* TorrentViewModel.swift in Sources */,
+				AA10005D2C6000010000005D /* TorrentService.swift in Sources */,
+				AA10005E2C6000010000005E /* TorrentTaskModel.swift in Sources */,
+				AA4E00012C60000100000001 /* TorrentBackgroundManager.swift in Sources */,
+				AA4E00022C60000100000002 /* TorrentCompletionTracker.swift in Sources */,
+				DD1000012D10000100000001 /* TorrentRemovalCoordinator.swift in Sources */,
+				DD1000032D10000100000003 /* TorrentManualPauseStore.swift in Sources */,
+				AA4E00032C60000100000003 /* TorrentActivityAttributes.swift in Sources */,
+				AA10005F2C6000010000005F /* TorrentItemCard.swift in Sources */,
+				AA1000602C60000100000060 /* AddTorrentSheet.swift in Sources */,
+				AA1000612C60000100000061 /* TorrentDetailSheet.swift in Sources */,
+				AA1000652C60000100000065 /* TorrentSettingsSheet.swift in Sources */,
+				AA3000012C60000100000001 /* ProxyView.swift in Sources */,
+				AA3000022C60000100000002 /* ProxyViewModel.swift in Sources */,
+				AA3000032C60000100000003 /* ProxyStatusCard.swift in Sources */,
+				AA3000042C60000100000004 /* ProxyProfileRow.swift in Sources */,
+				AA3000052C60000100000005 /* AddEditProxySheet.swift in Sources */,
+				AA3000062C60000100000006 /* ProxyYAMLImportView.swift in Sources */,
+				AA3000072C60000100000007 /* ProxyModels.swift in Sources */,
+				AA3000082C60000100000008 /* ProxyService.swift in Sources */,
+				AA3000092C60000100000009 /* SOCKS5Client.swift in Sources */,
+				AA30000A2C6000010000000A /* ProxyYAMLParser.swift in Sources */,
+				AA30000B2C6000010000000B /* ProxyKeychainStore.swift in Sources */,
+				AA30000C2C6000010000000C /* ProxyTransport.swift in Sources */,
+				AA30000D2C6000010000000D /* ProxyTester.swift in Sources */,
+				AA30000E2C6000010000000E /* ProxySessionProvider.swift in Sources */,
+				AA4000032C60000100000003 /* Yams in Sources */,
+				D55400012C60000100000001 /* DirectoryModels.swift in Sources */,
+				D55400022C60000100000002 /* DirectoryHTMLParser.swift in Sources */,
+				D55400032C60000100000003 /* DirectoryHTTPClient.swift in Sources */,
+				D55400042C60000100000004 /* DirectoryFolderCrawler.swift in Sources */,
+				D55400052C60000100000005 /* DirectoryHistoryManager.swift in Sources */,
+				D55400062C60000100000006 /* DirectoryThumbnailLoader.swift in Sources */,
+				D55400072C60000100000007 /* DirectoryBrowserViewModel.swift in Sources */,
+				D55400082C60000100000008 /* DirectoryChromeViews.swift in Sources */,
+				D55400092C60000100000009 /* DirectoryItemViews.swift in Sources */,
+				D554000A2C6000010000000A /* DirectoryFolderDownloadPreview.swift in Sources */,
+				D554000B2C6000010000000B /* DirectoryMediaPlayerView.swift in Sources */,
+				D554000C2C6000010000000C /* DirectoryModeView.swift in Sources */,
+				D55800012C60000100000001 /* DirectorySearchModels.swift in Sources */,
+				D55800022C60000100000002 /* DirectorySearchIndex.swift in Sources */,
+				D55800032C60000100000003 /* DirectorySearchService.swift in Sources */,
+				D55800042C60000100000004 /* GeminiDirectorySearchService.swift in Sources */,
+				D55800052C60000100000005 /* DirectoryAISearchViewModel.swift in Sources */,
+				D55800062C60000100000006 /* DirectoryAISearchView.swift in Sources */,
+				FF1000032C90000100000003 /* FolderDownloadModels.swift in Sources */,
+				FF1000052C90000100000005 /* FolderDownloadCoordinator.swift in Sources */,
+				FF1000072C90000100000007 /* FolderDownloadGroupCard.swift in Sources */,
+				AA1000752C60000100000075 /* SemanticVersion.swift in Sources */,
+				AA1000762C60000100000076 /* AppVersionService.swift in Sources */,
+				AA1000772C60000100000077 /* GitHubReleaseService.swift in Sources */,
+				AA1000782C60000100000078 /* AppIconLoader.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		SS2000012C60000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA2000012C60000100000001 /* SettingsServiceTests.swift in Sources */,
+				AA2000022C60000100000002 /* NavigationTests.swift in Sources */,
+				AA2000032C60000100000003 /* DownloadEngineTests.swift in Sources */,
+				AA2000042C60000100000004 /* QueueManagerTests.swift in Sources */,
+				AA2000052C60000100000005 /* DownloadRestorationTests.swift in Sources */,
+				AA2000062C60000100000006 /* BrowserTests.swift in Sources */,
+				AA2000072C60000100000007 /* ChecksumTests.swift in Sources */,
+				AA2000082C60000100000008 /* PowerNetworkTests.swift in Sources */,
+				AA2000092C60000100000009 /* URLFilenameExtractorTests.swift in Sources */,
+				AA20000A2C6000010000000A /* BackgroundKeepAliveTests.swift in Sources */,
+				AA4E00082C60000100000008 /* TorrentBackgroundManagerTests.swift in Sources */,
+				AA4E00092C60000100000009 /* TorrentCompletionTrackerTests.swift in Sources */,
+				DD1000052D10000100000005 /* TorrentServiceTests.swift in Sources */,
+				AA20000B2C6000010000000B /* ProxyConfigurationTests.swift in Sources */,
+				AA20000C2C6000010000000C /* ProxyYAMLParserTests.swift in Sources */,
+				AA20000D2C6000010000000D /* ProxyPersistenceTests.swift in Sources */,
+				AA20000E2C6000010000000E /* ProxyTesterTests.swift in Sources */,
+				D54E00012C60000100000001 /* ProxyAdapterDataPathTests.swift in Sources */,
+				AA20000F2C6000010000000F /* ProxyStateTests.swift in Sources */,
+				AA2000102C60000100000010 /* MockKeychainStore.swift in Sources */,
+				AA2000112C60000100000011 /* DownloadHistoryTests.swift in Sources */,
+				AA2000122C60000100000012 /* SettingsLiveApplyTests.swift in Sources */,
+				A3E000012C60000100000001 /* ProxyUITests.swift in Sources */,
+				D554000D2C6000010000000D /* DirectoryParserTests.swift in Sources */,
+				FF1000092C90000100000009 /* FolderDownloadTests.swift in Sources */,
+				D55900022C60000100000002 /* DirectorySearchTests.swift in Sources */,
+				AA2000132C60000100000013 /* SemanticVersionTests.swift in Sources */,
+				AA2000142C60000100000014 /* UpdateCheckerTests.swift in Sources */,
+				D55E00022C60000100000002 /* SettingsAboutTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		SS3E00012C60000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		SS4E00012C60000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA4E00042C60000100000004 /* TorrentActivityAttributes.swift in Sources */,
+				AA4E00052C60000100000005 /* FluxDLWidgetsBundle.swift in Sources */,
+				AA4E00062C60000100000006 /* TorrentLiveActivity.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DD1000012C60000100000010 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = LibTorrent;
+			targetProxy = CC1000022C60000100000002 /* PBXContainerItemProxy */;
+		};
+		DD2000012C60000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE1000012C60000100000001 /* FluxDL */;
+			targetProxy = CC1000012C60000100000001 /* PBXContainerItemProxy */;
+		};
+		DD3E00012C60000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE1000012C60000100000001 /* FluxDL */;
+			targetProxy = CC3E00012C60000100000001 /* PBXContainerItemProxy */;
+		};
+		DD4E00012C60000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EE4E00012C60000100000001 /* FluxDLWidgets */;
+			targetProxy = CC4E00012C60000100000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		CF0000012C60000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMPOUND_ASSIGN_ENUM_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CF0000022C60000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMPOUND_ASSIGN_ENUM_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		CF1000012C60000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FluxDL/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Debug;
+		};
+		CF1000022C60000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FluxDL/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Release;
+		};
+		CF2000012C60000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FluxDL.app/FluxDL";
+			};
+			name = Debug;
+		};
+		CF2000022C60000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FluxDL.app/FluxDL";
+			};
+			name = Release;
+		};
+		CF3E00012C60000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_TARGET_NAME = FluxDL;
+			};
+			name = Debug;
+		};
+		CF3E00012C60000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDLUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				TEST_TARGET_NAME = FluxDL;
+			};
+			name = Release;
+		};
+		CF4E00012C60000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FluxDLWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FluxDL Widgets";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Debug;
+		};
+		CF4E00012C60000100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FluxDLWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "FluxDL Widgets";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.0.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rakib.FluxDL.Widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FF0000012C60000100000001 /* Build configuration list for PBXProject "FluxDL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF0000012C60000100000001 /* Debug */,
+				CF0000022C60000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF1000012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF1000012C60000100000001 /* Debug */,
+				CF1000022C60000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF2000012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF2000012C60000100000001 /* Debug */,
+				CF2000022C60000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF3E00012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF3E00012C60000100000001 /* Debug */,
+				CF3E00012C60000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF4E00012C60000100000001 /* Build configuration list for PBXNativeTarget "FluxDLWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF4E00012C60000100000001 /* Debug */,
+				CF4E00012C60000100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DD1000012C60000100000001 /* Project object */;
+}

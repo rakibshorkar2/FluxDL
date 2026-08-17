@@ -1,0 +1,101 @@
+[project]
+name = "libtorrent"
+requires-python = ">=3.9"
+version = "2.1.0"
+
+[tool.cibuildwheel]
+manylinux-i686-image = "manylinux2014"
+manylinux-x86_64-image = "manylinux2014"
+skip = "{pp*,cp311-*}"
+test-requires = [
+  "mypy",
+  "pytest"
+]
+
+[tool.cibuildwheel.macos]
+before-all = [
+  "./tools/cibuildwheel/setup_boost.sh $BOOST_VERSION $BOOST_ROOT",
+  "brew install openssl"
+]
+test-command = [
+  "cd {project}/bindings/python",
+  "python -X dev -m pytest -v --log-level=DEBUG --log-cli-level=DEBUG",
+  "python -m mypy --config-file mypy-tox.ini tests",
+  "python -m pip install -r test-requirements.txt"
+]
+
+[tool.cibuildwheel.macos.environment]
+BOOST_BUILD_PATH = "/tmp/boost/tools/build"
+BOOST_ROOT = "/tmp/boost"
+BOOST_VERSION = "1.83.0"
+PATH = "/tmp/boost:$PATH"
+
+[[tool.cibuildwheel.overrides]]
+before-all = [
+  "./tools/cibuildwheel/setup_boost.sh $BOOST_VERSION $BOOST_ROOT",
+  "./tools/cibuildwheel/setup_ccache_on_manylinux.sh",
+  "./tools/cibuildwheel/setup_openssl.sh",
+  "yum install -y glibc-static" # needed for libutil.a and libdl.a
+]
+before-test = "ccache -s"
+select = "*-manylinux_*"
+test-command = [
+  "cd {project}/bindings/python",
+  "python -X dev -m pytest -v --log-level=DEBUG --log-cli-level=DEBUG",
+  "python -m mypy --config-file mypy-tox.ini tests",
+  "python -m pip install -r test-requirements.txt"
+]
+
+[tool.cibuildwheel.overrides.environment] # sub-table of previous block!
+BOOST_BUILD_PATH = "/tmp/boost/tools/build"
+BOOST_ROOT = "/tmp/boost"
+BOOST_VERSION = "1.83.0"
+PATH = "/usr/local/ccache/bin:/tmp/boost:$PATH"
+
+[[tool.cibuildwheel.overrides]]
+before-all = [
+  "./tools/cibuildwheel/setup_boost.sh $BOOST_VERSION $BOOST_ROOT",
+  "./tools/cibuildwheel/setup_openssl.sh",
+  "apk add ccache openssl-dev openssl-libs-static"
+]
+before-test = "ccache -s"
+select = "*-musllinux_*"
+test-command = [
+  "cd {project}/bindings/python",
+  "python -X dev -m pytest -v --log-level=DEBUG --log-cli-level=DEBUG",
+  "python -m mypy --config-file mypy-tox.ini tests",
+  "python -m pip install -r test-requirements.txt"
+]
+
+[tool.cibuildwheel.overrides.environment] # sub-table of previous block!
+BOOST_BUILD_PATH = "/tmp/boost/tools/build"
+BOOST_ROOT = "/tmp/boost"
+BOOST_VERSION = "1.83.0"
+PATH = "/usr/lib/ccache/bin:/tmp/boost:$PATH"
+
+[[tool.cibuildwheel.overrides]]
+before-all = [
+  "bash -c './tools/cibuildwheel/setup_boost.sh $BOOST_VERSION $BOOST_ROOT'"
+]
+select = "*-win32"
+
+[[tool.cibuildwheel.overrides]]
+before-all = [
+  "bash -c './tools/cibuildwheel/setup_boost.sh $BOOST_VERSION $BOOST_ROOT'"
+]
+select = "*-win_amd64"
+
+[tool.cibuildwheel.windows]
+test-command = '''bash -c "cd '{project}/bindings/python' && python -m pip install -r test-requirements.txt && python -X dev -m pytest -v --log-level=DEBUG --log-cli-level=DEBUG && python -m mypy --config-file mypy-tox.ini tests"'''
+
+[tool.cibuildwheel.windows.environment]
+B2_EXTRA_ARGS = 'openssl-include=\"C:/Program Files/OpenSSL/include\" openssl-lib=\"C:/Program Files/OpenSSL/lib\"'
+BOOST_BUILD_PATH = 'c:/boost/tools/build'
+BOOST_ROOT = 'c:/boost'
+BOOST_VERSION = "1.83.0"
+PATH = 'c:/boost;$PATH'
+
+[tool.isort]
+profile = "google"
+single_line_exclusions = []
+src_paths = ["."]

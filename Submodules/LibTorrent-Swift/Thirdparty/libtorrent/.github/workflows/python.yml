@@ -1,0 +1,146 @@
+name: Python bindings
+
+on:
+   push:
+      branches: [ RC_1_2 RC_2_0 master ]
+   pull_request:
+
+concurrency:
+   group: ${{ github.ref }}-${{ github.workflow }}-${{ github.event_name }}
+   cancel-in-progress: true
+
+env:
+   HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+   HOMEBREW_NO_AUTO_UPDATE: 1
+
+jobs:
+
+  test:
+    name: build
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # on linux and mac, the boost libraries are fixed to a python version.
+      # since we install boost from repos on those systems, we must use the
+      # matching python versions
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python-version: "3.12"
+          - os: ubuntu-24.04-arm
+            python-version: "3.12"
+          - os: macos-14
+            python-version: "3.14"
+          - os: windows-2022
+            python-version: 3.9
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        submodules: recursive
+        fetch-depth: 1
+        filter: tree:0
+
+    # Note:
+    #  - on mac and linux images, 'python' is python2 and 'python3' is
+    #    python3
+    #  - on windows, neither 'python' nor 'python3' is in PATH by default
+    #  - setup-python sets up PATH so 'python' and 'python3' point to the
+    #    requested version on mac and linux, but on windows it only sets up
+    #    'python'.
+    - uses: actions/setup-python@v2
+      with:
+         python-version: ${{ matrix.python-version }}
+
+    - name: install tox
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install --upgrade tox
+
+    - name: dependencies (MacOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install boost-build boost boost-python3 python@3.14 openssl@3 python-setuptools
+        export PATH=$(brew --prefix)/opt/python@3.14/bin:$PATH
+
+    - name: update package lists (linux)
+      if: runner.os == 'Linux'
+      continue-on-error: true
+      run: |
+        sudo apt update
+
+    - uses: Chocobo1/setup-ccache-action@v1
+      if: runner.os != 'Windows'
+      with:
+        update_packager_index: false
+        override_cache_key: ccache-python-${{ matrix.os }}-${{ github.base_ref }}
+        ccache_options: |
+          max_size=500M
+
+    - name: dependencies (linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt install libboost-tools-dev libboost-python-dev libboost-dev libboost-system-dev libboost-json-dev python3 python3-setuptools libssl-dev
+
+    - name: dependencies (windows)
+      if: runner.os == 'Windows'
+      run: |
+        python -m pip install --upgrade setuptools
+
+    - name: install openssl:x64-windows-static (windows)
+      if: runner.os == 'Windows'
+      uses: ./.github/actions/win_install_openssl
+      with:
+        architecture: x64
+        linking: static
+
+    - name: setup msbuild (windows)
+      if: runner.os == 'Windows'
+      uses: microsoft/setup-msbuild@v2
+
+    - name: install boost (windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        git clone --depth=1 --recurse-submodules -j10 --branch=boost-1.91.0 https://github.com/boostorg/boost.git
+        cd boost
+        bootstrap.bat
+
+    - name: boost headers (windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        cd boost
+        .\b2 headers
+
+    - name: build/test with tox (windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        set BOOST_ROOT=%CD%\boost
+        set PATH=%BOOST_ROOT%;%PATH%
+        set PYTHON_INTERPRETER=python
+        set B2_EXTRA_ARGS=openssl-include="C:\Program Files\OpenSSL\include" openssl-lib="C:\Program Files\OpenSSL\lib"
+        tox -e py
+
+    - name: build no-deprecated (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        cd bindings/python
+        python3 -m pip install setuptools
+        python3 setup.py build_ext --b2-args "deprecated-functions=off"
+
+    - name: tests (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        # Exporting SYSTEM_VERSION_COMPAT=0 helps pip allow install macos 11 tagged wheels. Ref https://github.com/pypa/packaging/issues/497
+        export SYSTEM_VERSION_COMPAT=0
+        tox -e py
+
+    - name: tests (MacOS)
+      if: runner.os == 'macOS'
+      run: |
+        # Exporting SYSTEM_VERSION_COMPAT=0 helps pip allow install macos 11 tagged wheels. Ref https://github.com/pypa/packaging/issues/497
+        export SYSTEM_VERSION_COMPAT=0
+        export PYTHON_INTERPRETER=$(brew --prefix)/opt/python@3.14/bin/python3
+        tox -e py

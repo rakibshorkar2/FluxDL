@@ -1,0 +1,120 @@
+name: Build IPA & Release
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Unsigned IPA for iOS 18
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Runner macOS and Xcode Versions
+        run: |
+          echo "Runner image: ${{ runner.os }}"
+          sw_vers
+          echo "--- Installed Xcode versions ---"
+          ls /Applications | grep -i xcode || echo "No Xcode found in /Applications"
+          echo "--- Installed Xcode list (system) ---"
+          xcode-select -p
+          xcodebuild -version
+          echo "--- Available labels ---"
+          curl -s https://api.github.com/repos/actions/runner-images/branches/main | grep -o '"name"' | head -1
+
+      - name: Select Xcode Version
+        run: |
+          if [ -d "/Applications/Xcode_26.6.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.6.app
+          elif [ -d "/Applications/Xcode_26.5.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.5.app
+          elif [ -d "/Applications/Xcode_26.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_26.4.app
+          elif [ -d "/Applications/Xcode_16.0.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.0.app
+          elif [ -d "/Applications/Xcode_16.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.app
+          elif [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app
+          fi
+          xcodebuild -version
+
+      - name: Install Boost (libtorrent dependency)
+        run: brew install boost
+
+      - name: Build libtorrent Static Library (LibTorrent-Swift dependency)
+        run: |
+          cd Submodules/LibTorrent-Swift
+          bash make.sh
+          ls -la libtorrent-build/libtorrent.xcodeproj
+
+      - name: Build FluxDL iOS App
+        run: |
+          BUILD_NUMBER=${{ github.run_number }}
+          xcodebuild -resolvePackageDependencies -project FluxDL.xcodeproj -scheme FluxDL
+          xcodebuild -project FluxDL.xcodeproj \
+                     -scheme FluxDL \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -derivedDataPath ./build/DerivedData \
+                     CURRENT_PROJECT_VERSION="${BUILD_NUMBER}" \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     clean build
+
+      - name: Create Unsigned IPA Package
+        run: |
+          BUILD_NUMBER=${{ github.run_number }}
+          mkdir -p Payload
+          APP_PATH=$(find ./build/DerivedData -name "FluxDL.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: FluxDL.app not found in build directory!"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          cp -R "$APP_PATH" Payload/
+          OPENSSL_FW=$(find ./build/DerivedData/Build/Products -name "OpenSSL.framework" -type d | head -n 1)
+          if [ -n "$OPENSSL_FW" ]; then
+            cp -R "$OPENSSL_FW" "Payload/FluxDL.app/Frameworks/"
+            echo "Embedded OpenSSL.framework into app Frameworks"
+          else
+            echo "Warning: OpenSSL.framework not found in build products"
+          fi
+          zip -r "FluxDL-v2.0.2.${BUILD_NUMBER}.ipa" Payload
+          echo "Successfully created FluxDL-v2.0.2.${BUILD_NUMBER}.ipa"
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FluxDL-Unsigned-IPA
+          path: "FluxDL-v2.0.2.${{ github.run_number }}.ipa"
+          retention-days: 30
+
+      - name: Create GitHub Release with New Build Number
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BUILD_NUMBER=${{ github.run_number }}
+          TAG="v2.0.2.${BUILD_NUMBER}"
+          IPA="FluxDL-v2.0.2.${BUILD_NUMBER}.ipa"
+          echo "Creating release ${TAG} with asset ${IPA}"
+          if gh release view "${TAG}" --json tagName --jq .tagName >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists — uploading asset to it"
+            gh release upload "${TAG}" "${IPA}" --clobber
+          else
+            gh release create "${TAG}" "${IPA}" \
+              --title "FluxDL v2.0.2 build ${BUILD_NUMBER}" \
+              --notes "Automatic unsigned IPA release for build ${BUILD_NUMBER} (GitHub Actions run #${BUILD_NUMBER})." \
+              --generate-notes
+          fi
