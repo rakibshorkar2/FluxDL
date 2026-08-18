@@ -283,6 +283,10 @@ public final class TorrentViewModel: ObservableObject {
                 failedCount += 1
                 continue
             }
+            // The removal may still be deferred (an in-flight snapshot round
+            // holds the handle): the torrent is still in the session, so undo
+            // simply cancels the removal — no re-add needed.
+            if service.cancelPendingRemoval(record.id) { continue }
             if addMagnet(magnet) != nil { failedCount += 1 }
         }
         if failedCount > 0 {
@@ -295,6 +299,16 @@ public final class TorrentViewModel: ObservableObject {
     public func dismissUndoToast() {
         undoToast = nil
         undoToastTask?.cancel()
+    }
+
+    /// Whether the current undo toast can be acted on: at least one record
+    /// has a magnet link and its removal is either still cancellable
+    /// (deferred) or already committed (magnet re-add accepted). A removal
+    /// whose session-level commit is still in flight blocks undo — the button
+    /// must be disabled instead of showing a false "could not be restored".
+    public var canUndoCurrentToast: Bool {
+        guard let toast = undoToast else { return false }
+        return toast.records.contains { $0.magnetLink != nil && service.canUndoRemoval($0.id) }
     }
 
     private func presentUndoToast(for models: [TorrentTaskModel]) {

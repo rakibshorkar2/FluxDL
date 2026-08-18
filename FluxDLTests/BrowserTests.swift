@@ -927,6 +927,34 @@ final class BrowserTests: XCTestCase {
         XCTAssertEqual(tabManager.tabs.map(\.id), ids)
     }
     
+    /// Switching tabs must clear the PREVIOUS tab's transient UI state
+    /// (load-error overlay, anchored download/torrent popups) — none of it
+    /// ever belongs on the newly visible tab.
+    @MainActor
+    func testTabSwitchClearsPreviousTabsTransientState() {
+        let viewModel = BrowserViewModel()
+        let tabManager = viewModel.tabManager
+        let a = tabManager.createNewTab(url: URL(string: "https://a.com"))
+        let b = tabManager.createNewTab(url: URL(string: "https://b.com"))
+        
+        // Tab B (active) shows an error overlay and an anchored popup.
+        tabManager.selectTab(id: b)
+        viewModel.loadErrorMessage = "The server for this page could not be found."
+        viewModel.promptDownload(url: URL(string: "https://b.com/file.zip")!)
+        XCTAssertTrue(viewModel.showDownloadPrompt)
+        XCTAssertNotNil(viewModel.loadErrorMessage)
+        
+        // Switching to tab A must not drag B's transient state along.
+        tabManager.selectTab(id: a)
+        
+        XCTAssertNil(viewModel.loadErrorMessage)
+        XCTAssertFalse(viewModel.showDownloadPrompt)
+        XCTAssertNil(viewModel.pendingDownload)
+        XCTAssertNil(viewModel.downloadAnchorPoint)
+        XCTAssertEqual(viewModel.currentURL?.absoluteString, "https://a.com")
+        XCTAssertEqual(tabManager.tab(for: b)?.url?.absoluteString, "https://b.com")
+    }
+    
     /// Restored tabs retain independent URLs and per-tab metadata.
     @MainActor
     func testRestoredTabsRetainIndependentURLs() {
@@ -1100,6 +1128,40 @@ final class BrowserTests: XCTestCase {
         viewModel.promptTorrent(url: URL(string: "https://example.com/other.torrent")!)
         XCTAssertNotEqual(viewModel.torrentPrompt?.id, firstID)
         XCTAssertEqual(viewModel.torrentPrompt?.kind, .remoteTorrent)
+    }
+    
+    /// A remote-torrent fetch that finishes AFTER its prompt was replaced
+    /// must never dismiss or error the newer prompt — the result of a stale
+    /// request is discarded, never applied.
+    @MainActor
+    func testStaleTorrentFetchDoesNotAffectNewerPrompt() {
+        let viewModel = BrowserViewModel()
+        var releaseFetch: (() -> Void)?
+        viewModel.remoteTorrentDataLoader = { _ in
+            await withCheckedContinuation { continuation in
+                releaseFetch = { continuation.resume(returning: Self.makeMinimalTorrentData()) }
+            }
+        }
+        
+        viewModel.promptTorrent(url: URL(string: "https://example.com/stale.torrent")!)
+        viewModel.startTorrentAddition()
+        XCTAssertTrue(viewModel.isTorrentPromptLoading)
+        XCTAssertTrue(poll { releaseFetch != nil }, "loader must be waiting")
+        
+        // The user replaces the prompt with a different link mid-fetch.
+        viewModel.promptTorrent(url: URL(string: "https://example.com/newer.torrent")!)
+        XCTAssertFalse(viewModel.isTorrentPromptLoading)
+        XCTAssertEqual(viewModel.torrentPrompt?.url?.absoluteString, "https://example.com/newer.torrent")
+        
+        // The stale fetch completes — it must leave the newer prompt intact.
+        releaseFetch?()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        
+        XCTAssertTrue(viewModel.showTorrentPrompt)
+        XCTAssertEqual(viewModel.torrentPrompt?.url?.absoluteString, "https://example.com/newer.torrent")
+        XCTAssertNil(viewModel.torrentPromptErrorMessage)
+        XCTAssertFalse(viewModel.isTorrentPromptLoading)
+        XCTAssertFalse(viewModel.torrentPromptSubmissionInFlight)
     }
     
     /// A failed remote fetch surfaces the error inside the popup and keeps

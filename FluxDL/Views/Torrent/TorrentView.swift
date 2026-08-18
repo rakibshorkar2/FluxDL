@@ -384,7 +384,7 @@ public struct TorrentView: View {
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(!toast.records.contains { $0.magnetLink != nil })
+            .disabled(!viewModel.canUndoCurrentToast)
 
             Button {
                 viewModel.dismissUndoToast()

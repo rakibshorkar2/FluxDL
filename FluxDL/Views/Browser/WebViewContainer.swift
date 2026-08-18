@@ -162,6 +162,11 @@ public struct WebViewContainer: UIViewRepresentable {
             // will never report scroll state (download-prompt anchoring).
             existingWebView.scrollView.delegate = coordinator
             coordinator.attachObservers(to: existingWebView)
+            // Re-binding the find-in-page target on reuse: the manager may
+            // still point at the previously active tab's web view.
+            if tabID == viewModel.tabManager.activeTabId {
+                viewModel.findInPageManager.setWebView(existingWebView)
+            }
             return existingWebView
         }
         
@@ -334,6 +339,12 @@ public struct WebViewContainer: UIViewRepresentable {
                 name: DownloadBridgeScript.messageName
             )
             
+            // The page may have navigated while this coordinator was detached
+            // (background tabs keep loading without a delegate). Re-read the
+            // web view's CURRENT state so the bound tab never shows stale
+            // title/URL/back-forward state after a tab switch.
+            syncBoundTab(from: webView)
+            
             // Live webpage-appearance updates while a page is open: when the
             // user changes the "Webpage Appearance" setting the visible page's
             // `prefers-color-scheme` environment is updated without a reload.
@@ -345,6 +356,40 @@ public struct WebViewContainer: UIViewRepresentable {
                     }
                 }
                 .store(in: &cancellables)
+        }
+        
+        /// Pulls the bound tab's browsing state from the web view's current
+        /// values. Mirrors into view-model ("active tab") state only when this
+        /// tab is the visible one.
+        private func syncBoundTab(from webView: WKWebView) {
+            mutateBoundTab { tab in
+                if let url = webView.url {
+                    tab.url = url
+                    tab.inputURLText = url.absoluteString
+                    if url.scheme == "https" || url.scheme == "http" {
+                        tab.faviconURL = URL(string: "https://www.google.com/s2/favicons?domain=\(url.host ?? "")&sz=64")
+                    }
+                }
+                if let title = webView.title, !title.isEmpty {
+                    tab.title = title
+                }
+                tab.estimatedProgress = webView.estimatedProgress
+                tab.canGoBack = webView.canGoBack
+                tab.canGoForward = webView.canGoForward
+                tab.isLoading = webView.isLoading
+            }
+            guard boundTabIsActive else { return }
+            if let url = webView.url {
+                viewModel.currentURL = url
+                viewModel.inputURLText = url.absoluteString
+                viewModel.canGoBack = webView.canGoBack
+                viewModel.canGoForward = webView.canGoForward
+            }
+            if let title = webView.title, !title.isEmpty {
+                viewModel.pageTitle = title
+            }
+            viewModel.estimatedProgress = webView.estimatedProgress
+            viewModel.isLoading = webView.isLoading
         }
         
         /// Detaches this coordinator from its web view exactly once.

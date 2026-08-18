@@ -226,6 +226,10 @@ public final class BrowserViewModel: ObservableObject {
     /// switches (which fire `proxyDidChange` without flipping the route)
     /// trigger exactly one reload per effective configuration.
     private var lastReloadedProxyFingerprint: String?
+    /// The tab whose state `syncActiveTabState` last mirrored, so per-tab
+    /// transient UI state (load errors, popups) can be cleared exactly when
+    /// the visible tab changes — never on connectivity or progress events.
+    private var lastSyncedTabID: UUID?
     
     public init() {
         tabManager.$activeTabId
@@ -284,6 +288,22 @@ public final class BrowserViewModel: ObservableObject {
     
     public func syncActiveTabState() {
         guard let activeTab = tabManager.activeTab else { return }
+        // A real tab switch must never leak the PREVIOUS tab's transient UI
+        // state into the newly visible tab: load errors, JavaScript alerts,
+        // and anchored download/torrent popups all belong to one page.
+        let tabDidChange = activeTab.id != lastSyncedTabID
+        if tabDidChange {
+            loadErrorMessage = nil
+            javascriptExecutionMessage = nil
+            downloadAnchorPoint = nil
+            downloadAnchorPagePoint = nil
+            if showDownloadPrompt {
+                dismissDownloadPrompt()
+            }
+            if showTorrentPrompt {
+                dismissTorrentPrompt()
+            }
+        }
         self.currentURL = activeTab.url
         self.inputURLText = activeTab.url?.absoluteString ?? activeTab.inputURLText
         self.pageTitle = activeTab.title
@@ -299,6 +319,7 @@ public final class BrowserViewModel: ObservableObject {
         } else if !self.isOffline && loadErrorMessage == "Your device appears to be offline." {
             self.loadErrorMessage = nil
         }
+        lastSyncedTabID = activeTab.id
     }
     
     public func handleSearchOrNavigate() {
@@ -652,18 +673,24 @@ public final class BrowserViewModel: ObservableObject {
             let result = service.addMagnet(prompt.url.absoluteString)
             finishTorrentAddition(with: result)
         case .remoteTorrent:
+            let promptID = prompt.id
             isTorrentPromptLoading = true
             Task { [weak self] in
                 do {
                     let data = try await self?.remoteTorrentDataLoader(prompt.url)
                     guard let self, let data else { return }
+                    // The user may have cancelled or replaced this prompt while
+                    // the metadata was being fetched. Only the prompt that
+                    // started the fetch may consume its result — otherwise a
+                    // stale completion would dismiss or error a newer popup.
+                    guard self.torrentPrompt?.id == promptID else { return }
                     if !service.isSessionActive {
                         service.startSession()
                     }
                     let result = service.addTorrentFile(data: data)
                     self.finishTorrentAddition(with: result)
                 } catch {
-                    guard let self else { return }
+                    guard let self, self.torrentPrompt?.id == promptID else { return }
                     self.torrentPromptErrorMessage = Self.torrentLoadMessage(for: error)
                     self.isTorrentPromptLoading = false
                     self.torrentPromptSubmissionInFlight = false

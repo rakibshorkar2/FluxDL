@@ -401,10 +401,36 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     }
 
     private func duplicateError(for id: String) -> TorrentServiceError? {
-        if handlesByHash[id] != nil || torrents.contains(where: { $0.id == id }) {
+        if handlesByHash[id] != nil
+            || torrents.contains(where: { $0.id == id })
+            || deletingTorrents.contains(where: { $0.id == id })
+            // A removal is in flight for this hash (deferred until the
+            // in-flight snapshot round completes, or the session has not yet
+            // confirmed the removal). Re-adding now could hand the caller the
+            // about-to-be-invalidated handle — block until the removal is
+            // committed and the tombstone is cleared.
+            || isRemovalPending(id) {
             return TorrentServiceError("This torrent is already in your list.")
         }
         return nil
+    }
+
+    /// Whether a removal for `id` has been initiated but not yet committed by
+    /// the engine: either deferred on the in-flight snapshot round, or waiting
+    /// for the session's removal confirmation. While true, a re-add of the
+    /// same info-hash is rejected as a duplicate.
+    public func isRemovalPending(_ id: String) -> Bool {
+        removalCoordinator.pendingRemovalIDs.contains(id) || removedHashes.contains(id)
+    }
+
+    /// Whether an undo action can currently be performed for `id`: the removal
+    /// must either still be cancellable (deferred on the in-flight snapshot
+    /// round — undo cancels it and the torrent stays) or already committed
+    /// (undo re-adds it via its magnet link). A removal whose session-level
+    /// commit is still in flight can neither be cancelled nor re-added.
+    public func canUndoRemoval(_ id: String) -> Bool {
+        if removalCoordinator.pendingRemovalIDs.contains(id) { return true }
+        return !removedHashes.contains(id)
     }
 
     /// Applies per-torrent options right after a torrent is added to the session.
@@ -507,11 +533,15 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
     /// appears when files are being deleted). The actual `session.removeTorrent`
     /// call happens either right away or after the in-flight snapshot round.
     private func beginRemoval(of id: String, deleteFiles: Bool) {
-        if deleteFiles, let model = torrents.first(where: { $0.id == id }) {
-            deletingTorrents.append(model)
-            // Take the model out of the live list synchronously — otherwise
-            // the same id briefly exists in both arrays and the list renders
-            // duplicate-identity rows until the next refresh publishes.
+        if let model = torrents.first(where: { $0.id == id }) {
+            if deleteFiles {
+                deletingTorrents.append(model)
+            }
+            // Take the model out of the live list synchronously in BOTH
+            // cases — otherwise the same id briefly exists in both arrays
+            // (duplicate-identity rows) and keep-files rows linger until the
+            // next publish. The removal tombstone below keeps a vanished row
+            // from being re-registered by stale engine callbacks.
             torrents.removeAll { $0.id == id }
         }
         removedHashes.insert(id)
@@ -536,8 +566,30 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         guard !removals.isEmpty else { return false }
         for removal in removals {
             guard let torrent = pendingRemovalHandles.removeValue(forKey: removal.id) else { continue }
+            // The removal may have been cancelled (undo) or the torrent
+            // re-added since it was staged — both clear the tombstone. Only
+            // remove when the removal is still valid, so a fresh handle is
+            // never invalidated by a stale deferred removal.
+            guard removedHashes.contains(removal.id) else { continue }
             session?.removeTorrent(torrent, deleteFiles: removal.deleteFiles)
         }
+        return true
+    }
+
+    /// Cancels a removal that is still deferred (its `session.removeTorrent`
+    /// has not run because an in-flight snapshot round held the handle). The
+    /// torrent stays in the session untouched and reappears on the next
+    /// refresh. Used by the keep-files undo flow.
+    ///
+    /// - Returns: `false` when the removal was not pending (already executed).
+    @discardableResult
+    public func cancelPendingRemoval(_ id: String) -> Bool {
+        guard removalCoordinator.cancelRemoval(id: id) else { return false }
+        pendingRemovalHandles.removeValue(forKey: id)
+        // The removal is no longer valid: without clearing the tombstone the
+        // torrent would be hidden from every future refresh.
+        removedHashes.remove(id)
+        requestRefresh()
         return true
     }
 
@@ -664,6 +716,12 @@ public final class TorrentService: NSObject, ObservableObject, SessionDelegate {
         DispatchQueue.main.async { [weak self] in
             let id = hashesData.best.hex
             self?.handlesByHash.removeValue(forKey: id)
+            // The removal is committed: the tombstone is stale. Clearing it
+            // here (instead of only on re-add) lets a legitimate re-add of the
+            // same info-hash proceed once the session has let go of the handle.
+            // No engine update for the removed torrent can arrive afterwards,
+            // so there is nothing left to protect.
+            self?.removedHashes.remove(id)
             self?.requestRefresh()
         }
     }

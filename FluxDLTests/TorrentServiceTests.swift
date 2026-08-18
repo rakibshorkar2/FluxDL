@@ -126,6 +126,34 @@ final class TorrentServiceTests: XCTestCase {
         XCTAssertFalse(coordinator.isBeingSnapshotted("A"))
     }
 
+    /// Cancelling a deferred removal removes it from the batch; the round
+    /// ends with only the remaining removals drained.
+    func testCancelRemovalRemovesPendingEntry() {
+        let coordinator = TorrentRemovalCoordinator()
+        coordinator.beginSnapshotRound(["A", "B"])
+        XCTAssertTrue(coordinator.stageRemoval(id: "A", deleteFiles: false))
+        XCTAssertTrue(coordinator.stageRemoval(id: "B", deleteFiles: true))
+
+        XCTAssertTrue(coordinator.cancelRemoval(id: "A"))
+        XCTAssertFalse(coordinator.cancelRemoval(id: "A"), "already cancelled")
+        XCTAssertEqual(coordinator.pendingRemovalIDs, ["B"])
+
+        let drained = coordinator.endSnapshotRound()
+        XCTAssertEqual(drained.map(\.id), ["B"])
+        XCTAssertTrue(drained.first?.deleteFiles == true)
+    }
+
+    /// Cancelling an id with no pending removal is a no-op.
+    func testCancelRemovalNoOpWhenNotPending() {
+        let coordinator = TorrentRemovalCoordinator()
+        XCTAssertFalse(coordinator.cancelRemoval(id: "A"))
+
+        coordinator.beginSnapshotRound(["A"])
+        XCTAssertFalse(coordinator.cancelRemoval(id: "A"), "not staged yet")
+        XCTAssertFalse(coordinator.cancelRemoval(id: "Z"), "unknown id")
+        XCTAssertTrue(coordinator.pendingRemovalIDs.isEmpty)
+    }
+
     // MARK: - TorrentManualPauseStore
 
     /// Explicit pause records survive store reinstantiation (app restart).
@@ -275,6 +303,42 @@ final class TorrentServiceTests: XCTestCase {
 
         XCTAssertTrue(viewModel.isEditing, "edit mode must stay while other torrents are selected")
         XCTAssertEqual(viewModel.selectedIDs, ["B"])
+    }
+
+    /// Undo re-adds a keep-files removal through the public API: the toast is
+    /// presented on removal, the torrent leaves the live list, and undo brings
+    /// it back (either by cancelling the deferred removal or by magnet
+    /// re-add — both must converge on the torrent returning).
+    @MainActor
+    func testUndoRemovalBringsTorrentBack() {
+        let service = makeIsolatedService()
+        let viewModel = TorrentViewModel(service: service)
+        defer { service.stopSession() }
+
+        service.startSession()
+        XCTAssertNil(viewModel.addMagnet("magnet:?xt=urn:btih:\(Self.testHash)&dn=Undo"))
+        XCTAssertTrue(poll { service.torrents.count == 1 })
+        let id = service.torrents[0].id
+
+        viewModel.remove(id, deleteFiles: false)
+        XCTAssertNotNil(viewModel.undoToast, "keep-files removal must offer undo")
+        XCTAssertTrue(poll { service.torrents.isEmpty }, "removal must commit")
+        // Undo becomes actionable once the removal is committed (or still
+        // cancellable): tapping earlier would false-fail on the duplicate
+        // check, so the button stays disabled until this is true.
+        XCTAssertTrue(poll { viewModel.canUndoCurrentToast }, "undo must become available")
+
+        viewModel.undoRemoval()
+        XCTAssertNil(viewModel.undoToast, "undo consumes the toast")
+
+        XCTAssertTrue(
+            poll { service.torrents.contains { $0.id == id } },
+            "undo must bring the torrent back into the live list"
+        )
+        XCTAssertFalse(service.isManuallyPaused(id), "re-added torrent must start with a clean slate")
+
+        service.removeTorrent(id, deleteFiles: false)
+        XCTAssertTrue(poll { service.torrents.isEmpty })
     }
 
     // MARK: - Browser integration (public API surface)
@@ -471,6 +535,10 @@ final class TorrentServiceTests: XCTestCase {
         service.removeTorrent(id, deleteFiles: false)
         XCTAssertFalse(service.isManuallyPaused(id), "deleting must clear the manual-pause record")
         XCTAssertTrue(poll { service.torrents.isEmpty })
+
+        // The removal is confirmed asynchronously by the engine; a re-add is
+        // rejected as a duplicate until it commits, so wait for the commit.
+        XCTAssertTrue(poll { !service.isRemovalPending(id) }, "removal must commit before re-add")
 
         // Re-adding the same torrent must NOT inherit the old pause record.
         if case .failure(let error) = service.addTorrentFile(data: data) {

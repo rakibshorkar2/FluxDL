@@ -72,6 +72,19 @@ public final class TorrentRemovalCoordinator {
         return true
     }
 
+    /// Cancels a deferred removal for `id` (e.g. the user undoes a keep-files
+    /// removal while the in-flight round still holds the torrent's handle).
+    /// The torrent stays in the session untouched.
+    ///
+    /// - Returns: `true` when a pending removal was cancelled; `false` when
+    ///   nothing was pending for that id (the removal already drained or was
+    ///   never staged).
+    public func cancelRemoval(id: String) -> Bool {
+        guard let index = pendingRemovals.firstIndex(where: { $0.id == id }) else { return false }
+        pendingRemovals.remove(at: index)
+        return true
+    }
+
     /// Completes the in-flight snapshot round.
     ///
     /// - Returns: the batch of deferred removals that is now safe to perform
