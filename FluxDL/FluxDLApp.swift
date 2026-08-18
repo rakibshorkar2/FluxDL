@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 struct FluxDLApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var container = ServiceContainer.shared
+    @StateObject private var incomingDocuments = IncomingDocumentHandler.shared
     @Environment(\.scenePhase) private var scenePhase
     
     var body: some Scene {
@@ -39,6 +40,32 @@ struct FluxDLApp: App {
                     await container.restorationService.restoreActiveTasks(
                         engine: container.downloadEngine as! DownloadEngine
                     )
+                    // Best-effort cleanup of defensive copies left by an
+                    // interrupted import in a previous launch.
+                    ImportedDocumentReader.cleanupStaleTemporaryCopies()
+                }
+                // Documents shared into FluxDL (share sheet / Files "Open
+                // with" via CFBundleDocumentTypes): .yaml/.yml route to the
+                // Proxy YAML review screen, .torrent to TorrentService.
+                .onOpenURL { url in
+                    incomingDocuments.handle(url: url)
+                }
+                .sheet(
+                    isPresented: $incomingDocuments.isYAMLResultsPresented,
+                    onDismiss: { incomingDocuments.clearYAMLImport() }
+                ) {
+                    if let result = incomingDocuments.pendingYAMLResult {
+                        ProxyYAMLImportView(viewModel: incomingDocuments.proxyViewModel, result: result)
+                    }
+                }
+                .alert(
+                    "FluxDL",
+                    isPresented: $incomingDocuments.isAlertPresented,
+                    presenting: incomingDocuments.alertMessage
+                ) { _ in
+                    Button("OK", role: .cancel) {}
+                } message: { message in
+                    Text(message)
                 }
                 .onChange(of: scenePhase) { newPhase in
                     let hasDownloadingTasks = container.downloadEngine.tasks.contains { $0.status == .downloading }

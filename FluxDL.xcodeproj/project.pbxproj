@@ -84,6 +84,10 @@
 		AA10005C2C6000010000005C /* TorrentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005C2C6000010000005C /* TorrentViewModel.swift */; };
 		AA10005D2C6000010000005D /* TorrentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005D2C6000010000005D /* TorrentService.swift */; };
 		AA10005E2C6000010000005E /* TorrentTaskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005E2C6000010000005E /* TorrentTaskModel.swift */; };
+		EE6E00012D30000100000001 /* DocumentFilePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6E00012D30000100000001 /* DocumentFilePickerView.swift */; };
+		EE6E00022D30000100000002 /* ImportedDocumentReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6E00022D30000100000002 /* ImportedDocumentReader.swift */; };
+		EE6E00032D30000100000003 /* IncomingDocumentHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6E00032D30000100000003 /* IncomingDocumentHandler.swift */; };
+		EE6E00042D30000100000004 /* ImportedDocumentReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6E00042D30000100000004 /* ImportedDocumentReaderTests.swift */; };
 		DD1000012D10000100000001 /* TorrentRemovalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1000022D10000100000002 /* TorrentRemovalCoordinator.swift */; };
 		DD1000032D10000100000003 /* TorrentManualPauseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD1000042D10000100000004 /* TorrentManualPauseStore.swift */; };
 		AA10005F2C6000010000005F /* TorrentItemCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10005F2C6000010000005F /* TorrentItemCard.swift */; };
@@ -377,6 +381,10 @@
 		FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadGroupCard.swift; sourceTree = "<group>"; };
 		FF10000A2C9000010000000A /* FolderDownloadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderDownloadTests.swift; sourceTree = "<group>"; };
 		D55900012C60000100000001 /* DirectorySearchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectorySearchTests.swift; sourceTree = "<group>"; };
+		FE6E00012D30000100000001 /* DocumentFilePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentFilePickerView.swift; sourceTree = "<group>"; };
+		FE6E00022D30000100000002 /* ImportedDocumentReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedDocumentReader.swift; sourceTree = "<group>"; };
+		FE6E00032D30000100000003 /* IncomingDocumentHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingDocumentHandler.swift; sourceTree = "<group>"; };
+		FE6E00042D30000100000004 /* ImportedDocumentReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportedDocumentReaderTests.swift; sourceTree = "<group>"; };
 		D55E00012C60000100000001 /* SettingsAboutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAboutTests.swift; sourceTree = "<group>"; };
 		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -491,8 +499,19 @@
 				FF1000062C90000100000006 /* FolderDownloadCoordinator.swift */,
 				GG10000F2C6000010000000F /* Torrent */,
 				GG3000032C60000100000003 /* Proxy */,
+				GG6E00012D30000100000001 /* FileImport */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		GG6E00012D30000100000001 /* FileImport */ = {
+			isa = PBXGroup;
+			children = (
+				FE6E00012D30000100000001 /* DocumentFilePickerView.swift */,
+				FE6E00022D30000100000002 /* ImportedDocumentReader.swift */,
+				FE6E00032D30000100000003 /* IncomingDocumentHandler.swift */,
+			);
+			path = FileImport;
 			sourceTree = "<group>";
 		};
 		GG3000032C60000100000003 /* Proxy */ = {
@@ -778,6 +797,7 @@
 				BB4E00072C60000100000007 /* TorrentBackgroundManagerTests.swift */,
 				BB4E00082C60000100000008 /* TorrentCompletionTrackerTests.swift */,
 				DD1000062D10000100000006 /* TorrentServiceTests.swift */,
+				FE6E00042D30000100000004 /* ImportedDocumentReaderTests.swift */,
 				BB20000B2C6000010000000B /* ProxyConfigurationTests.swift */,
 				BB20000C2C6000010000000C /* ProxyYAMLParserTests.swift */,
 				BB20000D2C6000010000000D /* ProxyPersistenceTests.swift */,
@@ -1104,6 +1124,9 @@
 				AA10005B2C6000010000005B /* TorrentView.swift in Sources */,
 				AA10005C2C6000010000005C /* TorrentViewModel.swift in Sources */,
 				AA10005D2C6000010000005D /* TorrentService.swift in Sources */,
+				EE6E00012D30000100000001 /* DocumentFilePickerView.swift in Sources */,
+				EE6E00022D30000100000002 /* ImportedDocumentReader.swift in Sources */,
+				EE6E00032D30000100000003 /* IncomingDocumentHandler.swift in Sources */,
 				AA10005E2C6000010000005E /* TorrentTaskModel.swift in Sources */,
 				AA4E00012C60000100000001 /* TorrentBackgroundManager.swift in Sources */,
 				AA4E00022C60000100000002 /* TorrentCompletionTracker.swift in Sources */,
@@ -1174,6 +1197,7 @@
 				AA4E00082C60000100000008 /* TorrentBackgroundManagerTests.swift in Sources */,
 				AA4E00092C60000100000009 /* TorrentCompletionTrackerTests.swift in Sources */,
 				DD1000052D10000100000005 /* TorrentServiceTests.swift in Sources */,
+				EE6E00042D30000100000004 /* ImportedDocumentReaderTests.swift in Sources */,
 				AA20000B2C6000010000000B /* ProxyConfigurationTests.swift in Sources */,
 				AA20000C2C6000010000000C /* ProxyYAMLParserTests.swift in Sources */,
 				AA20000D2C6000010000000D /* ProxyPersistenceTests.swift in Sources */,

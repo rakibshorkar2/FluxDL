@@ -136,14 +136,16 @@ public struct AddTorrentSheet: View {
                 }
             }
             .sheet(isPresented: $isFileImporterPresented) {
-                TorrentFilePickerView(
+                // UIKit document picker requesting a copy (asCopy: true): the
+                // selected .torrent must be an app-local file so LibTorrent
+                // never reads an externally backed provider URL (reliable
+                // under LiveContainer too). Generic .data stays allowed because
+                // some document providers misreport the torrent UTI.
+                DocumentFilePickerView(
+                    contentTypes: [.torrentMetadata, .data],
                     onPicked: { url in
                         isFileImporterPresented = false
-                        if let error = onAddTorrentFile(url, options) {
-                            validationError = error
-                        } else {
-                            dismiss()
-                        }
+                        handlePickedTorrent(url)
                     },
                     onCancel: { isFileImporterPresented = false }
                 )
@@ -160,6 +162,26 @@ public struct AddTorrentSheet: View {
         }
     }
 
+    /// Handles a `.torrent` picked through `DocumentFilePickerView`. The URL
+    /// is a system-provided copy; a defensive local copy is taken when the
+    /// URL is not app-local so the engine only ever reads a sandbox file.
+    private func handlePickedTorrent(_ url: URL) {
+        switch ImportedDocumentReader.readableCopy(of: url, preferredExtension: "torrent") {
+        case .failure(let error):
+            validationError = error.userMessage
+        case .success(let localURL):
+            // The engine parses the file synchronously (TorrentFile) and keeps
+            // its own copy of the metadata; the temporary source can be
+            // released immediately after the add returns.
+            defer { ImportedDocumentReader.removeTemporaryCopy(at: localURL) }
+            if let error = onAddTorrentFile(localURL, options) {
+                validationError = error
+            } else {
+                dismiss()
+            }
+        }
+    }
+
     private func handleRemoteURL() {
         var clean = remoteURLInput.trimmingCharacters(in: .whitespacesAndNewlines)
         if !clean.lowercased().hasPrefix("http://") && !clean.lowercased().hasPrefix("https://") {
@@ -173,45 +195,5 @@ public struct AddTorrentSheet: View {
         validationError = nil
         onAddRemoteTorrent(url, options)
         dismiss()
-    }
-}
-
-/// UIKit document picker wrapper. SwiftUI's `.fileImporter` is unreliable on
-/// real devices (files can't be selected or the callback never fires), so the
-/// torrent file is picked through `UIDocumentPickerViewController` directly.
-private struct TorrentFilePickerView: UIViewControllerRepresentable {
-    var onPicked: (URL) -> Void
-    var onCancel: () -> Void
-
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(
-            forOpeningContentTypes: [.torrentMetadata, .data]
-        )
-        picker.allowsMultipleSelection = false
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    final class Coordinator: NSObject, UIDocumentPickerDelegate {
-        private let parent: TorrentFilePickerView
-
-        init(_ parent: TorrentFilePickerView) {
-            self.parent = parent
-        }
-
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
-            parent.onPicked(url)
-        }
-
-        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-            parent.onCancel()
-        }
     }
 }

@@ -74,12 +74,22 @@ public struct ProxyView: View {
             .sheet(isPresented: $viewModel.isAddSheetPresented) {
                 AddEditProxySheet(viewModel: viewModel, profile: viewModel.editingProfile)
             }
-            .fileImporter(
-                isPresented: $viewModel.isYAMLImportPresented,
-                allowedContentTypes: [.yaml, .plainText, .text],
-                allowsMultipleSelection: false
-            ) { result in
-                handleYAMLImportResult(result)
+            // UIKit document picker requesting a copy (asCopy: true) instead of
+            // SwiftUI's .fileImporter: the picked document must be an app-local
+            // copy so importing works under virtualized environments
+            // (LiveContainer) where security-scoped provider URLs can be
+            // unreliable. .data is allowed as a fallback because some document
+            // providers misreport YAML files; the content is validated before
+            // parsing.
+            .sheet(isPresented: $viewModel.isYAMLImportPresented) {
+                DocumentFilePickerView(
+                    contentTypes: [.yaml, .plainText, .text, .data],
+                    onPicked: { url in
+                        viewModel.isYAMLImportPresented = false
+                        handleYAMLPicked(url)
+                    },
+                    onCancel: { viewModel.isYAMLImportPresented = false }
+                )
             }
             .sheet(isPresented: $viewModel.isYAMLResultsPresented) {
                 if let importResult = viewModel.yamlImportResult {
@@ -192,26 +202,28 @@ public struct ProxyView: View {
 
     // MARK: - YAML import
 
-    private func handleYAMLImportResult(_ result: Result<[URL], Error>) {
-        switch result {
-        case .success(let urls):
-            guard let url = urls.first else { return }
-            let accessing = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessing { url.stopAccessingSecurityScopedResource() }
-            }
-            do {
-                let data = try Data(contentsOf: url)
-                guard let text = String(data: data, encoding: .utf8) else {
-                    viewModel.showError("The selected file could not be read as text.")
-                    return
+    /// Handles a document picked through `DocumentFilePickerView`. The URL is
+    /// a system-provided copy (asCopy: true); a defensive local copy is still
+    /// taken when the URL is not app-local. The existing parser stays the
+    /// authority for whether the content actually is YAML.
+    private func handleYAMLPicked(_ url: URL) {
+        switch ImportedDocumentReader.readableCopy(of: url, preferredExtension: "yaml") {
+        case .failure(let error):
+            viewModel.showError(error.userMessage)
+        case .success(let localURL):
+            defer { ImportedDocumentReader.removeTemporaryCopy(at: localURL) }
+            switch ImportedDocumentReader.readText(from: localURL) {
+            case .failure(let error):
+                viewModel.showError(error.userMessage)
+            case .success(let text):
+                if ImportedDocumentReader.isYAMLDocument(url) {
+                    viewModel.importYAML(text)
+                } else if viewModel.service.parseYAML(text) != nil {
+                    viewModel.importYAML(text)
+                } else {
+                    viewModel.showError("The selected file is not a valid FluxDL proxy YAML file.")
                 }
-                viewModel.importYAML(text)
-            } catch {
-                viewModel.showError("Could not open the selected file.")
             }
-        case .failure:
-            viewModel.showError("Could not open the selected file.")
         }
     }
 }
