@@ -28,7 +28,7 @@ public protocol SegmentedTransferDelegate: AnyObject {
 /// silently bypassed — the engine refuses segmented routing while a proxy
 /// route is active.
 @MainActor
-public final class SegmentedTransferCoordinator: NSObject {
+public final class SegmentedTransferCoordinator: NSObject, URLSessionDataDelegate {
 
     public weak var delegate: SegmentedTransferDelegate?
 
@@ -77,7 +77,7 @@ public final class SegmentedTransferCoordinator: NSObject {
         weak var session: URLSession?
     }
 
-    private let store = Store()
+    fileprivate let store = Store()
     private var urlSession: URLSession!
 
     public override init() {

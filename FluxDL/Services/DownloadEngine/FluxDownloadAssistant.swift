@@ -171,14 +171,14 @@ public enum DownloadAssistantExecutor {
             let items = engine.tasks.filter { $0.status == .failed }.map { "• \($0.filename)" }
             return DownloadAssistantResult(
                 summary: items.isEmpty ? "No failed downloads" : "\(items.count) failed download\(items.count == 1 ? "" : "s")",
-                items: items.prefix(20).map(String.init),
+                items: Array(items.prefix(20)),
                 icon: "exclamationmark.triangle.fill"
             )
         case .listCompleted:
             let items = engine.tasks.filter { $0.status == .completed }.map { "• \($0.filename)" }
             return DownloadAssistantResult(
                 summary: items.isEmpty ? "No completed downloads yet" : "\(items.count) completed download\(items.count == 1 ? "" : "s")",
-                items: items.prefix(20).map(String.init),
+                items: Array(items.prefix(20)),
                 icon: "checkmark.circle.fill"
             )
         case .listLargerThan(let bytes):
@@ -187,7 +187,7 @@ public enum DownloadAssistantExecutor {
                 .map { "• \($0.filename) (\(ByteCountFormatter.string(fromByteCount: $0.totalBytes, countStyle: .file)))" }
             return DownloadAssistantResult(
                 summary: items.isEmpty ? "Nothing larger than that" : "\(items.count) download\(items.count == 1 ? "" : "s") over \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))",
-                items: items.prefix(20).map(String.init),
+                items: Array(items.prefix(20)),
                 icon: "internaldrive.fill"
             )
         case .listByExtension(let ext):
@@ -196,7 +196,7 @@ public enum DownloadAssistantExecutor {
                 .map { "• \($0.filename)" }
             return DownloadAssistantResult(
                 summary: items.isEmpty ? "No .\(ext) downloads" : "\(items.count) .\(ext) download\(items.count == 1 ? "" : "s")",
-                items: items.prefix(20).map(String.init),
+                items: Array(items.prefix(20)),
                 icon: "doc.fill"
             )
         case .listByStatus(let status):
@@ -205,7 +205,7 @@ public enum DownloadAssistantExecutor {
                 .map { "• \($0.filename)" }
             return DownloadAssistantResult(
                 summary: items.isEmpty ? "No \(status) downloads" : "\(items.count) \(status) download\(items.count == 1 ? "" : "s")",
-                items: items.prefix(20).map(String.init),
+                items: Array(items.prefix(20)),
                 icon: "list.bullet"
             )
         case .pauseNamed(let name):

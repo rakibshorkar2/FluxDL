@@ -25,6 +25,8 @@ func startDownload(
     func changePriority(for taskId: UUID, to newPriority: DownloadPriority)
     func moveTask(from sourceIndex: Int, to destinationIndex: Int)
     func updateURL(_ newURL: URL, for id: UUID)
+    func enterForeground()
+    func enterBackground()
 }
 
 // MARK: - Convenience overload (defaults live here, not in the requirement)
@@ -1041,7 +1043,7 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
 extension DownloadEngine: SegmentedTransferDelegate {
 
-    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, progress taskID: UUID, downloaded: Int64, total: Int64, averageSpeed: Double, remaining: TimeInterval, health: DownloadHealthSnapshot?) {
+    public func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, progress taskID: UUID, downloaded: Int64, total: Int64, averageSpeed: Double, remaining: TimeInterval, health: DownloadHealthSnapshot?) {
         guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         tasks[idx].downloadedBytes          = downloaded
         tasks[idx].totalBytes               = total
@@ -1053,7 +1055,7 @@ extension DownloadEngine: SegmentedTransferDelegate {
         ServiceContainer.shared.liveActivityManager.updateActivity(for: tasks[idx])
     }
 
-    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, completed taskID: UUID, assembledURL: URL, finalSize: Int64) {
+    public func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, completed taskID: UUID, assembledURL: URL, finalSize: Int64) {
         guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else {
             try? FileManager.default.removeItem(at: assembledURL)
             return
@@ -1121,7 +1123,7 @@ extension DownloadEngine: SegmentedTransferDelegate {
         }
     }
 
-    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, failed taskID: UUID, message: String, needsAttention: Bool) {
+    public func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, failed taskID: UUID, message: String, needsAttention: Bool) {
         guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         tasks[idx].status               = .failed
         tasks[idx].errorMessage         = message
@@ -1141,7 +1143,7 @@ extension DownloadEngine: SegmentedTransferDelegate {
         notifyKeepAlive()
     }
 
-    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, needsFallback taskID: UUID, reason: String) {
+    public func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, needsFallback taskID: UUID, reason: String) {
         guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         clearSegmentedFields(id: taskID)
         tasks[idx].status = .paused
@@ -1150,7 +1152,7 @@ extension DownloadEngine: SegmentedTransferDelegate {
         resumeDownload(id: taskID)
     }
 
-    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, paused taskID: UUID, segments: [DownloadSegment]) {
+    public func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, paused taskID: UUID, segments: [DownloadSegment]) {
         guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         tasks[idx].segmentStates = segments
         tasks[idx].activeConnections = 0
@@ -1160,7 +1162,7 @@ extension DownloadEngine: SegmentedTransferDelegate {
         repository.saveTasks(tasks)
     }
 
-    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, needsRepair taskID: UUID, segments: [DownloadSegment], serverSize: Int64) {
+    public func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, needsRepair taskID: UUID, segments: [DownloadSegment], serverSize: Int64) {
         guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
         tasks[idx].segmentStates = segments
         tasks[idx].totalBytes = serverSize

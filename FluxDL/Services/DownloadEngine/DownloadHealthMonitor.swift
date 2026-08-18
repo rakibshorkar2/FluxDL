@@ -101,7 +101,7 @@ public final class DownloadHealthMonitor: @unchecked Sendable {
     public func record(bytes: Int64, at date: Date = Date(), cumulative: Bool = false) {
         lock.lock()
         defer { lock.unlock() }
-        let current: Int64 = cumulative ? bytes : lastBytes + bytes
+        var current: Int64 = cumulative ? bytes : lastBytes + bytes
         if current < lastBytes { current = lastBytes }
         let delta = current - lastBytes
         lastBytes = current

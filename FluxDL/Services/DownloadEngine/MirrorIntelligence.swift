@@ -127,7 +127,7 @@ public actor MirrorIntelligence {
             var score = 1.0
             let total = Double(record.successCount + record.failureCount)
             if total > 0 {
-                score *= record.successCount / total
+                score *= Double(record.successCount) / total
             }
             if let latency = record.lastLatency {
                 score *= max(0.1, 1.0 - latency / 10.0)

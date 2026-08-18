@@ -69,7 +69,6 @@ public enum DownloadURLIntelligence {
             lastModified: headers["last-modified"],
             serverName: headers["server"],
             redirectCount: redirectCount,
-            httpVersion: response.httpVersion,
             requiresAuthentication: requiresAuthentication,
             expirationRisk: url.flatMap { DownloadExpirationRisk.from(url: $0) } ?? .unknown,
             headers: headers,
@@ -230,7 +229,7 @@ public final class DownloadProbe: NSObject, URLSessionDataDelegate, @unchecked S
         // HEAD responses carry no body; the GET fallback is cancelled after
         // the first data chunk. Never let the probe pull the full file.
         completionHandler(.cancel)
-        finish(result: .probeResult(
+        finish(result: DownloadURLIntelligence.probeResult(
             from: http,
             finalURL: response.url,
             redirectCount: redirectCount,
@@ -245,7 +244,7 @@ public final class DownloadProbe: NSObject, URLSessionDataDelegate, @unchecked S
     ) {
         // If the server ignored our HEAD and streams a body, cancel at once.
         finish(result: capturedResponse.map {
-            .probeResult(
+            DownloadURLIntelligence.probeResult(
                 from: $0,
                 finalURL: $0.url,
                 redirectCount: redirectCount,
@@ -257,7 +256,7 @@ public final class DownloadProbe: NSObject, URLSessionDataDelegate, @unchecked S
 
     public func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         if let http = capturedResponse {
-            finish(result: .probeResult(
+            finish(result: DownloadURLIntelligence.probeResult(
                 from: http,
                 finalURL: http.url,
                 redirectCount: redirectCount,

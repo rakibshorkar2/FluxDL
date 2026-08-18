@@ -23,6 +23,7 @@ struct FluxDownloadURLIntent: AppIntent {
         Summary("Download \(\.$url)")
     }
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         engine().startDownload(url: url, filename: nil)
         return .result()
@@ -42,6 +43,7 @@ struct FluxPauseDownloadIntent: AppIntent {
         Summary("Pause \(\.$filename)")
     }
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         let target = engine().tasks.first { $0.filename.localizedCaseInsensitiveContains(filename) }
         if let target {
@@ -65,6 +67,7 @@ struct FluxResumeDownloadIntent: AppIntent {
         Summary("Resume \(\.$filename)")
     }
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         let target = engine().tasks.first { $0.filename.localizedCaseInsensitiveContains(filename) }
         if let target {
@@ -84,6 +87,7 @@ struct FluxRetryDownloadIntent: AppIntent {
     @Parameter(title: "Filename")
     var filename: String
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         let target = engine().tasks.first { $0.filename.localizedCaseInsensitiveContains(filename) }
         if let target {
@@ -100,6 +104,7 @@ struct FluxPauseAllDownloadsIntent: AppIntent {
     static let title: LocalizedStringResource = "Pause All Downloads"
     static let description = IntentDescription("Pauses every active download.")
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         let active = engine().tasks.filter { $0.status == .downloading }
         for task in active {
@@ -115,6 +120,7 @@ struct FluxResumeAllDownloadsIntent: AppIntent {
     static let title: LocalizedStringResource = "Resume All Downloads"
     static let description = IntentDescription("Resumes every paused download.")
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         let paused = engine().tasks.filter { $0.status == .paused }
         for task in paused {
@@ -132,6 +138,7 @@ struct FluxDownloadStatusIntent: AppIntent {
 
     static var parameterSummary: some ParameterSummary { Summary("Get download status") }
 
+    @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let tasks = engine().tasks
         let active = tasks.filter { $0.status == .downloading }.count
@@ -149,6 +156,7 @@ struct FluxOpenDownloadsIntent: AppIntent {
     static let title: LocalizedStringResource = "Open Downloads"
     static let description = IntentDescription("Opens the Downloads tab.")
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         // Route the user to the Downloads tab (the tab router listens for
         // this exact notification; wiring is one line, Downloads-only).
@@ -159,8 +167,12 @@ struct FluxOpenDownloadsIntent: AppIntent {
 
 // MARK: Intent error + notification
 
-extension IntentError {
-    static let notFound = IntentError.message("No matching download found")
+/// Custom error shown by Shortcuts when a named download cannot be found.
+struct IntentError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+
+    static let notFound = IntentError(message: "No matching download found")
 }
 
 extension Notification.Name {
