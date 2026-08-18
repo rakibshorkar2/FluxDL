@@ -179,6 +179,26 @@
 		AA1000782C60000100000078 /* AppIconLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000782C60000100000078 /* AppIconLoader.swift */; };
 		AA2000132C60000100000013 /* SemanticVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000132C60000100000013 /* SemanticVersionTests.swift */; };
 		AA2000142C60000100000014 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2000142C60000100000014 /* UpdateCheckerTests.swift */; };
+AB1000012D40000100000001 /* DownloadFilesAbstraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000012D40000100000001 /* DownloadFilesAbstraction.swift */; };
+		AB1000022D40000100000002 /* DownloadHealthMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000022D40000100000002 /* DownloadHealthMonitor.swift */; };
+		AB1000032D40000100000003 /* DownloadRetryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000032D40000100000003 /* DownloadRetryEngine.swift */; };
+		AB1000042D40000100000004 /* DownloadResumeValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000042D40000100000004 /* DownloadResumeValidator.swift */; };
+		AB1000052D40000100000005 /* DownloadSegment.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000052D40000100000005 /* DownloadSegment.swift */; };
+		AB1000062D40000100000006 /* DownloadStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000062D40000100000006 /* DownloadStrategy.swift */; };
+		AB1000072D40000100000007 /* DownloadURLIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000072D40000100000007 /* DownloadURLIntelligence.swift */; };
+		AB1000082D40000100000008 /* FluxDownloadAssistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000082D40000100000008 /* FluxDownloadAssistant.swift */; };
+		AB1000092D40000100000009 /* MirrorIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1000092D40000100000009 /* MirrorIntelligence.swift */; };
+		AB10000A2D4000010000000A /* SegmentFileAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC10000A2D4000010000000A /* SegmentFileAssembler.swift */; };
+		AB10000B2D4000010000000B /* SegmentedTransferCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC10000B2D4000010000000B /* SegmentedTransferCoordinator.swift */; };
+		AB10000C2D4000010000000C /* DownloadShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC10000C2D4000010000000C /* DownloadShortcuts.swift */; };
+		AB10000D2D4000010000000D /* DownloadSmartBadges.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC10000D2D4000010000000D /* DownloadSmartBadges.swift */; };
+		AB10000E2D4000010000000E /* DownloadAssistantSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC10000E2D4000010000000E /* DownloadAssistantSheet.swift */; };
+		AD2000012D40000100000001 /* DownloadSegmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2000012D40000100000001 /* DownloadSegmentTests.swift */; };
+		AD2000022D40000100000002 /* DownloadRetryEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2000022D40000100000002 /* DownloadRetryEngineTests.swift */; };
+		AD2000032D40000100000003 /* DownloadHealthMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2000032D40000100000003 /* DownloadHealthMonitorTests.swift */; };
+		AD2000042D40000100000004 /* DownloadURLIntelligenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2000042D40000100000004 /* DownloadURLIntelligenceTests.swift */; };
+		AD2000052D40000100000005 /* MirrorIntelligenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2000052D40000100000005 /* MirrorIntelligenceTests.swift */; };
+		AD2000062D40000100000006 /* DownloadIntegrityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2000062D40000100000006 /* DownloadIntegrityTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -388,6 +408,26 @@
 		D55E00012C60000100000001 /* SettingsAboutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsAboutTests.swift; sourceTree = "<group>"; };
 		BB2000992C60000100000099 /* FluxDLTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		P3E000012C60000100000001 /* FluxDLUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxDLUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+AC1000012D40000100000001 /* DownloadFilesAbstraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadFilesAbstraction.swift; sourceTree = "<group>"; };
+	AC1000022D40000100000002 /* DownloadHealthMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHealthMonitor.swift; sourceTree = "<group>"; };
+	AC1000032D40000100000003 /* DownloadRetryEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRetryEngine.swift; sourceTree = "<group>"; };
+	AC1000042D40000100000004 /* DownloadResumeValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadResumeValidator.swift; sourceTree = "<group>"; };
+	AC1000052D40000100000005 /* DownloadSegment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadSegment.swift; sourceTree = "<group>"; };
+	AC1000062D40000100000006 /* DownloadStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadStrategy.swift; sourceTree = "<group>"; };
+	AC1000072D40000100000007 /* DownloadURLIntelligence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadURLIntelligence.swift; sourceTree = "<group>"; };
+	AC1000082D40000100000008 /* FluxDownloadAssistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxDownloadAssistant.swift; sourceTree = "<group>"; };
+	AC1000092D40000100000009 /* MirrorIntelligence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorIntelligence.swift; sourceTree = "<group>"; };
+	AC10000A2D4000010000000A /* SegmentFileAssembler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentFileAssembler.swift; sourceTree = "<group>"; };
+	AC10000B2D4000010000000B /* SegmentedTransferCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SegmentedTransferCoordinator.swift; sourceTree = "<group>"; };
+	AC10000C2D4000010000000C /* DownloadShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadShortcuts.swift; sourceTree = "<group>"; };
+	AC10000D2D4000010000000D /* DownloadSmartBadges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadSmartBadges.swift; sourceTree = "<group>"; };
+	AC10000E2D4000010000000E /* DownloadAssistantSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadAssistantSheet.swift; sourceTree = "<group>"; };
+	AE2000012D40000100000001 /* DownloadSegmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadSegmentTests.swift; sourceTree = "<group>"; };
+	AE2000022D40000100000002 /* DownloadRetryEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadRetryEngineTests.swift; sourceTree = "<group>"; };
+	AE2000032D40000100000003 /* DownloadHealthMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHealthMonitorTests.swift; sourceTree = "<group>"; };
+	AE2000042D40000100000004 /* DownloadURLIntelligenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadURLIntelligenceTests.swift; sourceTree = "<group>"; };
+	AE2000052D40000100000005 /* MirrorIntelligenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirrorIntelligenceTests.swift; sourceTree = "<group>"; };
+	AE2000062D40000100000006 /* DownloadIntegrityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadIntegrityTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -433,6 +473,7 @@
 				GG1000042C60000100000004 /* DesignSystem */,
 				GG1000052C60000100000005 /* Views */,
 				GG3000042C60000100000004 /* Resources */,
+				AF3000012D40000100000002 /* AppIntents */,
 			);
 			path = FluxDL;
 			sourceTree = "<group>";
@@ -500,6 +541,7 @@
 				GG10000F2C6000010000000F /* Torrent */,
 				GG3000032C60000100000003 /* Proxy */,
 				GG6E00012D30000100000001 /* FileImport */,
+				AF3000012D40000100000001 /* DownloadEngine */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -512,6 +554,32 @@
 				FE6E00032D30000100000003 /* IncomingDocumentHandler.swift */,
 			);
 			path = FileImport;
+			sourceTree = "<group>";
+		};
+		AF3000012D40000100000001 /* DownloadEngine */ = {
+			isa = PBXGroup;
+			children = (
+				AC1000012D40000100000001 /* DownloadFilesAbstraction.swift */,
+				AC1000022D40000100000002 /* DownloadHealthMonitor.swift */,
+				AC1000032D40000100000003 /* DownloadRetryEngine.swift */,
+				AC1000042D40000100000004 /* DownloadResumeValidator.swift */,
+				AC1000052D40000100000005 /* DownloadSegment.swift */,
+				AC1000062D40000100000006 /* DownloadStrategy.swift */,
+				AC1000072D40000100000007 /* DownloadURLIntelligence.swift */,
+				AC1000082D40000100000008 /* FluxDownloadAssistant.swift */,
+				AC1000092D40000100000009 /* MirrorIntelligence.swift */,
+				AC10000A2D4000010000000A /* SegmentFileAssembler.swift */,
+				AC10000B2D4000010000000B /* SegmentedTransferCoordinator.swift */,
+			);
+			path = DownloadEngine;
+			sourceTree = "<group>";
+		};
+		AF3000012D40000100000002 /* AppIntents */ = {
+			isa = PBXGroup;
+			children = (
+				AC10000C2D4000010000000C /* DownloadShortcuts.swift */,
+			);
+			path = AppIntents;
 			sourceTree = "<group>";
 		};
 		GG3000032C60000100000003 /* Proxy */ = {
@@ -673,6 +741,8 @@
 				BB10005A2C6000010000005A /* DuplicateResolutionSheet.swift */,
 				BB1000722C60000100000072 /* ClipboardDownloadBanner.swift */,
 				FF1000082C90000100000008 /* FolderDownloadGroupCard.swift */,
+				AC10000D2D4000010000000D /* DownloadSmartBadges.swift */,
+				AC10000E2D4000010000000E /* DownloadAssistantSheet.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -814,6 +884,12 @@
 				FF10000A2C9000010000000A /* FolderDownloadTests.swift */,
 				D55900012C60000100000001 /* DirectorySearchTests.swift */,
 				D55E00012C60000100000001 /* SettingsAboutTests.swift */,
+				AE2000012D40000100000001 /* DownloadSegmentTests.swift */,
+				AE2000022D40000100000002 /* DownloadRetryEngineTests.swift */,
+				AE2000032D40000100000003 /* DownloadHealthMonitorTests.swift */,
+				AE2000042D40000100000004 /* DownloadURLIntelligenceTests.swift */,
+				AE2000052D40000100000005 /* MirrorIntelligenceTests.swift */,
+				AE2000062D40000100000006 /* DownloadIntegrityTests.swift */,
 			);
 			path = FluxDLTests;
 			sourceTree = "<group>";
@@ -1177,6 +1253,20 @@
 				AA1000762C60000100000076 /* AppVersionService.swift in Sources */,
 				AA1000772C60000100000077 /* GitHubReleaseService.swift in Sources */,
 				AA1000782C60000100000078 /* AppIconLoader.swift in Sources */,
+				AB1000012D40000100000001 /* DownloadFilesAbstraction.swift in Sources */,
+				AB1000022D40000100000002 /* DownloadHealthMonitor.swift in Sources */,
+				AB1000032D40000100000003 /* DownloadRetryEngine.swift in Sources */,
+				AB1000042D40000100000004 /* DownloadResumeValidator.swift in Sources */,
+				AB1000052D40000100000005 /* DownloadSegment.swift in Sources */,
+				AB1000062D40000100000006 /* DownloadStrategy.swift in Sources */,
+				AB1000072D40000100000007 /* DownloadURLIntelligence.swift in Sources */,
+				AB1000082D40000100000008 /* FluxDownloadAssistant.swift in Sources */,
+				AB1000092D40000100000009 /* MirrorIntelligence.swift in Sources */,
+				AB10000A2D4000010000000A /* SegmentFileAssembler.swift in Sources */,
+				AB10000B2D4000010000000B /* SegmentedTransferCoordinator.swift in Sources */,
+				AB10000C2D4000010000000C /* DownloadShortcuts.swift in Sources */,
+				AB10000D2D4000010000000D /* DownloadSmartBadges.swift in Sources */,
+				AB10000E2D4000010000000E /* DownloadAssistantSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1214,6 +1304,12 @@
 				AA2000132C60000100000013 /* SemanticVersionTests.swift in Sources */,
 				AA2000142C60000100000014 /* UpdateCheckerTests.swift in Sources */,
 				D55E00022C60000100000002 /* SettingsAboutTests.swift in Sources */,
+				AD2000012D40000100000001 /* DownloadSegmentTests.swift in Sources */,
+				AD2000022D40000100000002 /* DownloadRetryEngineTests.swift in Sources */,
+				AD2000032D40000100000003 /* DownloadHealthMonitorTests.swift in Sources */,
+				AD2000042D40000100000004 /* DownloadURLIntelligenceTests.swift in Sources */,
+				AD2000052D40000100000005 /* MirrorIntelligenceTests.swift in Sources */,
+				AD2000062D40000100000006 /* DownloadIntegrityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

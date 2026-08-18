@@ -183,21 +183,33 @@ public struct DownloadItemCard: View {
                     Spacer()
 
                     if task.status == .downloading {
-                        HStack(spacing: 6) {
-                            Text(task.formattedSpeed)
-                                .font(.caption2.bold())
-                                .foregroundStyle(Color.accentColor)
-
-                            if task.averageSpeedBytesPerSec > 0 {
-                                Text("avg \(task.formattedAverageSpeed)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            DownloadHealthBadge(state: task.healthState ?? .unknown)
+                            if task.activeConnections > 1 {
+                                DownloadConnectionBadge(connections: task.activeConnections)
                             }
+                            DownloadStrategyBadge(strategy: task.activeStrategy)
+                        }
+                    }
+                }
 
-                            Text("• ETA \(task.formattedETA)")
+                if task.status == .downloading {
+                    HStack {
+                        Text(task.formattedSpeed)
+                            .font(.caption2.bold())
+                            .foregroundStyle(Color.accentColor)
+
+                        if task.averageSpeedBytesPerSec > 0 {
+                            Text("avg \(task.formattedAverageSpeed)")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
+
+                        Spacer()
+
+                        Text("ETA \(task.formattedETA)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }

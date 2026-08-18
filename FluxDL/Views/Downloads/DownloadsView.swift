@@ -68,6 +68,9 @@ public struct DownloadsView: View {
             .sheet(isPresented: $viewModel.isQueueSettingsPresented) {
                 QueueSettingsSheet()
             }
+            .sheet(isPresented: $viewModel.isAssistantPresented) {
+                DownloadAssistantSheet()
+            }
             .sheet(isPresented: $viewModel.isHistoryPresented) {
                 DownloadHistoryView(
                     historyManager: viewModel.historyManager,
@@ -420,9 +423,16 @@ public struct DownloadsView: View {
             }
         }
 
-        // Trailing: History + Select mode toggle + Add button
+        // Trailing: Assistant + History + Select mode toggle + Add button
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 14) {
+                Button(action: { viewModel.isAssistantPresented = true }) {
+                    Image(systemName: "sparkles")
+                        .font(.body)
+                        .foregroundStyle(Color.accentColor)
+                }
+                .accessibilityLabel("Flux Assistant")
+
                 Button(action: { viewModel.isHistoryPresented = true }) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.body)

@@ -129,6 +129,12 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     // Redirect count tracking – MainActor only
     private var redirectCountByID: [UUID: Int] = [:]
 
+    // ── Smart download engine (segmented multi-connection transfers) ────────
+    // Owned by the engine; tasks route here only when the strategy decision
+    // says "segmented" and the proxy route is inactive (fail closed: segmented
+    // transfers never bypass the proxy — they stay on the normal path).
+    private let segmentCoordinator = SegmentedTransferCoordinator()
+
     // ── Dependencies ────────────────────────────────────────────────────────
     private let repository:         DownloadRepositoryProtocol
     private let fileManagerService: FileManagementServiceProtocol
@@ -169,6 +175,7 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
 
         self.session = URLSession(configuration: config, delegate: self, delegateQueue: delegateQueue)
         self.tasks   = repository.loadTasks()
+        self.segmentCoordinator.delegate = self
 
         // The Settings tab writes `fluxdl_screen_awake_minutes` straight to
         // UserDefaults; re-apply Keep Screen Awake immediately when it changes
@@ -250,6 +257,26 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
                 proxiedSessionFingerprint = nil
                 requeueTasks(from: dropped)
                 dropped.finishTasksAndInvalidate()
+            }
+        }
+        // Fail closed: when the proxied route becomes active, segmented
+        // transfers (foreground, direct) must not keep running past the
+        // proxy — they are paused, queued as `.pending`, and resumed through
+        // the proxied session by the queue manager.
+        if isUsable {
+            let segmentedIDs = segmentCoordinator.activeTaskIDs()
+            for id in segmentedIDs {
+                segmentCoordinator.pause(taskID: id)
+                if let idx = tasks.firstIndex(where: { $0.id == id }),
+                   tasks[idx].status == .downloading {
+                    tasks[idx].status = .pending
+                    tasks[idx].speedBytesPerSec = 0
+                    tasks[idx].remainingTimeSeconds = 0
+                }
+            }
+            if !segmentedIDs.isEmpty {
+                repository.saveTasks(tasks)
+                ServiceContainer.shared.queueManager.scheduleNextTasks(in: self)
             }
         }
         onRoutingStateChange?()
@@ -390,11 +417,100 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         hapticService.impactOccurred(.light)
         updateScreenAwakeState()
         notifyKeepAlive()
+        maybeUpgradeToSegmented(id: model.id)
         return model.id
+    }
+
+    // MARK: ── Segmented upgrade (additive; never blocks the normal start) ──
+
+    /// True when segmented downloads are enabled (default on, settable without
+    /// touching the Settings tab).
+    private var segmentedEnabled: Bool {
+        UserDefaults.standard.object(forKey: "fluxdl_segmented_enabled") as? Bool ?? true
+    }
+
+    /// Runs a fast probe concurrently with the normal transfer. When the URL
+    /// qualifies (size, Accept-Ranges, no proxy route), the young normal task
+    /// is cancelled (its few hundred KB of prefix are discarded — ranges start
+    /// at 0) and the transfer continues segmented. When it does not qualify,
+    /// the normal transfer continues untouched — the probe never delays it.
+    private func maybeUpgradeToSegmented(id: UUID) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        let model = tasks[index]
+        guard segmentedEnabled,
+              !downloadsRouteRequested,
+              model.status == .downloading,
+              model.resumeData == nil,
+              model.downloadedBytes == 0,
+              DownloadStrategyEngine.isSegmentableScheme(model.url) else { return }
+
+        let url = model.url
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let recommendation = await DownloadStrategyEngine.decide(
+                for: url,
+                existingBytes: 0,
+                segmentedEnabled: self.segmentedEnabled,
+                proxiedRouteActive: self.downloadsRouteRequested
+            )
+            guard recommendation.strategy == .segmented,
+                  recommendation.connectionCount > 1,
+                  let index = self.tasks.firstIndex(where: { $0.id == id }),
+                  self.tasks[index].status == .downloading,
+                  self.urlTaskByID[id] != nil else { return }
+            // The task must still be the young one we just started: no pause,
+            // cancel, retry, or significant byte count in between.
+            guard self.tasks[index].downloadedBytes < 5 * 1024 * 1024,
+                  self.tasks[index].activeStrategy == nil,
+                  self.tasks[index].segmentStates == nil else { return }
+
+            guard let probe = await DownloadProbe(url: url).probe(),
+                  let serverLength = probe.contentLength,
+                  serverLength >= DownloadStrategyEngine.minimumSegmentableBytes else { return }
+
+            // Cancel the normal task; prefix bytes are discarded.
+            guard let dlTask = self.urlTaskByID[id] else { return }
+            dlTask.cancel { _ in }
+            self.urlTaskByID.removeValue(forKey: id)
+            self.sessionByTaskID.removeValue(forKey: id)
+            self.cleanupDelegateTracking(id: id)
+            self.redirectCountByID.removeValue(forKey: id)
+
+            guard let index = self.tasks.firstIndex(where: { $0.id == id }) else { return }
+            let connections = DownloadSegmentMap.initialConnectionCount(totalBytes: serverLength)
+            let segments = DownloadSegmentMap.makeSegments(
+                totalBytes: serverLength,
+                taskID: id,
+                connectionCount: connections
+            )
+            self.tasks[index].activeStrategy      = .segmented
+            self.tasks[index].segmentStates       = segments
+            self.tasks[index].activeConnections   = connections
+            self.tasks[index].totalBytes          = serverLength
+            self.tasks[index].etag                = probe.etag ?? self.tasks[index].etag
+            self.tasks[index].lastModified        = probe.lastModified ?? self.tasks[index].lastModified
+            self.tasks[index].acceptsRanges       = probe.acceptsRanges
+            self.tasks[index].mimeType            = probe.mimeType ?? self.tasks[index].mimeType
+            self.tasks[index].serverName          = probe.serverName ?? self.tasks[index].serverName
+            self.tasks[index].sessionTaskIdentifier = nil
+            self.repository.saveTasks(self.tasks)
+
+            self.segmentCoordinator.start(
+                taskID: id,
+                url: probe.finalURL ?? url,
+                segments: segments,
+                totalBytes: serverLength
+            )
+        }
     }
 
     public func pauseDownload(id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        if segmentCoordinator.isHandling(id) {
+            // Cancels segment tasks; the final states arrive via
+            // `segmentedCoordinator(paused:segments:)` and are persisted there.
+            segmentCoordinator.pause(taskID: id)
+        }
         autoRetryTaskByID[id]?.cancel()
         autoRetryTaskByID.removeValue(forKey: id)
 
@@ -448,6 +564,15 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         // triggers `scheduleNextTasks`).
         if downloadsRouteRequested && !isProxiedRouteUsable { return }
 
+        // Segmented task: hand it back to the segment coordinator. The
+        // resume path re-validates the server before continuing (ETag /
+        // Last-Modified / Content-Length / Accept-Ranges), falling back to
+        // the reliable normal path when continuation is unsafe.
+        if tasks[index].activeStrategy == .segmented {
+            resumeSegmented(id: id)
+            return
+        }
+
         guard let usedSession = activeSession() else { return }
 
         tasks[index].status       = .downloading
@@ -487,8 +612,101 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         notifyKeepAlive()
     }
 
+    /// Resumes a segmented download. Validates the persisted segments against
+    /// a fresh probe before restarting the byte-range transfer.
+    private func resumeSegmented(id: UUID) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        let model = tasks[index]
+        guard let stored = model.segmentStates, !stored.isEmpty,
+              let sessionURL = model.activeURL as URL? else {
+            // No persisted segments: fall back to the normal path cleanly.
+            clearSegmentedFields(id: id)
+            resumeDownload(id: id)
+            return
+        }
+        let storedLength = model.totalBytes
+        let existingBytes = stored.reduce(0) { $0 + $1.validDownloadedBytes }
+        let url = sessionURL
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let probe = await DownloadProbe(url: url).probe()
+            let decision = DownloadResumeValidator.decide(DownloadResumeValidator.Input(
+                storedETag: model.etag,
+                storedLastModified: model.lastModified,
+                storedLength: storedLength,
+                existingBytes: existingBytes,
+                probe: probe,
+                segmentedEligible: self.segmentedEnabled && !self.downloadsRouteRequested,
+                proxiedRouteActive: self.downloadsRouteRequested
+            ))
+            switch decision {
+            case .resumeNormally:
+                guard let index = self.tasks.firstIndex(where: { $0.id == id }),
+                      self.tasks[index].status != .cancelled else { return }
+                self.tasks[index].status = .downloading
+                self.tasks[index].errorMessage = nil
+                self.tasks[index].totalBytes = storedLength
+                if let probe, let length = probe.contentLength, length > 0 {
+                    self.tasks[index].totalBytes = length
+                }
+                self.repository.saveTasks(self.tasks)
+                self.segmentCoordinator.start(
+                    taskID: id,
+                    url: probe?.finalURL ?? url,
+                    segments: stored,
+                    totalBytes: self.tasks[index].totalBytes
+                )
+                self.hapticService.impactOccurred(.light)
+                self.updateScreenAwakeState()
+                self.notifyKeepAlive()
+            case .restartNormally, .downgradeToNormal, .restartSegmented:
+                self.clearSegmentedFields(id: id)
+                self.resumeDownload(id: id)
+            case .revalidate:
+                // 416/range mismatch — rebuild the map from the server size.
+                if let probe, let serverSize = probe.contentLength, serverSize > 0 {
+                    let map = DownloadSegmentMap(segments: stored, totalBytes: serverSize)
+                        .repairingAfter416(serverSize: serverSize)
+                    guard let index = self.tasks.firstIndex(where: { $0.id == id }) else { return }
+                    self.tasks[index].segmentStates = map.map.segments
+                    self.tasks[index].totalBytes = serverSize
+                    self.repository.saveTasks(self.tasks)
+                    self.resumeSegmented(id: id)
+                } else {
+                    self.clearSegmentedFields(id: id)
+                    self.resumeDownload(id: id)
+                }
+            case .needsAttention(let message):
+                guard let index = self.tasks.firstIndex(where: { $0.id == id }) else { return }
+                self.tasks[index].status = .failed
+                self.tasks[index].errorMessage = message
+                self.tasks[index].needsAttention = true
+                self.tasks[index].speedBytesPerSec = 0
+                self.tasks[index].remainingTimeSeconds = 0
+                self.repository.saveTasks(self.tasks)
+                self.notificationService.notifyDownloadFailed(filename: self.tasks[index].filename, reason: message)
+                ServiceContainer.shared.liveActivityManager.endActivity(for: id)
+                self.updateScreenAwakeState()
+                self.notifyKeepAlive()
+            }
+        }
+    }
+
+    /// Clears all segmented state so a task resumes through the normal path.
+    private func clearSegmentedFields(id: UUID) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        tasks[index].activeStrategy = nil
+        tasks[index].segmentStates = nil
+        tasks[index].activeConnections = 0
+        tasks[index].healthState = nil
+        tasks[index].needsAttention = false
+    }
+
     public func cancelDownload(id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        if segmentCoordinator.isHandling(id) {
+            segmentCoordinator.discard(taskID: id, deleteFiles: false)
+        }
         autoRetryTaskByID[id]?.cancel()
         autoRetryTaskByID.removeValue(forKey: id)
         urlTaskByID[id]?.cancel()
@@ -515,6 +733,11 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
         // while the proxy route is requested but unusable — including the
         // auto-retry path fired right after a proxy-caused failure.
         if downloadsRouteRequested && !isProxiedRouteUsable { return }
+
+        if segmentCoordinator.isHandling(id) {
+            segmentCoordinator.discard(taskID: id, deleteFiles: true)
+        }
+        clearSegmentedFields(id: id)
 
         guard let usedSession = activeSession() else { return }
 
@@ -573,6 +796,11 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     public func updateURL(_ newURL: URL, for id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
 
+        if segmentCoordinator.isHandling(id) {
+            segmentCoordinator.discard(taskID: id, deleteFiles: true)
+        }
+        clearSegmentedFields(id: id)
+
         // Cancel any active session task
         autoRetryTaskByID[id]?.cancel()
         autoRetryTaskByID.removeValue(forKey: id)
@@ -630,6 +858,9 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
     public func deleteDownload(id: UUID, deleteFile: Bool) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
         let model = tasks[index]
+        if segmentCoordinator.isHandling(id) {
+            segmentCoordinator.discard(taskID: id, deleteFiles: true)
+        }
         autoRetryTaskByID[id]?.cancel()
         autoRetryTaskByID.removeValue(forKey: id)
         urlTaskByID[id]?.cancel()
@@ -754,6 +985,22 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
             .updateDownloadsKeepAlive(hasActiveDownloads)
     }
 
+    // MARK: ── App lifecycle hooks (called by FluxDLApp scenePhase) ────────────
+
+    /// App entered the background: segment sessions (foreground networking)
+    /// are paused so transfers continue reliably through the background
+    /// URLSession path after relaunch. Segment state is persisted via the
+    /// `paused` delegate callback.
+    public func enterBackground() {
+        segmentCoordinator.pauseForBackground()
+    }
+
+    /// App returned to the foreground: anything queued while suspended
+    /// starts as usual.
+    public func enterForeground() {
+        ServiceContainer.shared.queueManager.scheduleNextTasks(in: self)
+    }
+
     /// Push a throttled UI snapshot from delegate queue → MainActor.
     /// Called only from delegate queue (already serialised).
     nonisolated private func pushUIUpdate(id: UUID, snap: ProgressSnapshot) {
@@ -787,6 +1034,150 @@ public final class DownloadEngine: NSObject, ObservableObject, DownloadEnginePro
             self.tasks[idx].serverName         = meta.serverName ?? self.tasks[idx].serverName
             self.tasks[idx].responseHeaders    = meta.responseHeaders
         }
+    }
+}
+
+// MARK: - SegmentedTransferDelegate (segmented coordinator → engine, MainActor)
+
+extension DownloadEngine: SegmentedTransferDelegate {
+
+    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, progress taskID: UUID, downloaded: Int64, total: Int64, averageSpeed: Double, remaining: TimeInterval, health: DownloadHealthSnapshot?) {
+        guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        tasks[idx].downloadedBytes          = downloaded
+        tasks[idx].totalBytes               = total
+        tasks[idx].speedBytesPerSec         = averageSpeed
+        tasks[idx].averageSpeedBytesPerSec  = averageSpeed
+        tasks[idx].remainingTimeSeconds     = remaining
+        tasks[idx].healthState              = health?.state ?? tasks[idx].healthState
+        tasks[idx].activeConnections        = max(tasks[idx].activeConnections, 1)
+        ServiceContainer.shared.liveActivityManager.updateActivity(for: tasks[idx])
+    }
+
+    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, completed taskID: UUID, assembledURL: URL, finalSize: Int64) {
+        guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else {
+            try? FileManager.default.removeItem(at: assembledURL)
+            return
+        }
+        let copyURL = assembledURL
+        do {
+            let finalURL: URL
+            if let folderPath = tasks[idx].destinationDirectoryPath,
+               let relative = tasks[idx].relativePath {
+                finalURL = try fileManagerService.moveFile(
+                    from: copyURL,
+                    toRelativePath: relative,
+                    inDirectory: URL(fileURLWithPath: folderPath, isDirectory: true)
+                )
+            } else {
+                finalURL = try fileManagerService.moveFile(from: copyURL, to: tasks[idx].filename)
+            }
+            try? FileManager.default.removeItem(at: SegmentedTransferCoordinator.partDirectory(for: taskID))
+
+            tasks[idx].status               = .completed
+            tasks[idx].destinationPath      = finalURL.path
+            tasks[idx].downloadedBytes      = finalSize
+            tasks[idx].totalBytes           = finalSize
+            tasks[idx].speedBytesPerSec     = 0
+            tasks[idx].remainingTimeSeconds = 0
+            tasks[idx].completedAt          = Date()
+            tasks[idx].sessionTaskIdentifier = nil
+            tasks[idx].activeStrategy       = nil
+            tasks[idx].segmentStates        = nil
+            tasks[idx].activeConnections    = 0
+            tasks[idx].healthState          = nil
+            tasks[idx].needsAttention       = false
+            repository.saveTasks(tasks)
+
+            hapticService.notificationOccurred(.success)
+            notificationService.notifyDownloadCompleted(filename: tasks[idx].filename)
+            ServiceContainer.shared.liveActivityManager.endActivity(for: taskID)
+            DownloadMirrorManager.shared.recordSuccess(for: taskID)
+            ServiceContainer.shared.queueManager.scheduleNextTasks(in: self)
+            updateScreenAwakeState()
+            notifyKeepAlive()
+
+            // Kick off background checksum computation (same as the normal path).
+            let taskSnapshot = tasks[idx]
+            Task.detached(priority: .utility) {
+                await DownloadVerificationService.shared.computeAndStore(task: taskSnapshot, engine: self)
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: copyURL)
+            tasks[idx].status               = .failed
+            tasks[idx].errorMessage         = "Save failed: \(error.localizedDescription)"
+            tasks[idx].speedBytesPerSec     = 0
+            tasks[idx].remainingTimeSeconds = 0
+            tasks[idx].sessionTaskIdentifier = nil
+            tasks[idx].activeStrategy       = nil
+            tasks[idx].segmentStates        = nil
+            tasks[idx].activeConnections    = 0
+            repository.saveTasks(tasks)
+            hapticService.notificationOccurred(.error)
+            notificationService.notifyDownloadFailed(filename: tasks[idx].filename, reason: error.localizedDescription)
+            ServiceContainer.shared.liveActivityManager.endActivity(for: taskID)
+            ServiceContainer.shared.queueManager.scheduleNextTasks(in: self)
+            updateScreenAwakeState()
+            notifyKeepAlive()
+        }
+    }
+
+    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, failed taskID: UUID, message: String, needsAttention: Bool) {
+        guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        tasks[idx].status               = .failed
+        tasks[idx].errorMessage         = message
+        tasks[idx].speedBytesPerSec     = 0
+        tasks[idx].remainingTimeSeconds = 0
+        tasks[idx].sessionTaskIdentifier = nil
+        tasks[idx].activeConnections    = 0
+        tasks[idx].healthState          = needsAttention ? .failed : tasks[idx].healthState
+        tasks[idx].needsAttention       = needsAttention
+        repository.saveTasks(tasks)
+
+        hapticService.notificationOccurred(.error)
+        notificationService.notifyDownloadFailed(filename: tasks[idx].filename, reason: message)
+        ServiceContainer.shared.liveActivityManager.endActivity(for: taskID)
+        ServiceContainer.shared.queueManager.scheduleNextTasks(in: self)
+        updateScreenAwakeState()
+        notifyKeepAlive()
+    }
+
+    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, needsFallback taskID: UUID, reason: String) {
+        guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        clearSegmentedFields(id: taskID)
+        tasks[idx].status = .paused
+        tasks[idx].errorMessage = "Segmented download unsupported (\(reason)); switching to the standard downloader."
+        repository.saveTasks(tasks)
+        resumeDownload(id: taskID)
+    }
+
+    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, paused taskID: UUID, segments: [DownloadSegment]) {
+        guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        tasks[idx].segmentStates = segments
+        tasks[idx].activeConnections = 0
+        tasks[idx].healthState = nil
+        tasks[idx].speedBytesPerSec = 0
+        tasks[idx].remainingTimeSeconds = 0
+        repository.saveTasks(tasks)
+    }
+
+    func segmentedCoordinator(_ coordinator: SegmentedTransferCoordinator, needsRepair taskID: UUID, segments: [DownloadSegment], serverSize: Int64) {
+        guard let idx = tasks.firstIndex(where: { $0.id == taskID }) else { return }
+        tasks[idx].segmentStates = segments
+        tasks[idx].totalBytes = serverSize
+        tasks[idx].activeStrategy = .segmented
+        tasks[idx].activeConnections = DownloadSegmentMap.initialConnectionCount(totalBytes: serverSize)
+        tasks[idx].status = .downloading
+        tasks[idx].errorMessage = nil
+        repository.saveTasks(tasks)
+        segmentCoordinator.start(
+            taskID: taskID,
+            url: tasks[idx].activeURL,
+            segments: segments,
+            totalBytes: serverSize
+        )
+        hapticService.impactOccurred(.light)
+        updateScreenAwakeState()
+        notifyKeepAlive()
     }
 }
 

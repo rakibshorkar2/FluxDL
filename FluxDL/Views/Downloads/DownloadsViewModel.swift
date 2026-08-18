@@ -51,6 +51,7 @@ public final class DownloadsViewModel: ObservableObject {
     @Published public var isAddSheetPresented: Bool = false
     @Published public var isQueueSettingsPresented: Bool = false
     @Published public var isHistoryPresented: Bool = false
+    @Published public var isAssistantPresented: Bool = false
     @Published public var taskForInfoSheet: DownloadTaskModel?
     @Published public var taskForDiagnosticsSheet: DownloadTaskModel?
     @Published public var taskForUpdateURLSheet: DownloadTaskModel?

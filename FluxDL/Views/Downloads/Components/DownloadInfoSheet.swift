@@ -26,6 +26,10 @@ public struct DownloadInfoSheet: View {
         NavigationStack {
             List {
                 downloadSection
+                strategySection
+                healthSection
+                segmentsSection
+                recoverySection
                 httpSection
                 mimeSection
                 serverSection
@@ -74,6 +78,141 @@ public struct DownloadInfoSheet: View {
                 InfoRow(label: "HTTP Status", value: "\(http)")
             }
             InfoRow(label: "Retries", value: "\(liveTask.retryCount) / \(liveTask.maxRetries)")
+        }
+    }
+
+    // MARK: – Strategy Section (smart download engine)
+
+    private var strategySection: some View {
+        Section("Engine") {
+            InfoRow(label: "Strategy", value: liveTask.activeStrategy?.rawValue ?? "Standard")
+            InfoRow(label: "Connections", value: liveTask.activeConnections > 1 ? "\(liveTask.activeConnections) (multi-connection)" : "1 (single connection)")
+            if liveTask.status == .downloading {
+                InfoRow(label: "Segments", value: segmentSummary)
+            }
+        }
+    }
+
+    private var segmentSummary: String {
+        guard let segments = liveTask.segmentStates, !segments.isEmpty else { return "—" }
+        let done = segments.filter { $0.isComplete }.count
+        return "\(done) / \(segments.count) complete"
+    }
+
+    // MARK: – Health Section
+
+    private var healthSection: some View {
+        Section("Health") {
+            HStack {
+                Text("Status")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                DownloadHealthBadge(state: liveTask.healthState ?? .unknown)
+            }
+            if let state = liveTask.healthState, state == .stalled {
+                Text("The transfer has not made progress recently. It resumes automatically when possible.")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            if liveTask.needsAttention {
+                Label("This download needs your attention.", systemImage: "exclamationmark.triangle.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.red)
+            }
+            InfoRow(label: "Avg Speed", value: liveTask.formattedAverageSpeed)
+        }
+    }
+
+    // MARK: – Segments Section
+
+    private var segmentsSection: some View {
+        Section("Segments") {
+            if let segments = liveTask.segmentStates, !segments.isEmpty {
+                ForEach(segments.sorted(by: { $0.byteStart < $1.byteStart }), id: \.segmentID) { segment in
+                    HStack(spacing: 10) {
+                        Image(systemName: segmentIcon(segment))
+                            .foregroundStyle(segmentColor(segment))
+                            .frame(width: 18)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("\(segment.byteStart) – \(segment.byteEnd)")
+                                .font(.caption2)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                            ProgressView(value: Double(segment.validDownloadedBytes), total: Double(segment.expectedBytes))
+                                .scaleEffect(y: 0.6)
+                        }
+                        Text("\(Int(segment.validDownloadedBytes * 100 / max(segment.expectedBytes, 1)))%")
+                            .font(.caption2)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 36, alignment: .trailing)
+                    }
+                }
+            } else if liveTask.activeStrategy == .segmented {
+                Text("No segment state yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("This download uses a single connection.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func segmentIcon(_ segment: DownloadSegment) -> String {
+        switch segment.state {
+        case .completed: return "checkmark.circle.fill"
+        case .downloading, .retrying: return "arrow.down.circle.fill"
+        case .paused: return "pause.circle.fill"
+        case .failed: return "xmark.circle.fill"
+        default: return "circle"
+        }
+    }
+
+    private func segmentColor(_ segment: DownloadSegment) -> Color {
+        switch segment.state {
+        case .completed: return .green
+        case .downloading, .retrying: return .blue
+        case .paused: return .orange
+        case .failed: return .red
+        default: return .secondary
+        }
+    }
+
+    // MARK: – Recovery Section
+
+    private var recoverySection: some View {
+        Section("Recovery") {
+            InfoRow(label: "Range Resume", value: liveTask.acceptsRanges ? "Available" : "Unavailable")
+            InfoRow(label: "Retries", value: "\(liveTask.retryCount) / \(liveTask.maxRetries)")
+            if !liveTask.retryHistory.isEmpty {
+                ForEach(liveTask.retryHistory.suffix(5).reversed(), id: \.date) { record in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(record.errorMessage ?? "Retry")
+                                .font(.caption)
+                            if let status = record.httpStatus {
+                                Text("HTTP \(status)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Text(formatDate(record.date))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Text("No retries recorded.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

@@ -81,6 +81,13 @@ public struct MainTabView: View {
                 }
                 .tag(AppTab.torrent)
         }
+        // Shortcuts → "Open Downloads": switch to the Downloads tab.
+        .onReceive(NotificationCenter.default.publisher(for: .fluxdlOpenDownloadsTab)) { _ in
+            if selectedTab != .downloads {
+                selectedTab = .downloads
+                hapticService.selectionChanged()
+            }
+        }
         .preferredColorScheme(themeService.colorScheme)
     }
 }

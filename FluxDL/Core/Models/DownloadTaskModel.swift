@@ -123,6 +123,19 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
     /// the smart-routing root. `nil` for standalone downloads.
     public var destinationDirectoryPath: String?
 
+    // ── Smart download engine (additive; nil/default = legacy behavior) ──────
+    /// The strategy the engine is using for this task (normal/segmented/…).
+    /// `nil` means the legacy single-connection path.
+    public var activeStrategy: DownloadStrategy?
+    /// Byte-range segments for segmented downloads; `nil` for non-segmented.
+    public var segmentStates: [DownloadSegment]?
+    /// Latest health classification (throttled UI updates).
+    public var healthState: DownloadHealthState?
+    /// Number of concurrent connections in use (0 = single connection).
+    public var activeConnections: Int
+    /// Set when the retry/mirror machinery gave up and the user should act.
+    public var needsAttention: Bool
+
     // MARK: Computed helpers
 
     public var progress: Double {
@@ -210,7 +223,12 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         tags: [String] = [],
         folderGroupID: UUID? = nil,
         relativePath: String? = nil,
-        destinationDirectoryPath: String? = nil
+        destinationDirectoryPath: String? = nil,
+        activeStrategy: DownloadStrategy? = nil,
+        segmentStates: [DownloadSegment]? = nil,
+        healthState: DownloadHealthState? = nil,
+        activeConnections: Int = 0,
+        needsAttention: Bool = false
     ) {
         self.id                       = id
         self.url                      = url
@@ -250,6 +268,11 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         self.folderGroupID            = folderGroupID
         self.relativePath             = relativePath
         self.destinationDirectoryPath = destinationDirectoryPath
+        self.activeStrategy           = activeStrategy
+        self.segmentStates            = segmentStates
+        self.healthState              = healthState
+        self.activeConnections        = activeConnections
+        self.needsAttention           = needsAttention
     }
 
     // MARK: Codable — backward-compatible decode (old JSON missing new keys)
@@ -266,6 +289,7 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         case sha256Hash, md5Hash
         case retryHistory, tags
         case folderGroupID, relativePath, destinationDirectoryPath
+        case activeStrategy, segmentStates, healthState, activeConnections, needsAttention
     }
 
     public init(from decoder: Decoder) throws {
@@ -309,5 +333,10 @@ public struct DownloadTaskModel: Identifiable, Codable, Equatable {
         folderGroupID           = try c.decodeIfPresent(UUID.self, forKey: .folderGroupID)
         relativePath            = try c.decodeIfPresent(String.self, forKey: .relativePath)
         destinationDirectoryPath = try c.decodeIfPresent(String.self, forKey: .destinationDirectoryPath)
+        activeStrategy          = try c.decodeIfPresent(DownloadStrategy.self, forKey: .activeStrategy)
+        segmentStates           = try c.decodeIfPresent([DownloadSegment].self, forKey: .segmentStates)
+        healthState             = try c.decodeIfPresent(DownloadHealthState.self, forKey: .healthState)
+        activeConnections       = try c.decodeIfPresent(Int.self, forKey: .activeConnections) ?? 0
+        needsAttention          = try c.decodeIfPresent(Bool.self, forKey: .needsAttention) ?? false
     }
 }

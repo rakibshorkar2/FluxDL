@@ -79,9 +79,15 @@ struct FluxDLApp: App {
                         container.clipboardService.checkClipboardOnAppActive()
                         container.liveActivityManager.handleAppForegrounding()
                         container.torrentService.handleAppForegrounding()
+                        container.downloadEngine.enterForeground()
                     case .background:
                         container.liveActivityManager.handleAppBackgrounding(tasks: container.downloadEngine.tasks)
                         container.torrentService.handleAppBackgrounding()
+                        // Segmented (multi-connection) transfers are foreground
+                        // networking with no Apple background guarantee — pause
+                        // them; they resume through the reliable background
+                        // URLSession path or on foreground.
+                        container.downloadEngine.enterBackground()
                         // Aggregated initial state on background transition;
                         // each subsystem then owns its own slot thereafter.
                         container.backgroundKeepAliveService.updateDownloadsKeepAlive(hasDownloadingTasks)
