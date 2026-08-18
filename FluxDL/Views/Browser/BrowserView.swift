@@ -352,14 +352,15 @@ public struct BrowserView: View {
         )
     }
 
-    /// Position of the "Add Torrent?" popup: toolbar-adjacent slot, clamped
-    /// inside the safe inset (magnet / torrent triggers carry no DOM anchor).
+    /// Position of the "Add Torrent?" popup: vertically centered in the
+    /// usable web area so the browser toolbar and tab bar never cover it
+    /// (magnet / torrent triggers carry no DOM anchor).
     private func torrentPopupPosition(in size: CGSize) -> CGPoint {
         let edgeInset: CGFloat = 160
         let halfWidth = max(edgeInset, size.width - edgeInset)
         return CGPoint(
             x: min(max(size.width / 2, edgeInset), halfWidth),
-            y: size.height - 150
+            y: size.height / 2
         )
     }
 
