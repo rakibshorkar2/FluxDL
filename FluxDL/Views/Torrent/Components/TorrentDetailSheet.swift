@@ -51,6 +51,7 @@ public struct TorrentDetailSheet: View {
                     )
                 }
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle(torrent?.name ?? "Torrent")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -133,6 +133,7 @@ public struct BrowserSettingsSheet: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle("Browser Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

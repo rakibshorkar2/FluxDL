@@ -55,6 +55,7 @@ public struct TorrentSettingsSheet: View {
                 downloadSection
                 notificationsSection
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle("Torrent Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

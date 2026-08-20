@@ -27,6 +27,7 @@ public struct QueueSettingsSheet: View {
                     Toggle("Warn on Duplicate Links", isOn: $queueManager.duplicateDetectionEnabled)
                 }
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle("Queue Configuration")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

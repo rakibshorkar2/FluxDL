@@ -121,6 +121,7 @@ public struct AddEditProxySheet: View {
                     Text("Actions")
                 }
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle(profile == nil ? "Add Proxy" : "Edit Proxy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

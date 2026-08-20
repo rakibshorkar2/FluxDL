@@ -404,6 +404,7 @@ public struct DirectoryAISearchSettingsView: View {
                     Text("The index caches the file listing of the current directory root so the server is not re-scanned on every search.")
                 }
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle("AI Search Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

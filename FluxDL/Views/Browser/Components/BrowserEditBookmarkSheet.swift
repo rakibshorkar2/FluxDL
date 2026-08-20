@@ -42,6 +42,7 @@ public struct BrowserEditBookmarkSheet: View {
                     Toggle("Favorite", isOn: $isFavorite)
                 }
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle("Edit Bookmark")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

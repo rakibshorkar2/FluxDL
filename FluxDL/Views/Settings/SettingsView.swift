@@ -713,6 +713,7 @@ public struct SettingsView: View {
                         isDeveloperProfilePresented = true
                     }
                 }
+                .toggleStyle(AppToggleStyle())
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 32)

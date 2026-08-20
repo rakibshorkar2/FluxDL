@@ -128,6 +128,7 @@ public struct AddTorrentSheet: View {
                     }
                 }
             }
+            .toggleStyle(AppToggleStyle())
             .navigationTitle("Add Torrent")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

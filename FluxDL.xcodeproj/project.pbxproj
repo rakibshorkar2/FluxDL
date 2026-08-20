@@ -15,6 +15,7 @@
 		AA1000062C60000100000006 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000062C60000100000006 /* AppTheme.swift */; };
 		AA1000072C60000100000007 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000072C60000100000007 /* GlassCard.swift */; };
 		AA1000082C60000100000008 /* StatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000082C60000100000008 /* StatusBadge.swift */; };
+		AA1000E12C600001000000E1 /* AppToggleStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000E12C600001000000E1 /* AppToggleStyle.swift */; };
 		AA1000092C60000100000009 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1000092C60000100000009 /* MainTabView.swift */; };
 		AA10000A2C6000010000000A /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10000A2C6000010000000A /* DownloadsView.swift */; };
 		AA10000B2C6000010000000B /* DownloadsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB10000B2C6000010000000B /* DownloadsViewModel.swift */; };
@@ -243,6 +244,7 @@ AB1000012D40000100000001 /* DownloadFilesAbstraction.swift in Sources */ = {isa 
 		BB1000062C60000100000006 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		BB1000072C60000100000007 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
 		BB1000082C60000100000008 /* StatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBadge.swift; sourceTree = "<group>"; };
+		BB1000E12C600001000000E1 /* AppToggleStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppToggleStyle.swift; sourceTree = "<group>"; };
 		BB1000092C60000100000009 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		BB10000A2C6000010000000A /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsView.swift; sourceTree = "<group>"; };
 		BB10000B2C6000010000000B /* DownloadsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadsViewModel.swift; sourceTree = "<group>"; };
@@ -631,6 +633,7 @@ AC1000012D40000100000001 /* DownloadFilesAbstraction.swift */ = {isa = PBXFileRe
 			children = (
 				BB1000072C60000100000007 /* GlassCard.swift */,
 				BB1000082C60000100000008 /* StatusBadge.swift */,
+				BB1000E12C600001000000E1 /* AppToggleStyle.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -1127,6 +1130,7 @@ AC1000012D40000100000001 /* DownloadFilesAbstraction.swift */ = {isa = PBXFileRe
 				AA1000062C60000100000006 /* AppTheme.swift in Sources */,
 				AA1000072C60000100000007 /* GlassCard.swift in Sources */,
 				AA1000082C60000100000008 /* StatusBadge.swift in Sources */,
+				AA1000E12C600001000000E1 /* AppToggleStyle.swift in Sources */,
 				AA1000092C60000100000009 /* MainTabView.swift in Sources */,
 				AA10000A2C6000010000000A /* DownloadsView.swift in Sources */,
 				AA10000B2C6000010000000B /* DownloadsViewModel.swift in Sources */,

@@ -46,6 +46,7 @@ public struct ProxyStatusCard: View {
                 toggleButton
             }
         }
+        .toggleStyle(AppToggleStyle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilitySummary)
     }
