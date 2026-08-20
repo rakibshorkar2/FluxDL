@@ -36,7 +36,7 @@ public struct AppToggleStyle: ToggleStyle {
 
     private func switchIndicator(isOn: Bool) -> some View {
         Capsule()
-            .fill(isOn ? AnyShapeStyle(HierarchicalShapeStyle.tint) : AnyShapeStyle(offTrackColor))
+            .fill(isOn ? AnyShapeStyle(TintShapeStyle()) : AnyShapeStyle(offTrackColor))
             .frame(width: 51, height: 31)
             .overlay {
                 Capsule()
