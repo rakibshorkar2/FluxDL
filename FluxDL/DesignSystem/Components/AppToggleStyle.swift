@@ -11,9 +11,7 @@ import SwiftUI
 /// the single source of truth: when haptics are OFF the flip is silent, when
 /// ON it produces the usual light selection tick.
 public struct AppToggleStyle: ToggleStyle {
-    @Environment(\.tint) private var tint
     @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.labelsHidden) private var labelsHidden
     @Environment(\.colorScheme) private var colorScheme
 
     public init() {}
@@ -26,10 +24,8 @@ public struct AppToggleStyle: ToggleStyle {
             }
         } label: {
             HStack(spacing: 12) {
-                if !labelsHidden {
-                    configuration.label
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                configuration.label
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 switchIndicator(isOn: configuration.isOn)
             }
         }
@@ -40,7 +36,7 @@ public struct AppToggleStyle: ToggleStyle {
 
     private func switchIndicator(isOn: Bool) -> some View {
         Capsule()
-            .fill(isOn ? onTrackColor : offTrackColor)
+            .fill(isOn ? AnyShapeStyle(HierarchicalShapeStyle.tint) : AnyShapeStyle(offTrackColor))
             .frame(width: 51, height: 31)
             .overlay {
                 Capsule()
@@ -62,10 +58,6 @@ public struct AppToggleStyle: ToggleStyle {
             }
             .opacity(isEnabled ? 1 : 0.5)
             .animation(AppTheme.quickSpring, value: isOn)
-    }
-
-    private var onTrackColor: Color {
-        tint ?? .accentColor
     }
 
     private var offTrackColor: Color {
