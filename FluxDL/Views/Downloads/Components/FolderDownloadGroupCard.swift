@@ -154,12 +154,14 @@ public struct FolderDownloadGroupCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(snapshot.group.name)
                         .font(.headline)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                     Text(snapshot.detailLine)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Spacer(minLength: 8)
 
@@ -235,7 +237,8 @@ public struct FolderDownloadGroupCard: View {
                 Text(child.displayName)
                     .font(.subheadline)
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
                 if let directory = child.displayDirectory {
                     Text(directory)
                         .font(.caption2)
@@ -243,6 +246,7 @@ public struct FolderDownloadGroupCard: View {
                         .lineLimit(1)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 8)
 
